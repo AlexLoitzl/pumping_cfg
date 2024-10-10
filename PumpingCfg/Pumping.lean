@@ -1,7 +1,7 @@
 /-
-Copyright (c) 2024 Alexander Loitzl. All rights reserved.
+Copyright (c) 2024 Alexander Loitzl, Martin Dvorak. All rights reserved.
 Released under Apache 2.0 license as described in the file LICENSE.
-Authors: Alexander Loitzl
+Authors: Alexander Loitzl, Martin Dvorak
 -/
 
 import Mathlib.Computability.ContextFreeGrammar
@@ -102,6 +102,84 @@ lemma Rewrites.append_right {r : CNFRule T N} {v w : List (Symbol T N)}
       apply ih
 
 end CNFRule
+
+namespace CNF
+
+def Produces (g : CNF T) (u v : List (Symbol T g.NT)) : Prop :=
+  ∃ r ∈ g.rules, r.Rewrites u v
+
+abbrev Derives (g : CNF T) :
+    List (Symbol T g.NT) → List (Symbol T g.NT) → Prop :=
+  Relation.ReflTransGen g.Produces
+
+def Generates (g : CNF T) (s : List (Symbol T g.NT)) : Prop :=
+  g.Derives [Symbol.nonterminal g.initial] s
+
+def language (g : CNF T) : Language T :=
+  { w | g.Generates (List.map Symbol.terminal w) }
+
+@[simp]
+lemma mem_language_iff (g : CNF T) (w : List T) :
+    w ∈ g.language ↔ g.Generates (List.map Symbol.terminal w) := by
+  rfl
+
+variable {g : CNF T}
+
+@[refl]
+lemma Derives.refl (w : List (Symbol T g.NT)) : g.Derives w w :=
+  Relation.ReflTransGen.refl
+
+lemma Produces.single {v w : List (Symbol T g.NT)} (hvw : g.Produces v w) : g.Derives v w :=
+  Relation.ReflTransGen.single hvw
+
+@[trans]
+lemma Derives.trans {u v w : List (Symbol T g.NT)} (huv : g.Derives u v) (hvw : g.Derives v w) :
+    g.Derives u w :=
+  Relation.ReflTransGen.trans huv hvw
+
+lemma Derives.trans_produces {u v w : List (Symbol T g.NT)}
+    (huv : g.Derives u v) (hvw : g.Produces v w) :
+    g.Derives u w :=
+  huv.trans hvw.single
+
+lemma Produces.trans_derives {u v w : List (Symbol T g.NT)}
+    (huv : g.Produces u v) (hvw : g.Derives v w) :
+    g.Derives u w :=
+  huv.single.trans hvw
+
+lemma Derives.eq_or_head {u w : List (Symbol T g.NT)} (huw : g.Derives u w) :
+    u = w ∨ ∃ v : List (Symbol T g.NT), g.Produces u v ∧ g.Derives v w :=
+  Relation.ReflTransGen.cases_head huw
+
+lemma Derives.eq_or_tail {u w : List (Symbol T g.NT)} (huw : g.Derives u w) :
+    u = w ∨ ∃ v : List (Symbol T g.NT), g.Derives u v ∧ g.Produces v w :=
+  (Relation.ReflTransGen.cases_tail huw).casesOn (Or.inl ∘ Eq.symm) Or.inr
+
+lemma Produces.append_left {v w : List (Symbol T g.NT)}
+    (hvw : g.Produces v w) (p : List (Symbol T g.NT)) :
+    g.Produces (p ++ v) (p ++ w) :=
+  match hvw with | ⟨r, hrmem, hrvw⟩ => ⟨r, hrmem, hrvw.append_left p⟩
+
+lemma Produces.append_right {v w : List (Symbol T g.NT)}
+    (hvw : g.Produces v w) (p : List (Symbol T g.NT)) :
+    g.Produces (v ++ p) (w ++ p) :=
+  match hvw with | ⟨r, hrmem, hrvw⟩ => ⟨r, hrmem, hrvw.append_right p⟩
+
+lemma Derives.append_left {v w : List (Symbol T g.NT)}
+    (hvw : g.Derives v w) (p : List (Symbol T g.NT)) :
+    g.Derives (p ++ v) (p ++ w) := by
+  induction hvw with
+  | refl => rfl
+  | tail _ last ih => exact ih.trans_produces <| last.append_left p
+
+lemma Derives.append_right {v w : List (Symbol T g.NT)}
+    (hvw : g.Derives v w) (p : List (Symbol T g.NT)) :
+    g.Derives (v ++ p) (w ++ p) := by
+  induction hvw with
+  | refl => rfl
+  | tail _ last ih => exact ih.trans_produces <| last.append_right p
+
+end CNF
 
 -- Why do I have to write Language.IsContextfree rather than L.isContextfree?
 -- I definitely need to restrict the type of variables with Fintype
