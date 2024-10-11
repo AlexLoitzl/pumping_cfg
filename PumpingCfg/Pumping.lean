@@ -6,6 +6,7 @@ Authors: Alexander Loitzl, Martin Dvorak
 
 import Mathlib.Computability.ContextFreeGrammar
 import PumpingCfg.Utils
+
 -- Type of terminals.
 variable {T : Type}
 
@@ -13,8 +14,8 @@ variable {T : Type}
 -- we can also only have finite number of non-terminals
 
 inductive CNFRule (T : Type) (N : Type)
-  | leaf (n:N) (t:T) : CNFRule T N
-  | node (n ln rn: N) : CNFRule T N
+  | leaf (n : N) (t : T) : CNFRule T N
+  | node (n ln rn : N) : CNFRule T N
 
 structure CNF (T : Type) where
   /-- Type of nonterminals. -/
@@ -27,16 +28,21 @@ structure CNF (T : Type) where
 namespace CNFRule
 
 @[simp]
-def input (r: CNFRule T N) :=
+def input (r : CNFRule T N) :=
   match r with
   | leaf n _ => n
   | node n _ _ => n
 
 @[simp]
-def output (r: CNFRule T N) :=
+def output (r : CNFRule T N) :=
   match r with
   | leaf _ t => [Symbol.terminal t]
   | node _ ln rn => [Symbol.nonterminal ln, Symbol.nonterminal rn]
+
+def toCFGRule (r : CNFRule T N) : ContextFreeRule T N :=
+  match r with
+  | leaf n t => { input := n, output := [Symbol.terminal t] }
+  | node n ln rn => { input := n, output := [Symbol.nonterminal ln, Symbol.nonterminal rn] }
 
 inductive Rewrites : (CNFRule T N) → List (Symbol T N) → List (Symbol T N) → Prop
   | head_leaf (n: N) (t: T) (s : List (Symbol T N)) :
@@ -102,6 +108,17 @@ lemma Rewrites.append_right {r : CNFRule T N} {v w : List (Symbol T N)}
       constructor
       apply ih
 
+lemma Rewrites.toCFGRule_match {v w : List (Symbol T N)} {r : CNFRule T N} (hwv : r.Rewrites v w) :
+  r.toCFGRule.Rewrites v w := by
+  induction hwv <;> tauto
+
+lemma Rewrites.match_toCFGRule {v w : List (Symbol T N)} {r : CNFRule T N} (hwv : r.toCFGRule.Rewrites v w) :
+  r.Rewrites v w := by
+  induction hwv with
+  | head => cases r <;> tauto
+  | cons x _ ih => exact Rewrites.cons r x ih
+
+
 end CNFRule
 
 namespace CNF
@@ -123,6 +140,9 @@ def language (g : CNF T) : Language T :=
 lemma mem_language_iff (g : CNF T) (w : List T) :
     w ∈ g.language ↔ g.Generates (List.map Symbol.terminal w) := by
   rfl
+
+def toCFG (g : CNF T) : ContextFreeGrammar T :=
+  { NT := g.NT, initial := g.initial, rules := List.map CNFRule.toCFGRule g.rules }
 
 variable {g : CNF T}
 
@@ -180,11 +200,46 @@ lemma Derives.append_right {v w : List (Symbol T g.NT)}
   | refl => rfl
   | tail _ last ih => exact ih.trans_produces <| last.append_right p
 
+lemma Produces.toCFG_match {v w : List (Symbol T g.NT)} (hvw: g.Produces v w) : g.toCFG.Produces v w := by
+  rcases hvw with ⟨r, rin, rw⟩
+  use r.toCFGRule
+  exact ⟨List.mem_map_of_mem _ rin, CNFRule.Rewrites.toCFGRule_match rw⟩
+
+lemma Derives.toCFG_match {v w : List (Symbol T g.NT)} (hvw : g.Derives v w) : g.toCFG.Derives v w := by
+  induction hvw with
+  | refl => rfl
+  | tail _ last ih =>
+    apply ih.trans_produces
+    apply Produces.toCFG_match last
+
+lemma Generates.toCFG_match {s : List (Symbol T g.NT)} (hg : g.Generates s) : g.toCFG.Generates s :=
+  Derives.toCFG_match hg
+
+lemma Produces.match_toCFG {v w : List (Symbol T g.NT)} (hvw : g.toCFG.Produces v w) : g.Produces v w := by
+  rcases hvw with ⟨r, rin, rw⟩
+  simp only[toCFG, List.mem_map] at rin
+  rcases rin with ⟨r',r'in, rfl⟩
+  use r'
+  exact ⟨r'in, CNFRule.Rewrites.match_toCFGRule rw⟩
+
+lemma Derives.match_toCFG {v w : List (Symbol T g.NT)} (hvw : g.toCFG.Derives v w) : g.Derives v w := by
+  induction hvw with
+  | refl => rfl
+  | tail _ last ih =>
+    apply ih.trans_produces
+    apply Produces.match_toCFG last
+
+lemma Generates.match_toCFG {s : List (Symbol T g.NT)} (hg : g.toCFG.Generates s) : g.Generates s :=
+  Derives.match_toCFG hg
+
+theorem toCFG_correct {s : List (Symbol T g.NT)} : g.Generates s ↔ g.toCFG.Generates s :=
+  ⟨Generates.toCFG_match, Generates.match_toCFG⟩
+
 end CNF
 
 -- Why do I have to write Language.IsContextfree rather than L.isContextfree?
 -- I definitely need to restrict the type of variables with Fintype
-theorem pumping_lemma {T : Type} {L : Language T} (cf: Language.IsContextFree L) :
+theorem pumping_lemma {T : Type} {L : Language T} (cf: L.IsContextFree) :
   ∃ p : ℕ, ∀ w ∈ L, w.length ≥ p → ∃ u v x y z : List T,
     w = u ++ v ++ x ++ y ++ z ∧
     (v ++ y).length > 0       ∧
