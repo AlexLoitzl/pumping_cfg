@@ -5,6 +5,7 @@ Authors: Alexander Loitzl, Martin Dvorak
 -/
 
 import Mathlib.Computability.ContextFreeGrammar
+import PumpingCfg.Utils
 -- Type of terminals.
 variable {T : Type}
 
