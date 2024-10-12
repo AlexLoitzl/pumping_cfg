@@ -27,6 +27,9 @@ variable {T : Type}
 
 namespace CNFRule
 
+-- Type of nonterminals.
+variable {N : Type}
+
 @[simp]
 def input (r : CNFRule T N) :=
   match r with
@@ -99,7 +102,6 @@ lemma Rewrites.match_toCFGRule {v w : List (Symbol T N)} {r : CNFRule T N} (hwv 
   induction hwv with
   | head => cases r <;> tauto
   | cons x _ ih => exact Rewrites.cons r x ih
-
 
 end CNFRule
 
