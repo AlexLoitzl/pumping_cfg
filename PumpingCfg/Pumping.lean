@@ -10,7 +10,7 @@ import PumpingCfg.Utils
 -- Non-terminals need to be restricted. Since the number of rules is finite,
 -- we can also only have finite number of non-terminals
 
-inductive CNFRule (T : Type) (N : Type)
+inductive CNFRule (T N : Type)
   | leaf (n : N) (t : T) : CNFRule T N
   | node (n l r : N) : CNFRule T N
 
@@ -127,7 +127,7 @@ lemma mem_language_iff (g : CNF T) (w : List T) :
 def toCFG (g : CNF T) : ContextFreeGrammar T where
   NT := g.NT
   initial := g.initial
-  rules := List.map CNFRule.toCFGRule g.rules
+  rules := g.rules.map CNFRule.toCFGRule
 
 variable {g : CNF T}
 
@@ -202,8 +202,8 @@ lemma Generates.toCFG_match {s : List (Symbol T g.NT)} (hg : g.Generates s) : g.
 lemma Produces.match_toCFG {v w : List (Symbol T g.NT)} (hvw : g.toCFG.Produces v w) : g.Produces v w := by
   rcases hvw with ⟨r, rin, hrw⟩
   simp only [toCFG, List.mem_map] at rin
-  rcases rin with ⟨r',r'in, rfl⟩
-  exact ⟨r', r'in, CNFRule.Rewrites.match_toCFGRule hrw⟩
+  rcases rin with ⟨r', rin', rfl⟩
+  exact ⟨r', rin', CNFRule.Rewrites.match_toCFGRule hrw⟩
 
 lemma Derives.match_toCFG {v w : List (Symbol T g.NT)} (hvw : g.toCFG.Derives v w) : g.Derives v w := by
   induction hvw with
@@ -221,7 +221,7 @@ theorem toCFG_correct {s : List (Symbol T g.NT)} : g.Generates s ↔ g.toCFG.Gen
 end CNF
 
 -- I definitely need to restrict the type of variables with Fintype
-theorem pumping_lemma {T : Type} {L : Language T} (hL : L.IsContextFree) :
+theorem pumping_lemma {L : Language T} (hL : L.IsContextFree) :
   ∃ p : ℕ, ∀ w ∈ L, w.length ≥ p → ∃ u v x y z : List T,
     w = u ++ v ++ x ++ y ++ z ∧
     (v ++ y).length > 0       ∧
