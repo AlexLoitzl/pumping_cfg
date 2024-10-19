@@ -245,25 +245,32 @@ def rule_is_nullable (nullable : Finset g.NT) (r : ContextFreeRule T g.NT) : Boo
     | Symbol.nonterminal nt => nt ∈ nullable
   ∀ s ∈ r.output, symbol_is_nullable s
 
-def add_if_nullable (nullable : Finset g.NT) (r : ContextFreeRule T g.NT) : Finset g.NT :=
+def add_if_nullable (r : ContextFreeRule T g.NT) (nullable : Finset g.NT) : Finset g.NT :=
   if rule_is_nullable nullable r then insert r.input nullable else nullable
 
-  -- if rule_is_nullable nullable r then insert nullable r.input else nullable
-
+-- Better not use foldr?
 def add_nullables (nullable : Finset g.NT) : Finset g.NT :=
-  g.rules.foldl add_if_nullable nullable
+  g.rules.foldr add_if_nullable nullable
 
-lemma add_nullables_neq_lt (nullable : Finset  g.NT) (p: nullable ≠ add_nullables nullable) :
-  nullable.card < (add_nullables nullable).card := by sorry
+lemma add_nullables_subset_generators (nullable : Finset g.NT) (p: nullable ⊆ g.generators) :
+  add_nullables nullable ⊆ g.generators := by
+  sorry
 
-lemma add_nullables_leq (nullable : Finset g.NT) :
-  nullable.card ≤ (add_nullables nullable).card := by sorry
+lemma add_if_nullable_subset (r: ContextFreeRule T g.NT) (nullable : Finset g.NT) :
+  nullable ⊆ (add_if_nullable r nullable) := by
+  unfold add_if_nullable
+  by_cases h : rule_is_nullable nullable r <;> simp[h]
 
-lemma add_nullables_size_bound (nullable : Finset g.NT) :
-  nullable.card ≤ (add_nullables nullable).card := by sorry
-
-lemma add_nullables_subset (nullable : Finset g.NT) (p: nullable ⊆ g.generators) :
-  add_nullables nullable ⊆ g.generators := by sorry
+lemma nullable_subset_add_nullables (nullable : Finset  g.NT) :
+  nullable ⊆ (add_nullables nullable) := by
+  unfold add_nullables
+  induction g.rules with
+  | nil => simp
+  | cons hd tl ih =>
+    simp
+    apply subset_trans
+    apply ih
+    apply add_if_nullable_subset hd
 
 -- Fixpoint iteration to compute all nullable variables
 def add_nullables_iter (nullable : Finset g.NT)
@@ -272,17 +279,22 @@ def add_nullables_iter (nullable : Finset g.NT)
   if nullable = nullable' then
     nullable
   else
-    add_nullables_iter nullable' (add_nullables_subset nullable p)
+    add_nullables_iter nullable' (add_nullables_subset_generators nullable p)
   termination_by ((g.generators).card - nullable.card)
   decreasing_by
     apply Nat.sub_lt_sub_left
-    · have h : ∀ a b c : ℕ, a < b → b ≤ c → a < c := by sorry
+    · have h : ∀ a b c : ℕ, a < b → b ≤ c → a < c := by
+           intro a b c h1 h2
+           exact Nat.lt_of_lt_of_le h1 h2
       apply h
-      · apply add_nullables_neq_lt
+      · apply Finset.card_lt_card
+        apply HasSubset.Subset.ssubset_of_ne (nullable_subset_add_nullables nullable) _
         tauto
-      ·
-        sorry
-    · apply add_nullables_neq_lt nullable
+      · have h1 := add_nullables_subset_generators nullable p
+        exact Finset.card_le_card h1
+    · apply Finset.card_lt_card
+      have h2 := nullable_subset_add_nullables nullable
+      apply HasSubset.Subset.ssubset_of_ne h2 _
       tauto
 
 -- Compute all nullable variables of a grammar
