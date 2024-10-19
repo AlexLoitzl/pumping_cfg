@@ -220,6 +220,71 @@ theorem toCFG_correct {s : List (Symbol T g.NT)} : g.Generates s ↔ g.toCFG.Gen
 
 end CNF
 
+--- Elimination of useless symbols from CFG
+
+namespace ContextFreeGrammar
+
+variable {g: ContextFreeGrammar T}
+
+variable [DecidableEq g.NT]
+
+def generators : List g.NT := g.rules.map (fun r => r.input)
+-- Add everything that's nullable to list nullable
+def rule_is_nullable (nullable : List g.NT) (r : ContextFreeRule T g.NT) : Bool :=
+  let symbol_is_nullable : (Symbol T g.NT) → Bool := fun s =>
+    match s with
+    | Symbol.terminal _ => false
+    | Symbol.nonterminal nt => nullable.contains nt
+  r.output.foldl (fun acc sym => acc && symbol_is_nullable sym) true
+
+def add_if_nullable (nullable : List g.NT) (r : ContextFreeRule T g.NT) : List g.NT :=
+  let add_if_not_mem : g.NT → List g.NT → List g.NT := fun _ _ => []
+  if rule_is_nullable nullable r then add_if_not_mem r.input nullable else nullable
+
+def add_nullables (nullable : List g.NT) : List g.NT :=
+  g.rules.foldl add_if_nullable nullable
+
+
+lemma add_nullables_neq_lt (nullable : List  g.NT) (p: nullable ≠ add_nullables nullable) :
+  nullable.length < (add_nullables nullable).length := by sorry
+
+lemma add_nullables_leq (nullable : List g.NT) :
+  nullable.length ≤ (add_nullables nullable).length := by sorry
+
+lemma add_nullables_size_bound (nullable : List g.NT) :
+  nullable.length ≤ (add_nullables nullable).length := by sorry
+
+lemma add_nullables_subset (nullable : List g.NT) (p: nullable ⊆ g.generators) :
+  add_nullables nullable ⊆ g.generators := by sorry
+
+-- Fixpoint iteration to compute all nullable variables
+def add_nullables_iter (nullable : List g.NT)
+  (p: nullable ⊆ g.generators) : List g.NT :=
+  let nullable' := add_nullables nullable
+  if nullable = nullable' then
+    nullable
+  else
+    add_nullables_iter nullable' (add_nullables_subset nullable p)
+  termination_by ((g.generators).length - nullable.length)
+  decreasing_by
+    apply Nat.sub_lt_sub_left
+    · have h : ∀ a b c : ℕ, a < b → b ≤ c → a < c := by sorry
+      apply h
+      · apply add_nullables_neq_lt
+        tauto
+      ·
+        sorry
+    · apply add_nullables_neq_lt nullable
+      tauto
+
+-- Compute all nullable variables of a grammar
+def compute_nullables : List g.NT :=
+  add_nullables_iter [] generators.nil_subset
+
+def NullableNonTerminal (V : g.NT) : Prop := g.Derives [Symbol.nonterminal V] []
+
+end ContextFreeGrammar
+
 -- I definitely need to restrict the type of variables with Fintype
 theorem pumping_lemma {L : Language T} (hL : L.IsContextFree) :
   ∃ p : ℕ, ∀ w ∈ L, w.length ≥ p → ∃ u v x y z : List T,
