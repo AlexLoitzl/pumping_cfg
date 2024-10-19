@@ -220,6 +220,78 @@ theorem toCFG_correct {s : List (Symbol T g.NT)} : g.Generates s ↔ g.toCFG.Gen
 
 end CNF
 
+namespace ContextFreeGrammar
+
+variable {g: ContextFreeGrammar T}
+
+variable [DecidableEq g.NT]
+
+-- All lefthand side non-terminals
+def generators : Finset g.NT := (g.rules.map (fun r => r.input)).toFinset
+
+-- NOTE Can I make this a decidable Prop? Do I want to? What's up with the stuff below
+def rule_is_nullable' (nullable : Finset g.NT) (r : ContextFreeRule T g.NT) : Prop :=
+  let symbol_is_nullable : (Symbol T g.NT) → Prop := fun s =>
+    match s with
+    | Symbol.terminal _ => False
+    | Symbol.nonterminal nt => nt ∈ nullable
+  ∀ s ∈ r.output, symbol_is_nullable s
+
+-- NOTE Is this somehow 'coerced' into Bool?
+def rule_is_nullable (nullable : Finset g.NT) (r : ContextFreeRule T g.NT) : Bool :=
+  let symbol_is_nullable : (Symbol T g.NT) → Bool := fun s =>
+    match s with
+    | Symbol.terminal _ => False
+    | Symbol.nonterminal nt => nt ∈ nullable
+  ∀ s ∈ r.output, symbol_is_nullable s
+
+def add_if_nullable (nullable : Finset g.NT) (r : ContextFreeRule T g.NT) : Finset g.NT :=
+  if rule_is_nullable nullable r then insert r.input nullable else nullable
+
+  -- if rule_is_nullable nullable r then insert nullable r.input else nullable
+
+def add_nullables (nullable : Finset g.NT) : Finset g.NT :=
+  g.rules.foldl add_if_nullable nullable
+
+lemma add_nullables_neq_lt (nullable : Finset  g.NT) (p: nullable ≠ add_nullables nullable) :
+  nullable.card < (add_nullables nullable).card := by sorry
+
+lemma add_nullables_leq (nullable : Finset g.NT) :
+  nullable.card ≤ (add_nullables nullable).card := by sorry
+
+lemma add_nullables_size_bound (nullable : Finset g.NT) :
+  nullable.card ≤ (add_nullables nullable).card := by sorry
+
+lemma add_nullables_subset (nullable : Finset g.NT) (p: nullable ⊆ g.generators) :
+  add_nullables nullable ⊆ g.generators := by sorry
+
+-- Fixpoint iteration to compute all nullable variables
+def add_nullables_iter (nullable : Finset g.NT)
+  (p: nullable ⊆ g.generators) : Finset g.NT :=
+  let nullable' := add_nullables nullable
+  if nullable = nullable' then
+    nullable
+  else
+    add_nullables_iter nullable' (add_nullables_subset nullable p)
+  termination_by ((g.generators).card - nullable.card)
+  decreasing_by
+    apply Nat.sub_lt_sub_left
+    · have h : ∀ a b c : ℕ, a < b → b ≤ c → a < c := by sorry
+      apply h
+      · apply add_nullables_neq_lt
+        tauto
+      ·
+        sorry
+    · apply add_nullables_neq_lt nullable
+      tauto
+
+-- Compute all nullable variables of a grammar
+def compute_nullables : Finset g.NT :=
+  add_nullables_iter ∅ generators.empty_subset
+
+def NullableNonTerminal (V : g.NT) : Prop := g.Derives [Symbol.nonterminal V] []
+
+end ContextFreeGrammar
 -- I definitely need to restrict the type of variables with Fintype
 theorem pumping_lemma {L : Language T} (hL : L.IsContextFree) :
   ∃ p : ℕ, ∀ w ∈ L, w.length ≥ p → ∃ u v x y z : List T,
