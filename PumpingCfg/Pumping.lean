@@ -222,7 +222,7 @@ end CNF
 
 namespace ContextFreeGrammar
 
-variable {g: ContextFreeGrammar T}
+variable {g : ContextFreeGrammar T}
 
 variable [DecidableEq g.NT]
 
@@ -254,27 +254,27 @@ def add_if_nullable (r : ContextFreeRule T g.NT) (nullable : Finset g.NT) : Fins
   if rule_is_nullable nullable r then insert r.input nullable else nullable
 
 lemma add_if_nullable_subset_generators {r : ContextFreeRule T g.NT} {nullable : Finset g.NT}
-  (p: nullable ⊆ g.generators) (hin : r ∈ g.rules) :
+  (p : nullable ⊆ g.generators) (hin : r ∈ g.rules) :
   add_if_nullable r nullable ⊆ g.generators := by
   unfold add_if_nullable
-  by_cases h : rule_is_nullable nullable r <;> simp[h]
+  split
   · exact Finset.insert_subset (in_generators hin) p
   · exact p
 
 def add_nullables (nullable : Finset g.NT) : Finset g.NT :=
   g.rules.attach.foldr (fun ⟨r, _⟩ => add_if_nullable r) nullable
 
-lemma add_nullables_subset_generators (nullable : Finset g.NT) (p: nullable ⊆ g.generators) :
+lemma add_nullables_subset_generators (nullable : Finset g.NT) (p : nullable ⊆ g.generators) :
   add_nullables nullable ⊆ g.generators := by
   unfold add_nullables
   induction g.rules.attach with
   | nil => simp; exact p
   | cons hd tl ih => exact add_if_nullable_subset_generators ih hd.2
 
-lemma add_if_nullable_subset (r: ContextFreeRule T g.NT) (nullable : Finset g.NT) :
+lemma add_if_nullable_subset (r : ContextFreeRule T g.NT) (nullable : Finset g.NT) :
   nullable ⊆ (add_if_nullable r nullable) := by
   unfold add_if_nullable
-  by_cases h : rule_is_nullable nullable r <;> simp[h]
+  split <;> simp
 
 lemma nullable_subset_add_nullables (nullable : Finset  g.NT) :
   nullable ⊆ (add_nullables nullable) := by
@@ -287,7 +287,7 @@ lemma nullable_subset_add_nullables (nullable : Finset  g.NT) :
 
 -- Fixpoint iteration to compute all nullable variables
 def add_nullables_iter (nullable : Finset g.NT)
-  (p: nullable ⊆ g.generators) : Finset g.NT :=
+  (p : nullable ⊆ g.generators) : Finset g.NT :=
   let nullable' := add_nullables nullable
   if nullable = nullable' then
     nullable
@@ -313,6 +313,7 @@ lemma compute_nullables_iff (v : g.NT) :
   v ∈ compute_nullables ↔ NullableNonTerminal v := by sorry
 
 end ContextFreeGrammar
+
 -- I definitely need to restrict the type of variables with Fintype
 theorem pumping_lemma {L : Language T} (hL : L.IsContextFree) :
   ∃ p : ℕ, ∀ w ∈ L, w.length ≥ p → ∃ u v x y z : List T,
