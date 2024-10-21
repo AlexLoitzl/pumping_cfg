@@ -243,15 +243,6 @@ lemma in_generators {r : ContextFreeRule T g.NT} (h : r ∈ g.rules) :
     · right
       exact ih c2
 
--- NOTE Can I make this a decidable Prop? Do I want to? What's up with the stuff below
-def rule_is_nullable' (nullable : Finset g.NT) (r : ContextFreeRule T g.NT) : Prop :=
-  let symbol_is_nullable : (Symbol T g.NT) → Prop := fun s =>
-    match s with
-    | Symbol.terminal _ => False
-    | Symbol.nonterminal nt => nt ∈ nullable
-  ∀ s ∈ r.output, symbol_is_nullable s
-
--- NOTE Is this somehow 'coerced' into Bool?
 def rule_is_nullable (nullable : Finset g.NT) (r : ContextFreeRule T g.NT) : Bool :=
   let symbol_is_nullable : (Symbol T g.NT) → Bool := fun s =>
     match s with
@@ -267,9 +258,7 @@ lemma add_if_nullable_subset_generators {r : ContextFreeRule T g.NT} {nullable :
   add_if_nullable r nullable ⊆ g.generators := by
   unfold add_if_nullable
   by_cases h : rule_is_nullable nullable r <;> simp[h]
-  · apply Finset.insert_subset
-    exact in_generators hin
-    exact p
+  · exact Finset.insert_subset (in_generators hin) p
   · exact p
 
 def add_nullables (nullable : Finset g.NT) : Finset g.NT :=
@@ -279,12 +268,8 @@ lemma add_nullables_subset_generators (nullable : Finset g.NT) (p: nullable ⊆ 
   add_nullables nullable ⊆ g.generators := by
   unfold add_nullables
   induction g.rules.attach with
-  | nil =>
-    simp
-    exact p
-  | cons hd tl ih =>
-    simp at ih ⊢
-    exact add_if_nullable_subset_generators ih hd.2
+  | nil => simp; exact p
+  | cons hd tl ih => exact add_if_nullable_subset_generators ih hd.2
 
 lemma add_if_nullable_subset (r: ContextFreeRule T g.NT) (nullable : Finset g.NT) :
   nullable ⊆ (add_if_nullable r nullable) := by
@@ -297,9 +282,7 @@ lemma nullable_subset_add_nullables (nullable : Finset  g.NT) :
   induction g.rules.attach with
   | nil => simp
   | cons hd tl ih =>
-    simp
-    apply subset_trans
-    apply ih
+    apply subset_trans ih
     apply add_if_nullable_subset hd.1
 
 -- Fixpoint iteration to compute all nullable variables
@@ -312,26 +295,22 @@ def add_nullables_iter (nullable : Finset g.NT)
     add_nullables_iter nullable' (add_nullables_subset_generators nullable p)
   termination_by ((g.generators).card - nullable.card)
   decreasing_by
+    rename_i h
+    have h := HasSubset.Subset.ssubset_of_ne (nullable_subset_add_nullables nullable) h
     apply Nat.sub_lt_sub_left
-    · have h : ∀ a b c : ℕ, a < b → b ≤ c → a < c := by
-           intro a b c h1 h2
-           exact Nat.lt_of_lt_of_le h1 h2
-      apply h
-      · apply Finset.card_lt_card
-        apply HasSubset.Subset.ssubset_of_ne (nullable_subset_add_nullables nullable) _
-        tauto
-      · have h1 := add_nullables_subset_generators nullable p
-        exact Finset.card_le_card h1
-    · apply Finset.card_lt_card
-      have h2 := nullable_subset_add_nullables nullable
-      apply HasSubset.Subset.ssubset_of_ne h2 _
-      tauto
+    · apply Nat.lt_of_lt_of_le
+      · apply Finset.card_lt_card h
+      · exact Finset.card_le_card (add_nullables_subset_generators nullable p)
+    · apply Finset.card_lt_card h
 
 -- Compute all nullable variables of a grammar
 def compute_nullables : Finset g.NT :=
   add_nullables_iter ∅ generators.empty_subset
 
-def NullableNonTerminal (V : g.NT) : Prop := g.Derives [Symbol.nonterminal V] []
+def NullableNonTerminal (v : g.NT) : Prop := g.Derives [Symbol.nonterminal v] []
+
+lemma compute_nullables_iff (v : g.NT) :
+  v ∈ compute_nullables ↔ NullableNonTerminal v := by sorry
 
 end ContextFreeGrammar
 -- I definitely need to restrict the type of variables with Fintype
