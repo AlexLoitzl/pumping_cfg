@@ -286,8 +286,8 @@ lemma nullable_subset_add_nullables (nullable : Finset  g.NT) :
     apply add_if_nullable_subset hd.1
 
 -- Fixpoint iteration to compute all nullable variables
-def add_nullables_iter (nullable : Finset g.NT)
-  (p : nullable ⊆ g.generators) : Finset g.NT :=
+-- I can't quite get functional induction to work here :(
+def add_nullables_iter (nullable : Finset g.NT) (p : nullable ⊆ g.generators) : Finset g.NT :=
   let nullable' := add_nullables nullable
   if nullable = nullable' then
     nullable
@@ -309,8 +309,38 @@ def compute_nullables : Finset g.NT :=
 
 def NullableNonTerminal (v : g.NT) : Prop := g.Derives [Symbol.nonterminal v] []
 
+lemma rule_is_nullable_correct (nullable : Finset g.NT) (r : ContextFreeRule T g.NT)
+  (hin : ∀ v ∈ nullable, NullableNonTerminal v) (hr : rule_is_nullable nullable r) :
+  NullableNonTerminal r.input := by sorry
+
+lemma add_nullables_nullable (nullable : Finset g.NT) (hin : ∀ v ∈ nullable, NullableNonTerminal v) :
+  ∀ v ∈ add_nullables nullable, NullableNonTerminal v := by
+  intro v hin
+  unfold add_nullables at hin
+  sorry
+
+lemma add_nullables_iter_nullable (nullable : Finset g.NT) (p : nullable ⊆ g.generators)
+  (hin : ∀ v ∈ nullable, NullableNonTerminal v) :
+  ∀ v ∈ (add_nullables_iter nullable p), NullableNonTerminal v:= by
+  unfold add_nullables_iter
+  intro v
+  simp
+  split
+  · tauto
+  · have ih := add_nullables_iter_nullable (add_nullables nullable) (add_nullables_subset_generators nullable p)
+    apply ih
+    exact add_nullables_nullable nullable hin
+  termination_by ((g.generators).card - nullable.card)
+  decreasing_by sorry
+
 lemma compute_nullables_iff (v : g.NT) :
-  v ∈ compute_nullables ↔ NullableNonTerminal v := by sorry
+  v ∈ compute_nullables ↔ NullableNonTerminal v := by
+  constructor
+  · intro h
+    apply add_nullables_iter_nullable Finset.empty
+    tauto
+    exact h
+  · sorry
 
 end ContextFreeGrammar
 
