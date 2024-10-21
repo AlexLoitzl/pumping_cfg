@@ -229,6 +229,20 @@ variable [DecidableEq g.NT]
 -- All lefthand side non-terminals
 def generators : Finset g.NT := (g.rules.map (fun r => r.input)).toFinset
 
+lemma in_generators {r : ContextFreeRule T g.NT} (h : r ∈ g.rules) :
+  r.input ∈ g.generators := by
+  unfold generators
+  revert h
+  induction g.rules with
+  | nil => simp
+  | cons hd tl ih =>
+    simp at ih ⊢
+    rintro (c1 | c2)
+    · left
+      rw[c1]
+    · right
+      exact ih c2
+
 -- NOTE Can I make this a decidable Prop? Do I want to? What's up with the stuff below
 def rule_is_nullable' (nullable : Finset g.NT) (r : ContextFreeRule T g.NT) : Prop :=
   let symbol_is_nullable : (Symbol T g.NT) → Prop := fun s =>
@@ -248,13 +262,29 @@ def rule_is_nullable (nullable : Finset g.NT) (r : ContextFreeRule T g.NT) : Boo
 def add_if_nullable (r : ContextFreeRule T g.NT) (nullable : Finset g.NT) : Finset g.NT :=
   if rule_is_nullable nullable r then insert r.input nullable else nullable
 
--- Better not use foldr?
+lemma add_if_nullable_subset_generators {r : ContextFreeRule T g.NT} {nullable : Finset g.NT}
+  (p: nullable ⊆ g.generators) (hin : r ∈ g.rules) :
+  add_if_nullable r nullable ⊆ g.generators := by
+  unfold add_if_nullable
+  by_cases h : rule_is_nullable nullable r <;> simp[h]
+  · apply Finset.insert_subset
+    exact in_generators hin
+    exact p
+  · exact p
+
 def add_nullables (nullable : Finset g.NT) : Finset g.NT :=
-  g.rules.foldr add_if_nullable nullable
+  g.rules.attach.foldr (fun ⟨r, _⟩ => add_if_nullable r) nullable
 
 lemma add_nullables_subset_generators (nullable : Finset g.NT) (p: nullable ⊆ g.generators) :
   add_nullables nullable ⊆ g.generators := by
-  sorry
+  unfold add_nullables
+  induction g.rules.attach with
+  | nil =>
+    simp
+    exact p
+  | cons hd tl ih =>
+    simp at ih ⊢
+    exact add_if_nullable_subset_generators ih hd.2
 
 lemma add_if_nullable_subset (r: ContextFreeRule T g.NT) (nullable : Finset g.NT) :
   nullable ⊆ (add_if_nullable r nullable) := by
@@ -264,13 +294,13 @@ lemma add_if_nullable_subset (r: ContextFreeRule T g.NT) (nullable : Finset g.NT
 lemma nullable_subset_add_nullables (nullable : Finset  g.NT) :
   nullable ⊆ (add_nullables nullable) := by
   unfold add_nullables
-  induction g.rules with
+  induction g.rules.attach with
   | nil => simp
   | cons hd tl ih =>
     simp
     apply subset_trans
     apply ih
-    apply add_if_nullable_subset hd
+    apply add_if_nullable_subset hd.1
 
 -- Fixpoint iteration to compute all nullable variables
 def add_nullables_iter (nullable : Finset g.NT)
