@@ -287,6 +287,19 @@ lemma nullable_subset_add_nullables (nullable : Finset  g.NT) :
 
 -- Fixpoint iteration to compute all nullable variables
 -- I can't quite get functional induction to work here :(
+-- NOTE If we instead shrink the set of generators the termination argument should
+-- be easier. For correctness we'll probably have to reason about the contents of generators
+
+lemma generators_limits_nullable (nullable : Finset g.NT) (p : nullable ⊆ g.generators)
+  (hneq : nullable ≠ add_nullables nullable) :
+  (g.generators).card - (add_nullables nullable).card < (g.generators).card - nullable.card := by
+  have h := HasSubset.Subset.ssubset_of_ne (nullable_subset_add_nullables nullable) hneq
+  apply Nat.sub_lt_sub_left
+  · apply Nat.lt_of_lt_of_le
+    · apply Finset.card_lt_card h
+    · exact Finset.card_le_card (add_nullables_subset_generators nullable p)
+  · apply Finset.card_lt_card h
+
 def add_nullables_iter (nullable : Finset g.NT) (p : nullable ⊆ g.generators) : Finset g.NT :=
   let nullable' := add_nullables nullable
   if nullable = nullable' then
@@ -296,12 +309,8 @@ def add_nullables_iter (nullable : Finset g.NT) (p : nullable ⊆ g.generators) 
   termination_by ((g.generators).card - nullable.card)
   decreasing_by
     rename_i h
-    have h := HasSubset.Subset.ssubset_of_ne (nullable_subset_add_nullables nullable) h
-    apply Nat.sub_lt_sub_left
-    · apply Nat.lt_of_lt_of_le
-      · apply Finset.card_lt_card h
-      · exact Finset.card_le_card (add_nullables_subset_generators nullable p)
-    · apply Finset.card_lt_card h
+    exact generators_limits_nullable nullable p h
+
 
 -- Compute all nullable variables of a grammar
 def compute_nullables : Finset g.NT :=
@@ -309,15 +318,63 @@ def compute_nullables : Finset g.NT :=
 
 def NullableNonTerminal (v : g.NT) : Prop := g.Derives [Symbol.nonterminal v] []
 
+-- That's annoying
+omit [DecidableEq g.NT] in
+lemma all_nullable_nullable (w : List (Symbol T g.NT)) (h: ∀ v ∈ w, g.Derives [v] []) :
+  g.Derives w [] := by
+  induction w with
+  | nil => exact Derives.refl []
+  | cons hd tl ih =>
+    change g.Derives ([hd] ++ tl) []
+    apply Derives.trans
+    · apply Derives.append_right
+      apply h
+      simp
+    · simp
+      apply ih
+      intro v hv
+      apply h
+      right
+      exact hv
+
 lemma rule_is_nullable_correct (nullable : Finset g.NT) (r : ContextFreeRule T g.NT)
-  (hin : ∀ v ∈ nullable, NullableNonTerminal v) (hr : rule_is_nullable nullable r) :
-  NullableNonTerminal r.input := by sorry
+  (hrin : r ∈ g.rules) (hin : ∀ v ∈ nullable, NullableNonTerminal v) (hr : rule_is_nullable nullable r) :
+  NullableNonTerminal r.input := by
+  unfold rule_is_nullable at hr
+  unfold NullableNonTerminal
+  have h1 : g.Produces [Symbol.nonterminal r.input] r.output := by
+    use r
+    constructor
+    exact hrin
+    rw [ContextFreeRule.rewrites_iff]
+    use [], []
+    simp
+  apply Produces.trans_derives h1
+  apply all_nullable_nullable
+  intro v hvin
+  simp at hr
+  specialize hr v hvin
+  cases v <;> simp at hr
+  apply hin _ hr
 
 lemma add_nullables_nullable (nullable : Finset g.NT) (hin : ∀ v ∈ nullable, NullableNonTerminal v) :
   ∀ v ∈ add_nullables nullable, NullableNonTerminal v := by
-  intro v hin
-  unfold add_nullables at hin
-  sorry
+  unfold add_nullables
+  induction g.rules.attach with
+  | nil =>
+    simp
+    apply hin
+  | cons hd tl ih =>
+    simp
+    unfold add_if_nullable
+    split
+    · simp
+      constructor
+      · apply rule_is_nullable_correct _ _ hd.2 ih
+        rename_i h
+        exact h
+      · exact ih
+    · exact ih
 
 lemma add_nullables_iter_nullable (nullable : Finset g.NT) (p : nullable ⊆ g.generators)
   (hin : ∀ v ∈ nullable, NullableNonTerminal v) :
@@ -331,7 +388,9 @@ lemma add_nullables_iter_nullable (nullable : Finset g.NT) (p : nullable ⊆ g.g
     apply ih
     exact add_nullables_nullable nullable hin
   termination_by ((g.generators).card - nullable.card)
-  decreasing_by sorry
+  decreasing_by
+    rename_i h
+    exact generators_limits_nullable nullable p h
 
 lemma compute_nullables_iff (v : g.NT) :
   v ∈ compute_nullables ↔ NullableNonTerminal v := by
