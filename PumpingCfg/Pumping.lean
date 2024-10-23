@@ -401,6 +401,31 @@ lemma compute_nullables_iff (v : g.NT) :
     exact h
   · sorry
 
+def nonterminalProp (s : Symbol T g.NT) (P : g.NT → Prop) :=
+  match s with
+  | Symbol.terminal _ => False
+  | Symbol.nonterminal n => P n
+
+def remove_nullable (nullable : Finset g.NT) (s: (Symbol T g.NT)) (acc : List (List (Symbol T g.NT))) :=
+  match s with
+  | Symbol.nonterminal n => (if n ∈ nullable then acc else []) ++ acc.map (fun x => s :: x)
+  | Symbol.terminal _ => acc.map (fun x => s :: x)
+
+def remove_nullable_rule (nullable : Finset g.NT) (r: ContextFreeRule T g.NT) : (List (ContextFreeRule T g.NT)) :=
+  let fltrmap : List (Symbol T g.NT) → Option (ContextFreeRule T g.NT)
+    | [] => Option.none
+    | h :: t => ContextFreeRule.mk r.input (h :: t)
+  (r.output.foldr (remove_nullable nullable) [[]]).filterMap fltrmap
+
+def remove_nullables (nullable : Finset g.NT) : List (ContextFreeRule T g.NT) :=
+  (g.rules.map (remove_nullable_rule nullable)).join
+
+def eliminate_empty : ContextFreeGrammar T :=
+  ContextFreeGrammar.mk g.NT g.initial (remove_nullables compute_nullables)
+
+theorem eliminate_empty_correct :
+  g.language = (@eliminate_empty T g).language \ {[]} := by sorry
+
 end ContextFreeGrammar
 
 -- I definitely need to restrict the type of variables with Fintype
