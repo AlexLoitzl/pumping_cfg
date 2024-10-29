@@ -252,6 +252,50 @@ def remove_nullables (nullable : Finset g.NT) : List (ContextFreeRule T g.NT) :=
 def eliminate_empty : ContextFreeGrammar T :=
   ContextFreeGrammar.mk g.NT g.initial (remove_nullables compute_nullables)
 
+lemma in_remove_nullable_rule {r r': ContextFreeRule T g.NT} {nullable : Finset g.NT}
+  (h: r' ∈ remove_nullable_rule nullable r) : r'.output ≠ [] := by
+  unfold remove_nullable_rule at h
+  rw[List.mem_filterMap] at h
+  obtain ⟨a, h1, h2⟩ := h
+  cases a <;> simp at h2
+  · rw[←h2]
+    simp
+
+lemma in_remove_not_epsilon {r : ContextFreeRule T g.NT} {nullable : Finset g.NT}
+  (h : r ∈ remove_nullables nullable) : r.output ≠ [] := by
+  unfold remove_nullables at h
+  rw[List.mem_join] at h
+  obtain ⟨l, hlin, hrin⟩ := h
+  rw[List.mem_map] at hlin
+  obtain ⟨r',hr'in, hr'l⟩ := hlin
+  rw[←hr'l] at hrin
+  apply in_remove_nullable_rule hrin
+
+omit [DecidableEq g.NT] in
+lemma rewrites_epsilon {v : List (Symbol T g.NT)} {r : ContextFreeRule T g.NT} (h : r.Rewrites v []) :
+  r.output = [] := by
+  obtain ⟨p,q,_,h2⟩ := h.exists_parts
+  simp at h2
+  tauto
+
+lemma produces_not_epsilon {v w : List (Symbol T g.NT)} (h : (g.eliminate_empty).Produces v w) :
+  w ≠ [] := by
+  unfold Produces at h
+  change ∃ r ∈ (remove_nullables compute_nullables), r.Rewrites v w at h
+  obtain ⟨r, hin, hr⟩ := h
+  intro hw
+  rw[hw] at hr
+  apply in_remove_not_epsilon hin
+  exact rewrites_epsilon hr
+
+lemma derives_not_epsilon {v w : List (Symbol T g.NT)} (h : (g.eliminate_empty).Derives v w) (he : v ≠ [])
+  : w ≠ [] := by
+  induction h using Relation.ReflTransGen.head_induction_on with
+  | refl => exact he
+  | head hd _ ih =>
+    apply ih
+    exact produces_not_epsilon hd
+
 theorem eliminate_empty_correct :
   g.language = (@eliminate_empty T g).language \ {[]} := by sorry
 
