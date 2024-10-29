@@ -5,6 +5,7 @@ Authors: Alexander Loitzl
 -/
 
 import Mathlib.Computability.ContextFreeGrammar
+import PumpingCfg.CountingSteps
 
 namespace ContextFreeGrammar
 
@@ -194,121 +195,26 @@ lemma add_nullables_iter_only_nullable (nullable : Finset g.NT) (p : nullable �
 -- If direction starts here
 -- ************************
 
--- NOTE Here, it seems like induction on length of derivation will be needed
--- We'll want to talk about sub-derivations, hence structural induction doesn't work
-
--- This proof seems semi tedious
 omit [DecidableEq g.NT] in
-lemma epsilon_left_derives {w u v : List (Symbol T g.NT)}
-  (hwe : g.Derives w []) (heq : w = u ++ v) : g.Derives u [] := by
-  revert u v
-  induction hwe using Relation.ReflTransGen.head_induction_on with
-  | refl =>
-    simp
-    rfl
-  | @head u v huv _ ih =>
-    intro x y heq
-    obtain ⟨r, rin, huv⟩ := huv
-    obtain ⟨p, q, h1, h2⟩ := ContextFreeRule.Rewrites.exists_parts huv
-    rw[heq, List.append_assoc, List.append_eq_append_iff] at h1
-    cases h1 with
-    | inl h =>
-      obtain ⟨x', hx, _⟩ := h
-      apply ih
-      rw[h2, hx]
-      simp
-      rfl
-    | inr h =>
-      obtain ⟨x', hx, hr⟩ := h
-      cases x' with
-      | nil =>
-        apply ih
-        rw[h2, hx]
-        simp
-        rfl
-      | cons h t =>
-        obtain ⟨_, _⟩ := hr
-        apply Produces.trans_derives
-        use r
-        constructor
-        exact rin
-        rw[ContextFreeRule.rewrites_iff]
-        use p, t
-        constructor
-        · simp
-          exact hx
-        · rfl
-        apply ih
-        rw[h2]
-        simp
-        rfl
-
--- This proof seems too tedious
-omit [DecidableEq g.NT] in
-lemma epsilon_right_derives {w u v : List (Symbol T g.NT)}
-  (hwe : g.Derives w []) (heq : w = u ++ v) : g.Derives v [] := by
-  revert u v
-  induction hwe using Relation.ReflTransGen.head_induction_on with
-  | refl =>
-    simp
-    rfl
-  | @head u v huv _ ih =>
-    intro x y heq
-    obtain ⟨r, rin, huv⟩ := huv
-    obtain ⟨p, q, h1, h2⟩ := ContextFreeRule.Rewrites.exists_parts huv
-    rw[heq, List.append_assoc, List.append_eq_append_iff] at h1
-    cases h1 with
-    | inl h =>
-      obtain ⟨y', h1 , hy⟩ := h
-      apply Produces.trans_derives
-      use r
-      constructor
-      exact rin
-      rw[ContextFreeRule.rewrites_iff]
-      use y', q
-      constructor
-      · simp
-        exact hy
-      · rfl
-      apply ih
-      rw[h2,h1]
-      simp
-      rfl
-    | inr h =>
-      obtain ⟨q', hx, hq⟩ := h
-      cases q' with
-      | nil =>
-        simp at hq
-        apply Produces.trans_derives
-        use r
-        constructor
-        exact rin
-        rw[ContextFreeRule.rewrites_iff]
-        use [], q
-        constructor
-        · simp
-          tauto
-        · rfl
-        simp
-        apply ih
-        rw[h2]
-        simp
-        rfl
-      | cons h t =>
-        obtain ⟨_,_⟩ := hq
-        apply ih
-        rw[h2]
-        simp
-        rw[← List.append_assoc, ← List.append_assoc]
+lemma Derives.empty_of_append {w u v: List (Symbol T g.NT)}
+  (hwe : g.Derives (w ++ u ++ v) []) : g.Derives u [] := by
+  rw[derives_iff_derivesSteps] at hwe ⊢
+  obtain ⟨n, hwe⟩ := hwe
+  obtain ⟨m, _, hue⟩ := hwe.empty_of_append
+  use m
 
 omit [DecidableEq g.NT] in
-lemma epsilon_split_derives {w u v: List (Symbol T g.NT)}
-  (hwe : g.Derives (w ++ u ++v) []) : g.Derives u [] := by
-  apply epsilon_right_derives
-  apply epsilon_left_derives
+lemma Derives.empty_of_append_left {u v: List (Symbol T g.NT)}
+  (hwe : g.Derives (u ++ v) []) : g.Derives u [] := by
+  apply @Derives.empty_of_append _ _ []
   exact hwe
-  rw[List.append_assoc]
-  rfl
+
+omit [DecidableEq g.NT] in
+lemma Derives.empty_of_append_right {u v: List (Symbol T g.NT)}
+  (hwe : g.Derives (u ++ v) []) : g.Derives v [] := by
+  apply @Derives.empty_of_append _ _ _ _ []
+  simp
+  exact hwe
 
 -- Main correctness theorem of computing all nullable symbols --
 lemma compute_nullables_iff (v : g.NT) :

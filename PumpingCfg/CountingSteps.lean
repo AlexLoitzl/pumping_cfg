@@ -1,3 +1,8 @@
+/-
+Copyright (c) 2024 Alexander Loitzl, Martin Dvorak. All rights reserved.
+Released under Apache 2.0 license as described in the file LICENSE.
+Authors: Alexander Loitzl, Martin Dvorak
+-/
 import Mathlib.Computability.ContextFreeGrammar
 
 universe uT uN
@@ -114,13 +119,11 @@ lemma DerivesSteps.induction_refl_head {b : List (Symbol T g.NT)}
     · intro _ _ _ produc deriv
       exact head produc (deriv.tail _ last)
 
-private lemma epsilon_left_derives_aux {w u v : List (Symbol T g.NT)} {n : ℕ}
+private lemma DerivesSteps.empty_of_append_left_aux {w u v : List (Symbol T g.NT)} {n : ℕ}
   (hwe : g.DerivesSteps w [] n) (heq : w = u ++ v) : ∃ m ≤ n, g.DerivesSteps u [] m := by
   revert u v
   induction hwe using DerivesSteps.induction_refl_head with
-  | refl =>
-    simp
-    exact DerivesSteps.zero_steps []
+  | refl => simp[DerivesSteps.zero_steps]
   | @head m  u v huv _ ih =>
     intro x y heq
     obtain ⟨r, rin, huv⟩ := huv
@@ -159,6 +162,76 @@ private lemma epsilon_left_derives_aux {w u v : List (Symbol T g.NT)} {n : ℕ}
           · rfl
           exact hd
 
-lemma DerivesSteps.empty_of_append_right {u v : List (Symbol T g.NT)} (huv : g.DerivesSteps (u ++ v) [] n) :
+lemma DerivesSteps.empty_of_append_left {u v : List (Symbol T g.NT)} (huv : g.DerivesSteps (u ++ v) [] n) :
     ∃ m ≤ n, g.DerivesSteps u [] m := by
-  apply epsilon_left_derives_aux <;> tauto
+  apply empty_of_append_left_aux <;> tauto
+
+lemma DerivesSteps.empty_of_append_right_aux {w u v : List (Symbol T g.NT)} {n : ℕ}
+  (hwe : g.DerivesSteps w [] n) (heq : w = u ++ v) : ∃ m ≤ n, g.DerivesSteps v [] m := by
+  revert u v
+  induction hwe using DerivesSteps.induction_refl_head with
+  | refl => simp[DerivesSteps.zero_steps]
+  | @head m u v huv _ ih =>
+    intro x y heq
+    obtain ⟨r, rin, huv⟩ := huv
+    obtain ⟨p, q, h1, h2⟩ := ContextFreeRule.Rewrites.exists_parts huv
+    rw[heq, List.append_assoc, List.append_eq_append_iff] at h1
+    cases h1 with
+    | inl h =>
+      obtain ⟨y', h1 , hy⟩ := h
+      repeat rw[h1, List.append_assoc, List.append_assoc] at h2
+      obtain ⟨m', hm, hd⟩ := ih h2
+      use m'.succ
+      constructor
+      · exact Nat.succ_le_succ hm
+      · apply Produces.trans_derivesSteps
+        use r
+        constructor
+        exact rin
+        rw[ContextFreeRule.rewrites_iff]
+        use y', q
+        constructor
+        · simp
+          exact hy
+        · rfl
+        simp[hd]
+    | inr h =>
+      obtain ⟨q', hx, hq⟩ := h
+      cases q' with
+      | nil =>
+        simp at hq h2
+        obtain ⟨m', hm, hd⟩ := ih h2
+        use m'.succ
+        constructor
+        · exact Nat.succ_le_succ hm
+        · apply Produces.trans_derivesSteps
+          use r
+          constructor
+          exact rin
+          rw[ContextFreeRule.rewrites_iff]
+          use [], q
+          constructor
+          · simp
+            tauto
+          · rfl
+          exact hd
+      | cons h t =>
+        obtain ⟨_,_⟩ := hq
+        simp at h2
+        repeat rw[←List.append_assoc] at h2
+        obtain ⟨m', hm, hd⟩ := ih h2
+        use m'
+        constructor
+        · exact Nat.le_succ_of_le hm
+        · exact hd
+
+lemma DerivesSteps.empty_of_append_right {u v : List (Symbol T g.NT)} (huv : g.DerivesSteps (u ++ v) [] n) :
+    ∃ m ≤ n, g.DerivesSteps v [] m := by
+  apply empty_of_append_right_aux <;> tauto
+
+lemma DerivesSteps.empty_of_append {w u v: List (Symbol T g.NT)} {n : ℕ}
+  (hwe : g.DerivesSteps (w ++ u ++ v) [] n) : ∃ m ≤ n, g.DerivesSteps u [] m := by
+  obtain ⟨m1, hm1n, hm1e⟩ := DerivesSteps.empty_of_append_left hwe
+  obtain ⟨m2, hm2n, hm2e⟩ := DerivesSteps.empty_of_append_right hm1e
+  use m2
+  exact ⟨Nat.le_trans hm2n hm1n, hm2e⟩
