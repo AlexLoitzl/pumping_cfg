@@ -62,6 +62,26 @@ lemma Produces.trans_derivesSteps {u v w : List (Symbol T g.NT)}
     g.DerivesSteps u w n.succ :=
   n.succ_eq_one_add ▸ huv.single_step.trans hvw
 
+lemma DerivesSteps.tail_of_succ {u w : List (Symbol T g.NT)} (huw : g.DerivesSteps u w n.succ) :
+    ∃ v : List (Symbol T g.NT), g.DerivesSteps u v n ∧ g.Produces v w := by
+  cases huw with
+  | tail v w n huv hvw =>
+    use v
+
+lemma DerivesSteps.head_of_succ {u w : List (Symbol T g.NT)} (huw : g.DerivesSteps u w n.succ) :
+    ∃ v : List (Symbol T g.NT), g.Produces u v ∧ g.DerivesSteps v w n := by
+  induction n generalizing w with
+  | zero =>
+    cases huw with
+    | tail v w n huv hvw =>
+      cases huv with
+      | refl => exact ⟨w, hvw, zero_steps w⟩
+  | succ m ih =>
+    cases huw with
+    | tail v w n huv hvw =>
+      obtain ⟨x, hux, hxv⟩ := ih huv
+      exact ⟨x, hux, hxv.trans_produces hvw⟩
+
 /-- Add extra prefix to context-free deriving (number of steps unchanged). -/
 lemma DerivesSteps.append_left {v w : List (Symbol T g.NT)}
     (hvw : g.DerivesSteps v w n) (p : List (Symbol T g.NT)) :
@@ -77,3 +97,68 @@ lemma DerivesSteps.append_right {v w : List (Symbol T g.NT)}
   induction hvw with
   | refl => left
   | tail _ _ _ _ last ih => exact ih.trans_produces <| last.append_right p
+
+@[elab_as_elim]
+lemma DerivesSteps.induction_refl_head {b : List (Symbol T g.NT)}
+    {P : ∀ n : ℕ, ∀ a : List (Symbol T g.NT), g.DerivesSteps a b n → Prop}
+    (refl : P 0 b (DerivesSteps.zero_steps b))
+    (head : ∀ {n a c} (hac : g.Produces a c) (hcb : g.DerivesSteps c b n),
+      P n c hcb → P n.succ a (hac.trans_derivesSteps hcb))
+    {a : List (Symbol T g.NT)} (hab : g.DerivesSteps a b n) :
+    P n a hab := by
+  induction hab with
+  | refl => exact refl
+  | tail _ _ _ _ last ih =>
+    apply ih
+    · exact head last _ refl
+    · intro _ _ _ produc deriv
+      exact head produc (deriv.tail _ last)
+
+private lemma epsilon_left_derives_aux {w u v : List (Symbol T g.NT)} {n : ℕ}
+  (hwe : g.DerivesSteps w [] n) (heq : w = u ++ v) : ∃ m ≤ n, g.DerivesSteps u [] m := by
+  revert u v
+  induction hwe using DerivesSteps.induction_refl_head with
+  | refl =>
+    simp
+    exact DerivesSteps.zero_steps []
+  | @head m  u v huv _ ih =>
+    intro x y heq
+    obtain ⟨r, rin, huv⟩ := huv
+    obtain ⟨p, q, h1, h2⟩ := ContextFreeRule.Rewrites.exists_parts huv
+    rw[heq, List.append_assoc, List.append_eq_append_iff] at h1
+    cases h1 with
+    | inl h =>
+      obtain ⟨x', hx, _⟩ := h
+      have hveq : v = x ++ (x' ++ r.output ++ q) := by simp[h2, hx]
+      obtain ⟨m', hm, hd⟩ := ih hveq
+      use m'
+      constructor <;> tauto
+    | inr h =>
+      obtain ⟨x', hx, hr⟩ := h
+      cases x' with
+      | nil =>
+        have hveq : v = x ++ (r.output ++ q) := by simp[hx, h2]
+        obtain ⟨m', hm, hd⟩ := ih hveq
+        use m'
+        constructor <;> tauto
+      | cons h t =>
+        obtain ⟨_, _⟩ := hr
+        simp[←List.append_assoc] at h2
+        obtain ⟨m', hm, hd⟩ := ih h2
+        use m'.succ
+        constructor
+        · exact Nat.succ_le_succ hm
+        · apply Produces.trans_derivesSteps
+          use r
+          constructor
+          exact rin
+          rw[ContextFreeRule.rewrites_iff]
+          use p, t
+          constructor
+          · simp[hx]
+          · rfl
+          exact hd
+
+lemma DerivesSteps.empty_of_append_right {u v : List (Symbol T g.NT)} (huv : g.DerivesSteps (u ++ v) [] n) :
+    ∃ m ≤ n, g.DerivesSteps u [] m := by
+  apply epsilon_left_derives_aux <;> tauto
