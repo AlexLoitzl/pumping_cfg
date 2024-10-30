@@ -30,7 +30,7 @@ lemma in_generators {r : ContextFreeRule T g.NT} (h : r ∈ g.rules) :
     simp at ih ⊢
     rintro (c1 | c2)
     · left
-      rw[c1]
+      rw [c1]
     · right
       exact ih c2
 
@@ -198,7 +198,7 @@ lemma add_nullables_iter_only_nullable (nullable : Finset g.NT) (p : nullable �
 omit [DecidableEq g.NT] in
 lemma Derives.empty_of_append {w u v: List (Symbol T g.NT)}
   (hwe : g.Derives (w ++ u ++ v) []) : g.Derives u [] := by
-  rw[derives_iff_derivesSteps] at hwe ⊢
+  rw [derives_iff_derivesIn] at hwe ⊢
   obtain ⟨n, hwe⟩ := hwe
   obtain ⟨m, _, hue⟩ := hwe.empty_of_append
   use m
@@ -255,20 +255,20 @@ def eliminate_empty : ContextFreeGrammar T :=
 lemma in_remove_nullable_rule {r r': ContextFreeRule T g.NT} {nullable : Finset g.NT}
   (h: r' ∈ remove_nullable_rule nullable r) : r'.output ≠ [] := by
   unfold remove_nullable_rule at h
-  rw[List.mem_filterMap] at h
+  rw [List.mem_filterMap] at h
   obtain ⟨a, h1, h2⟩ := h
   cases a <;> simp at h2
-  · rw[←h2]
+  · rw [←h2]
     simp
 
 lemma in_remove_not_epsilon {r : ContextFreeRule T g.NT} {nullable : Finset g.NT}
   (h : r ∈ remove_nullables nullable) : r.output ≠ [] := by
   unfold remove_nullables at h
-  rw[List.mem_join] at h
+  rw [List.mem_join] at h
   obtain ⟨l, hlin, hrin⟩ := h
-  rw[List.mem_map] at hlin
+  rw [List.mem_map] at hlin
   obtain ⟨r',hr'in, hr'l⟩ := hlin
-  rw[←hr'l] at hrin
+  rw [←hr'l] at hrin
   apply in_remove_nullable_rule hrin
 
 omit [DecidableEq g.NT] in
@@ -284,7 +284,7 @@ lemma produces_not_epsilon {v w : List (Symbol T g.NT)} (h : (g.eliminate_empty)
   change ∃ r ∈ (remove_nullables compute_nullables), r.Rewrites v w at h
   obtain ⟨r, hin, hr⟩ := h
   intro hw
-  rw[hw] at hr
+  rw [hw] at hr
   apply in_remove_not_epsilon hin
   exact rewrites_epsilon hr
 
