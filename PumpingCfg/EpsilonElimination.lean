@@ -39,15 +39,16 @@ lemma in_generators {r : ContextFreeRule T g.NT} (h : r ∈ g.rules) :
 -- NOTE If we instead shrink the set of generators the termination argument should
 -- be easier. I am not so sure about the correctness proofs
 
-def rule_is_nullable (nullable : Finset g.NT) (r : ContextFreeRule T g.NT) : Bool :=
-  let symbol_is_nullable : (Symbol T g.NT) → Bool := fun s =>
+def symbol_is_nullable (nullable : Finset g.NT) (s : Symbol T g.NT) : Bool :=
     match s with
     | Symbol.terminal _ => False
     | Symbol.nonterminal nt => nt ∈ nullable
-  ∀ s ∈ r.output, symbol_is_nullable s
+
+def rule_is_nullable (nullable : Finset g.NT) (r : ContextFreeRule T g.NT) : Bool :=
+  ∀ s ∈ r.output, symbol_is_nullable nullable s
 
 def add_if_nullable (r : ContextFreeRule T g.NT) (nullable : Finset g.NT) : Finset g.NT :=
-  if rule_is_nullable nullable r then insert r.input nullable else nullable
+  if ∀ s ∈ r.output, symbol_is_nullable nullable s then insert r.input nullable else nullable
 
 --  Single round of fixpoint iteration
 --  Add all rules' lefthand variable if all output symbols are in the set of nullable symbols
@@ -152,6 +153,7 @@ lemma rule_is_nullable_correct (nullable : Finset g.NT) (r : ContextFreeRule T g
   intro v hvin
   simp at hr
   specialize hr v hvin
+  unfold symbol_is_nullable at hr
   cases v <;> simp at hr
   apply hin _ hr
 
@@ -170,6 +172,8 @@ lemma add_nullables_nullable (nullable : Finset g.NT) (hin : ∀ v ∈ nullable,
       constructor
       · apply rule_is_nullable_correct _ _ hd.2 ih
         rename_i h
+        unfold rule_is_nullable
+        simp
         exact h
       · exact ih
     · exact ih
@@ -215,6 +219,57 @@ lemma Derives.empty_of_append_right {u v: List (Symbol T g.NT)}
   apply @Derives.empty_of_append _ _ _ _ []
   simp
   exact hwe
+
+lemma l1 {r : ContextFreeRule T g.NT} {nullable : Finset g.NT} (h : rule_is_nullable nullable r) :
+  r.input ∈ add_nullables nullable := by sorry
+
+lemma add_nullable_add_nullable_iter (nullable: Finset g.NT) (p : nullable ⊆ generators) :
+  add_nullables_iter nullable p = add_nullables (add_nullables_iter nullable p) := by sorry
+
+lemma l2 {w : List (Symbol T g.NT)} {s : Symbol T g.NT} {n : ℕ} (h: g.DerivesSteps w [] n) (hin: s ∈ w) :
+  ∃ m ≤ n, g.DerivesSteps [s] [] m := by sorry
+
+lemma l3 {w : List (Symbol T g.NT)} {s : Symbol T g.NT} {n : ℕ} (h: g.DerivesSteps w [] n) (hin: s ∈ w) :
+  ∃ v, Symbol.nonterminal v = s := by sorry
+
+lemma nullable_in_compute_nullables' (nullable : Finset g.NT) (p : nullable ⊆ generators) (v : g.NT)
+  (w : List (Symbol T g.NT)) (hw : w = [Symbol.nonterminal v]) (n : ℕ) (h: g.DerivesSteps w [] n) :
+  v ∈ add_nullables_iter nullable p := by
+  cases n with
+  | zero =>
+    rw[hw] at h
+    cases h
+  | succ n =>
+    obtain ⟨u, hwu, hue⟩ := h.head_of_succ
+    obtain ⟨r, hrin, hwu⟩ := hwu
+    rw[hw] at *
+    have h : rule_is_nullable (add_nullables_iter nullable p) r := by
+      have h1 : u = r.output := by
+        obtain ⟨p,q,h1,h2⟩ := (r.rewrites_iff _ _).1 hwu
+        cases p <;> simp at h1
+        cases q <;> simp at h1
+        simp at h2
+        exact h2
+      unfold rule_is_nullable
+      simp
+      intro s hsin
+      rw[←h1] at hsin
+      obtain ⟨v', hv'⟩ := l3 hue hsin
+      unfold symbol_is_nullable
+      rw[←hv']
+      simp
+      have ⟨m,_, hse⟩ := l2 hue hsin
+      apply nullable_in_compute_nullables'
+      rw[hv']
+      exact hse
+    have h1 : v = r.input := by
+      obtain ⟨p,q,h2,_⟩ := (r.rewrites_iff _ _).1 hwu
+      cases p <;> simp at h2
+      cases q <;> simp at h2
+      exact h2
+    rw[add_nullable_add_nullable_iter]
+    rw[h1]
+    exact l1 h
 
 -- Main correctness theorem of computing all nullable symbols --
 lemma compute_nullables_iff (v : g.NT) :
