@@ -327,7 +327,7 @@ lemma l3 {w : List (Symbol T g.NT)} {s : Symbol T g.NT} {n : ℕ} (hwe: g.Derive
     cases q <;> simp at hi
     use r.input
 
-lemma nullable_in_compute_nullables' (nullable : Finset g.NT) (p : nullable ⊆ generators) (v : g.NT)
+lemma nullable_in_compute_nullables (nullable : Finset g.NT) (p : nullable ⊆ generators) (v : g.NT)
   (w : List (Symbol T g.NT)) (hw : w = [Symbol.nonterminal v]) (n : ℕ) (h: g.DerivesIn w [] n) :
   v ∈ add_nullables_iter nullable p := by
   cases n with
@@ -354,7 +354,7 @@ lemma nullable_in_compute_nullables' (nullable : Finset g.NT) (p : nullable ⊆ 
       rw[hv']
       simp
       have ⟨m,_, hse⟩ := l2 hue hsin
-      apply nullable_in_compute_nullables'
+      apply nullable_in_compute_nullables
       rw[←hv']
       exact hse
     have h1 : v = r.input := by
@@ -377,7 +377,7 @@ lemma compute_nullables_iff (v : g.NT) :
   · intro h
     unfold NullableNonTerminal at h
     obtain ⟨m, h⟩ := (derives_iff_derivesIn _ _ _).1 h
-    apply nullable_in_compute_nullables'
+    apply nullable_in_compute_nullables
     rfl
     exact h
 
