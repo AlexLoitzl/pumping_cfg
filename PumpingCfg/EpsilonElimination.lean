@@ -294,8 +294,8 @@ lemma add_nullable_add_nullable_iter (nullable: Finset g.NT) (p : nullable ⊆ g
     exact generators_limits_nullable nullable p h
 
 omit [DecidableEq g.NT] in
-lemma l2 {w : List (Symbol T g.NT)} {s : Symbol T g.NT} {n : ℕ} (h: g.DerivesSteps w [] n) (hin: s ∈ w) :
-  ∃ m ≤ n, g.DerivesSteps [s] [] m := by
+lemma l2 {w : List (Symbol T g.NT)} {s : Symbol T g.NT} {n : ℕ} (h: g.DerivesIn w [] n) (hin: s ∈ w) :
+  ∃ m ≤ n, g.DerivesIn [s] [] m := by
   revert n
   induction w with
   | nil => contradiction
@@ -303,17 +303,17 @@ lemma l2 {w : List (Symbol T g.NT)} {s : Symbol T g.NT} {n : ℕ} (h: g.DerivesS
     intro n h
     cases hin with
     | head =>
-      change g.DerivesSteps ([s] ++ t) [] n at h
-      exact DerivesSteps.empty_of_append_left h
+      change g.DerivesIn ([s] ++ t) [] n at h
+      exact DerivesIn.empty_of_append_left h
     | tail _ hs =>
-      change g.DerivesSteps ([v] ++ t) [] n at h
-      obtain ⟨m, hmn, hte⟩ := DerivesSteps.empty_of_append_right h
+      change g.DerivesIn ([v] ++ t) [] n at h
+      obtain ⟨m, hmn, hte⟩ := DerivesIn.empty_of_append_right h
       obtain ⟨m', hm'm,hse⟩ := ih hs hte
       use m'
       exact ⟨Nat.le_trans hm'm hmn, hse⟩
 
 omit [DecidableEq g.NT] in
-lemma l3 {w : List (Symbol T g.NT)} {s : Symbol T g.NT} {n : ℕ} (hwe: g.DerivesSteps w [] n) (hin: s ∈ w) :
+lemma l3 {w : List (Symbol T g.NT)} {s : Symbol T g.NT} {n : ℕ} (hwe: g.DerivesIn w [] n) (hin: s ∈ w) :
   ∃ v, s = Symbol.nonterminal v := by
   have ⟨m, hmn, hse⟩ := l2 hwe hin
   cases m with
@@ -328,7 +328,7 @@ lemma l3 {w : List (Symbol T g.NT)} {s : Symbol T g.NT} {n : ℕ} (hwe: g.Derive
     use r.input
 
 lemma nullable_in_compute_nullables' (nullable : Finset g.NT) (p : nullable ⊆ generators) (v : g.NT)
-  (w : List (Symbol T g.NT)) (hw : w = [Symbol.nonterminal v]) (n : ℕ) (h: g.DerivesSteps w [] n) :
+  (w : List (Symbol T g.NT)) (hw : w = [Symbol.nonterminal v]) (n : ℕ) (h: g.DerivesIn w [] n) :
   v ∈ add_nullables_iter nullable p := by
   cases n with
   | zero =>
@@ -376,7 +376,7 @@ lemma compute_nullables_iff (v : g.NT) :
     exact h
   · intro h
     unfold NullableNonTerminal at h
-    obtain ⟨m, h⟩ := (derives_iff_derivesSteps _ _ _).1 h
+    obtain ⟨m, h⟩ := (derives_iff_derivesIn _ _ _).1 h
     apply nullable_in_compute_nullables'
     rfl
     exact h
