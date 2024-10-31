@@ -71,7 +71,7 @@ lemma rewrites_of_exists_parts (r : CNFRule T N) (p q : List (Symbol T N)) :
       cases r <;> constructor
     | cons _ _ h =>
       constructor
-      apply h
+      exact h
 
 theorem rewrites_iff {r : CNFRule T N} (u v : List (Symbol T N)) :
     r.Rewrites u v ↔ ∃ p q : List (Symbol T N),
@@ -113,7 +113,7 @@ def Generates (g : CNF T) (s : List (Symbol T g.NT)) : Prop :=
   g.Derives [Symbol.nonterminal g.initial] s
 
 def language (g : CNF T) : Language T :=
-  { w | g.Generates (List.map Symbol.terminal w) }
+  { w | g.Generates (w.map Symbol.terminal) }
 
 @[simp]
 lemma mem_language_iff (g : CNF T) (w : List T) :
