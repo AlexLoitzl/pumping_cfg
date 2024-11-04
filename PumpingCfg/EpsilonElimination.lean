@@ -113,6 +113,8 @@ def compute_nullables : Finset g.NT :=
 
 def NullableNonTerminal (v : g.NT) : Prop := g.Derives [Symbol.nonterminal v] []
 
+abbrev NullableWord (w : List (Symbol T g.NT)) : Prop := g.Derives w []
+
 -- ********************************************************************** --
 -- Only If direction of the main correctness theorem of compute_nullables --
 -- ********************************************************************** --
@@ -185,8 +187,8 @@ lemma add_nullables_iter_only_nullable (nullable : Finset g.NT) (p : nullable �
   simp
   split
   · tauto
-  · have ih := add_nullables_iter_only_nullable (add_nullables nullable) (add_nullables_subset_generators nullable p)
-    apply ih
+  · apply add_nullables_iter_only_nullable (add_nullables nullable)
+          (add_nullables_subset_generators nullable p)
     exact add_nullables_nullable nullable hin
   termination_by ((g.generators).card - nullable.card)
   decreasing_by
@@ -218,8 +220,8 @@ lemma Derives.empty_of_append_right {u v: List (Symbol T g.NT)}
   simp
   exact hwe
 
-lemma subset_add_if_nullable_subset {r: ContextFreeRule T g.NT} {nullable nullable' : Finset g.NT} (p : nullable ⊆ nullable') :
-  add_if_nullable r nullable ⊆ add_if_nullable r nullable' := by
+lemma subset_add_if_nullable_subset {r: ContextFreeRule T g.NT} {nullable nullable' : Finset g.NT}
+  (p : nullable ⊆ nullable') : add_if_nullable r nullable ⊆ add_if_nullable r nullable' := by
   intro v hvin
   unfold add_if_nullable rule_is_nullable at hvin ⊢
   by_cases  h : decide (∀ s ∈ r.output, symbol_is_nullable nullable s) = true <;> simp [h] at hvin; simp at h
@@ -257,8 +259,8 @@ private lemma add_if_nullable_subset_rec {l : List {x // x ∈ g.rules}} {nullab
     apply Finset.Subset.trans ih
     apply add_if_nullable_subset
 
-lemma nullable_in_add_nullables {r : ContextFreeRule T g.NT} {nullable : Finset g.NT} (h : rule_is_nullable nullable r)
-  (hr : r ∈ g.rules) : r.input ∈ add_nullables nullable := by
+lemma nullable_in_add_nullables {r : ContextFreeRule T g.NT} {nullable : Finset g.NT}
+  (h : rule_is_nullable nullable r) (hr : r ∈ g.rules) : r.input ∈ add_nullables nullable := by
   unfold add_nullables
   have h := List.mem_attach g.rules ⟨r, hr⟩
   revert r nullable
@@ -312,8 +314,8 @@ lemma nullable_string_all_symbols_nullable {w : List (Symbol T g.NT)} {s : Symbo
       exact ⟨Nat.le_trans hm'm hmn, hse⟩
 
 omit [DecidableEq g.NT] in
-lemma nullable_only_nonterminals {w : List (Symbol T g.NT)} {s : Symbol T g.NT} {n : ℕ} (hwe: g.DerivesIn w [] n) (hin: s ∈ w) :
-  ∃ v, s = Symbol.nonterminal v := by
+lemma nullable_only_nonterminals {w : List (Symbol T g.NT)} {s : Symbol T g.NT} {n : ℕ}
+  (hwe: g.DerivesIn w [] n) (hin: s ∈ w) : ∃ v, s = Symbol.nonterminal v := by
   have ⟨m, hmn, hse⟩ := nullable_string_all_symbols_nullable hwe hin
   cases m with
   | zero =>
@@ -449,6 +451,86 @@ lemma derives_not_epsilon {v w : List (Symbol T g.NT)} (h : (g.eliminate_empty).
   | head hd _ ih =>
     apply ih
     exact produces_not_epsilon hd
+
+-- ********************************* Interesing prop of deriving ********************************* --
+omit [DecidableEq g.NT] in
+lemma Derives.append_left_trans {v w x y: List (Symbol T g.NT)}
+    (hvw : g.Derives v w) (hxy : g.Derives x y) :
+    g.Derives (x ++ v) (y ++ w) := by
+    apply Derives.trans
+    exact Derives.append_left hvw _
+    exact Derives.append_right hxy _
+
+omit [DecidableEq g.NT] in
+lemma rewrites_produces {r : ContextFreeRule T g.NT} (h : r ∈ g.rules) :
+  g.Produces [Symbol.nonterminal r.input] r.output := by
+  use r
+  constructor
+  exact h
+  rw [r.rewrites_iff]
+  use [], []
+  simp
+
+-- *********************************************************************************************** --
+
+-- nullable_related xs ys holds if ys is xs with nullable variables interspersed
+inductive NullableRelated : List (Symbol T g.NT) → List (Symbol T g.NT) → Prop :=
+  | empty_left (ys : List (Symbol T g.NT)) (h: NullableWord ys) : NullableRelated [] ys
+  | cons_term (xs ys: List (Symbol T g.NT)) (h: NullableRelated xs ys) (x y : T) (heq : x = y) :
+                      NullableRelated (Symbol.terminal x :: xs) (Symbol.terminal y :: ys)
+  | cons_nterm_match (xs ys: List (Symbol T g.NT)) (h: NullableRelated xs ys) (x y : g.NT) (heq : x = y) :
+                     NullableRelated (Symbol.nonterminal x :: xs) (Symbol.nonterminal y :: ys)
+  | cons_nterm_nullable (xs ys: List (Symbol T g.NT)) (h: NullableRelated xs ys) (y : g.NT)
+                        (hn : NullableNonTerminal y) : NullableRelated xs (Symbol.nonterminal y :: ys)
+
+omit [DecidableEq g.NT] in
+lemma nullable_related_derivable {xs ys : List (Symbol T g.NT)} (h: NullableRelated xs ys) :
+  g.Derives ys xs := by
+  induction h with
+  | empty_left _ h =>
+    exact h
+  | cons_term xs ys h x y heq ih =>
+    rw [heq]
+    change g.Derives ([Symbol.terminal y] ++ ys) ([Symbol.terminal y] ++ xs)
+    exact ih.append_left _
+  | cons_nterm_match xs ys h x y heq ih =>
+    rw [heq]
+    change g.Derives ([Symbol.nonterminal y] ++ ys) ([Symbol.nonterminal y] ++ xs)
+    exact ih.append_left _
+  | cons_nterm_nullable xs ys _ y hn ih =>
+    change g.Derives ([Symbol.nonterminal y] ++ ys) ([] ++ xs)
+    apply Derives.append_left_trans
+    exact ih
+    exact hn
+
+lemma eliminate_empty_rules (r : ContextFreeRule T (@eliminate_empty T g).NT) {h : r ∈ (@eliminate_empty T g).rules} :
+  ∃ r' ∈ g.rules, r.input = r'.input ∧ @NullableRelated _ g r.output r'.output := by
+  sorry
+
+lemma eliminate_empty_step_derives {v w : List (Symbol T g.NT)} (h : (@eliminate_empty T g).Produces v w) :
+  g.Derives v w := by
+  obtain ⟨r, hrin, hr⟩ := h
+  obtain ⟨p, q, rfl, rfl⟩ := hr.exists_parts
+  apply Derives.append_right
+  apply Derives.append_left
+  obtain ⟨r', hin, heq, hn⟩ := @eliminate_empty_rules _ _ _ r hrin
+  rw [heq]
+  apply Produces.trans_derives
+  exact rewrites_produces hin
+  apply nullable_related_derivable
+  exact hn
+
+lemma eliminate_empty_implies {v w : List (Symbol T g.NT)} {n : ℕ}
+  (h : (@eliminate_empty T g).DerivesIn v w n) : g.Derives v w := by
+  cases n with
+  | zero =>
+    obtain ⟨⟩ := h
+    rfl
+  | succ n =>
+    obtain ⟨u, hp, hd⟩ := h.head_of_succ
+    apply Derives.trans
+    exact eliminate_empty_step_derives hp
+    exact eliminate_empty_implies hd
 
 theorem eliminate_empty_correct :
   g.language = (@eliminate_empty T g).language \ {[]} := by sorry
