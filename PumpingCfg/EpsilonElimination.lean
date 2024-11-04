@@ -329,16 +329,13 @@ lemma nullable_only_nonterminals {w : List (Symbol T g.NT)} {s : Symbol T g.NT} 
     use r.input
 
 lemma nullable_in_compute_nullables (nullable : Finset g.NT) (p : nullable ⊆ generators) (v : g.NT)
-  (w : List (Symbol T g.NT)) (hw : w = [Symbol.nonterminal v]) (n : ℕ) (h: g.DerivesIn w [] n) :
-  v ∈ add_nullables_iter nullable p := by
+  (n : ℕ) (h: g.DerivesIn [Symbol.nonterminal v] [] n) : v ∈ add_nullables_iter nullable p := by
   cases n with
   | zero =>
-    rw [hw] at h
     cases h
   | succ n =>
     obtain ⟨u, hwu, hue⟩ := h.head_of_succ
     obtain ⟨r, hrin, hwu⟩ := hwu
-    rw [hw] at *
     have h : rule_is_nullable (add_nullables_iter nullable p) r := by
       have h1 : u = r.output := by
         obtain ⟨p,q,h1,h2⟩ := (r.rewrites_iff _ _).1 hwu
@@ -379,7 +376,6 @@ lemma compute_nullables_iff (v : g.NT) :
     unfold NullableNonTerminal at h
     obtain ⟨m, h⟩ := (derives_iff_derivesIn _ _ _).1 h
     apply nullable_in_compute_nullables
-    rfl
     exact h
 
 -- *********************************************************************************************** --
@@ -388,7 +384,7 @@ lemma compute_nullables_iff (v : g.NT) :
 
 def remove_nullable (nullable : Finset g.NT) (output : List (Symbol T g.NT)) : List (List (Symbol T g.NT)) :=
   match output with
-  | [] => []
+  | [] => [[]]
   | x :: xs => match x with
                | Symbol.nonterminal n => (if n ∈ nullable then remove_nullable nullable xs else [])
                                          ++ List.map (fun y => x :: y) (remove_nullable nullable xs)
@@ -406,6 +402,7 @@ def remove_nullables (nullable : Finset g.NT) : List (ContextFreeRule T g.NT) :=
 def eliminate_empty : ContextFreeGrammar T :=
   ContextFreeGrammar.mk g.NT g.initial (remove_nullables compute_nullables)
 
+-- Only If Direction of correctness proof
 lemma in_remove_nullable_rule {r r': ContextFreeRule T g.NT} {nullable : Finset g.NT}
   (h: r' ∈ remove_nullable_rule nullable r) : r'.output ≠ [] := by
   unfold remove_nullable_rule at h
@@ -507,7 +504,10 @@ lemma remove_nullable_related {o o': List (Symbol T g.NT)} (nullable : Finset g.
   | nil =>
     intro o hin
     unfold remove_nullable at hin
-    contradiction
+    simp at hin
+    rw [hin]
+    constructor
+    rfl
   | cons hd tl ih =>
     intro o hin
     unfold remove_nullable at hin
@@ -569,17 +569,56 @@ lemma eliminate_empty_step_derives {v w : List (Symbol T g.NT)} (h : (@eliminate
   apply nullable_related_derivable
   exact hn
 
-lemma eliminate_empty_implies {v w : List (Symbol T g.NT)} {n : ℕ}
-  (h : (@eliminate_empty T g).DerivesIn v w n) : g.Derives v w := by
-  cases n with
-  | zero =>
-    obtain ⟨⟩ := h
-    rfl
-  | succ n =>
-    obtain ⟨u, hp, hd⟩ := h.head_of_succ
+lemma eliminate_empty_implies {v w : List (Symbol T g.NT)}
+  (h : (@eliminate_empty T g).Derives v w) : g.Derives v w := by
+  induction h using Relation.ReflTransGen.head_induction_on with
+  | refl => rfl
+  | head hp _ ih =>
     apply Derives.trans
     exact eliminate_empty_step_derives hp
-    exact eliminate_empty_implies hd
+    exact ih
+
+-- If Direction starts here
+lemma in_remove_nullable (nullable : Finset g.NT) (output : List (Symbol T g.NT)) :
+  output ∈ remove_nullable nullable output := by
+  induction output with
+  | nil =>
+    unfold remove_nullable
+    simp
+  | cons o output ih =>
+    unfold remove_nullable
+    cases o <;> simp
+    · exact ih
+    · rename_i nt
+      by_cases h : nt ∈ nullable <;> simp[h]
+      · right
+        exact ih
+      · exact ih
+
+lemma in_remove_nullables (nullable : Finset g.NT) (r : ContextFreeRule T g.NT) (h : r ∈ g.rules)
+  (ho : r.output ≠ []):
+  r ∈ remove_nullables nullable := by
+  unfold remove_nullables
+  rw [List.mem_join]
+  use (remove_nullable_rule nullable r)
+  constructor
+  · simp
+    use r
+  · unfold remove_nullable_rule
+    rw [List.mem_filterMap]
+    use r.output
+    constructor
+    · apply in_remove_nullable
+    · obtain ⟨rin, rout⟩ := r
+      cases rout
+      contradiction
+      simp
+
+lemma implies_eliminate_empty {v w : List (Symbol T g.NT)} {hneq : w ≠ []} (h : g.Derives v w) :
+  (@eliminate_empty T g).Derives v w := by
+  induction h using Relation.ReflTransGen.head_induction_on with
+  | refl => rfl
+  | head hp hd ih => sorry
 
 theorem eliminate_empty_correct :
   g.language = (@eliminate_empty T g).language \ {[]} := by
