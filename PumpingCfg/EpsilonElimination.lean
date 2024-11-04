@@ -444,8 +444,8 @@ lemma produces_not_epsilon {v w : List (Symbol T g.NT)} (h : (g.eliminate_empty)
   apply in_remove_not_epsilon hin
   exact rewrites_epsilon hr
 
-lemma derives_not_epsilon {v w : List (Symbol T g.NT)} (h : (g.eliminate_empty).Derives v w) (he : v ≠ [])
-  : w ≠ [] := by
+lemma derives_not_epsilon {v w : List (Symbol T g.NT)} (h : (g.eliminate_empty).Derives v w) (he : v ≠ []) :
+  w ≠ [] := by
   induction h using Relation.ReflTransGen.head_induction_on with
   | refl => exact he
   | head hd _ ih =>
@@ -503,9 +503,33 @@ lemma nullable_related_derivable {xs ys : List (Symbol T g.NT)} (h: NullableRela
     exact ih
     exact hn
 
+lemma l4 {o : List (Symbol T g.NT)} {r : ContextFreeRule T g.NT} (nullable : Finset g.NT)
+  (hin : o ∈ r.output.foldr (remove_nullable nullable) [[]]) : NullableRelated o r.output := by
+  sorry
+
+lemma l5 {r': ContextFreeRule T g.NT} {r : ContextFreeRule T (@eliminate_empty T g).NT}
+  {nullable : Finset g.NT} {h : r ∈ remove_nullable_rule nullable r'} :
+  r.input = r'.input ∧ @NullableRelated _ g r.output r'.output := by
+  unfold remove_nullable_rule at h
+  rw [List.mem_filterMap] at h
+  obtain ⟨o, ho1, ho2⟩ := h
+  cases o <;> simp at ho2
+  rw [←ho2]
+  constructor
+  rfl
+  apply l4
+  exact ho1
+
 lemma eliminate_empty_rules (r : ContextFreeRule T (@eliminate_empty T g).NT) {h : r ∈ (@eliminate_empty T g).rules} :
   ∃ r' ∈ g.rules, r.input = r'.input ∧ @NullableRelated _ g r.output r'.output := by
-  sorry
+  unfold eliminate_empty remove_nullables at h
+  simp at h
+  obtain ⟨r', hrin', hr'⟩ := h
+  use r'
+  constructor
+  exact hrin'
+  apply l5
+  exact hr'
 
 lemma eliminate_empty_step_derives {v w : List (Symbol T g.NT)} (h : (@eliminate_empty T g).Produces v w) :
   g.Derives v w := by
