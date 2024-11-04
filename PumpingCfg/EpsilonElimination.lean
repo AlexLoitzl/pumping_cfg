@@ -386,10 +386,13 @@ lemma compute_nullables_iff (v : g.NT) :
 -- ************************************* Epsilon Elimination ************************************* --
 -- *********************************************************************************************** --
 
-def nonterminalProp (s : Symbol T g.NT) (P : g.NT → Prop) :=
-  match s with
-  | Symbol.terminal _ => False
-  | Symbol.nonterminal n => P n
+def remove_nullables' (nullable : Finset g.NT) (output : List (Symbol T g.NT)) : List (List (Symbol T g.NT)) :=
+  match output with
+  | [] => []
+  | x :: xs => match x with
+               | Symbol.nonterminal n => (if n ∈ nullable then remove_nullables' nullable xs else [])
+                                         ++ List.map (fun y => x :: y) (remove_nullables' nullable xs)
+               | Symbol.terminal _ => List.map (fun y => x :: y) (remove_nullables' nullable xs)
 
 def remove_nullable (nullable : Finset g.NT) (s: (Symbol T g.NT)) (acc : List (List (Symbol T g.NT))) :=
   match s with
@@ -476,10 +479,10 @@ lemma rewrites_produces {r : ContextFreeRule T g.NT} (h : r ∈ g.rules) :
 -- nullable_related xs ys holds if ys is xs with nullable variables interspersed
 inductive NullableRelated : List (Symbol T g.NT) → List (Symbol T g.NT) → Prop :=
   | empty_left (ys : List (Symbol T g.NT)) (h: NullableWord ys) : NullableRelated [] ys
-  | cons_term (xs ys: List (Symbol T g.NT)) (h: NullableRelated xs ys) (x y : T) (heq : x = y) :
-                      NullableRelated (Symbol.terminal x :: xs) (Symbol.terminal y :: ys)
-  | cons_nterm_match (xs ys: List (Symbol T g.NT)) (h: NullableRelated xs ys) (x y : g.NT) (heq : x = y) :
-                     NullableRelated (Symbol.nonterminal x :: xs) (Symbol.nonterminal y :: ys)
+  | cons_term (xs ys: List (Symbol T g.NT)) (h: NullableRelated xs ys) (z : T) :
+                      NullableRelated (Symbol.terminal z :: xs) (Symbol.terminal z :: ys)
+  | cons_nterm_match (xs ys: List (Symbol T g.NT)) (h: NullableRelated xs ys) (z : g.NT) :
+                     NullableRelated (Symbol.nonterminal z :: xs) (Symbol.nonterminal z :: ys)
   | cons_nterm_nullable (xs ys: List (Symbol T g.NT)) (h: NullableRelated xs ys) (y : g.NT)
                         (hn : NullableNonTerminal y) : NullableRelated xs (Symbol.nonterminal y :: ys)
 
@@ -489,13 +492,11 @@ lemma nullable_related_derivable {xs ys : List (Symbol T g.NT)} (h: NullableRela
   induction h with
   | empty_left _ h =>
     exact h
-  | cons_term xs ys h x y heq ih =>
-    rw [heq]
-    change g.Derives ([Symbol.terminal y] ++ ys) ([Symbol.terminal y] ++ xs)
+  | cons_term xs ys _ z ih =>
+    change g.Derives ([Symbol.terminal z] ++ ys) ([Symbol.terminal z] ++ xs)
     exact ih.append_left _
-  | cons_nterm_match xs ys h x y heq ih =>
-    rw [heq]
-    change g.Derives ([Symbol.nonterminal y] ++ ys) ([Symbol.nonterminal y] ++ xs)
+  | cons_nterm_match xs ys _ z ih =>
+    change g.Derives ([Symbol.nonterminal z] ++ ys) ([Symbol.nonterminal z] ++ xs)
     exact ih.append_left _
   | cons_nterm_nullable xs ys _ y hn ih =>
     change g.Derives ([Symbol.nonterminal y] ++ ys) ([] ++ xs)
@@ -503,22 +504,48 @@ lemma nullable_related_derivable {xs ys : List (Symbol T g.NT)} (h: NullableRela
     exact ih
     exact hn
 
-lemma l4 {o : List (Symbol T g.NT)} {r : ContextFreeRule T g.NT} (nullable : Finset g.NT)
-  (hin : o ∈ r.output.foldr (remove_nullable nullable) [[]]) : NullableRelated o r.output := by
-  sorry
+lemma l4 {o o': List (Symbol T g.NT)} (nullable : Finset g.NT) (p : ∀ x ∈ nullable, NullableNonTerminal x)
+  (hin : o ∈ (remove_nullables' nullable o')) : NullableRelated o o' := by
+  revert o
+  induction o' with
+  | nil =>
+    intro o hin
+    unfold remove_nullables' at hin
+    contradiction
+  | cons hd tl ih =>
+    intro o hin
+    unfold remove_nullables' at hin
+    cases hd with
+    | nonterminal nt =>
+      simp at hin
+      cases hin <;> rename_i h
+      · by_cases h' : nt ∈ nullable <;> simp[h'] at h
+        constructor
+        exact ih h
+        exact p _ h'
+      · obtain ⟨o1, hoin, ho⟩ := h
+        rw[←ho]
+        constructor
+        exact ih hoin
+    | terminal t =>
+      simp at hin
+      obtain ⟨o1, hoin, ho⟩ := hin
+      rw[←ho]
+      constructor
+      exact ih hoin
 
 lemma l5 {r': ContextFreeRule T g.NT} {r : ContextFreeRule T (@eliminate_empty T g).NT}
   {nullable : Finset g.NT} {h : r ∈ remove_nullable_rule nullable r'} :
-  r.input = r'.input ∧ @NullableRelated _ g r.output r'.output := by
-  unfold remove_nullable_rule at h
-  rw [List.mem_filterMap] at h
-  obtain ⟨o, ho1, ho2⟩ := h
-  cases o <;> simp at ho2
-  rw [←ho2]
-  constructor
-  rfl
-  apply l4
-  exact ho1
+  r.input = r'.input ∧ @NullableRelated _ g r.output r'.output := by sorry
+--   unfold remove_nullable_rule at h
+--   rw [List.mem_filterMap] at h
+--   obtain ⟨o, ho1, ho2⟩ := h
+--   cases o <;> simp at ho2
+--   rw [←ho2]
+--   constructor
+--   rfl
+--   apply l4
+--   exact ho1
 
 lemma eliminate_empty_rules (r : ContextFreeRule T (@eliminate_empty T g).NT) {h : r ∈ (@eliminate_empty T g).rules} :
   ∃ r' ∈ g.rules, r.input = r'.input ∧ @NullableRelated _ g r.output r'.output := by
