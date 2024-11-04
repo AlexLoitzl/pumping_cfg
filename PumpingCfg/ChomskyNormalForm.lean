@@ -190,7 +190,7 @@ lemma Derives.toCFG_match {v w : List (Symbol T g.NT)} (hvw : g.Derives v w) : g
   | refl => rfl
   | tail _ last ih =>
     apply ih.trans_produces
-    apply Produces.toCFG_match last
+    exact Produces.toCFG_match last
 
 lemma Generates.toCFG_match {s : List (Symbol T g.NT)} (hg : g.Generates s) : g.toCFG.Generates s :=
   Derives.toCFG_match hg
@@ -206,7 +206,7 @@ lemma Derives.match_toCFG {v w : List (Symbol T g.NT)} (hvw : g.toCFG.Derives v 
   | refl => rfl
   | tail _ last ih =>
     apply ih.trans_produces
-    apply Produces.match_toCFG last
+    exact Produces.match_toCFG last
 
 lemma Generates.match_toCFG {s : List (Symbol T g.NT)} (hg : g.toCFG.Generates s) : g.Generates s :=
   Derives.match_toCFG hg
