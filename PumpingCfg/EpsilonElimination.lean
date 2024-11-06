@@ -622,18 +622,108 @@ lemma in_remove_nullables (nullable : Finset g.NT) (r : ContextFreeRule T g.NT) 
       contradiction
       simp
 
-omit [DecidableEq g.NT] in
-lemma k1 {w : List (Symbol T g.NT)} (h : NullableWord w) : NullableRelated [] w := by sorry
-
 -- lemma k2 {w w1 w2 : List (Symbol T g.NT)} {nt : g.NT} (hn : NullableNonTerminal nt)
 --   (h : NullableRelated w (w1 ++ w2)) : NullableRelated w (w1 ++ [Symbol.nonterminal nt] ++ w2) := by sorry
 
+omit [DecidableEq g.NT] in
+lemma l3 {t : T} {w : List (Symbol T g.NT)} : ¬ NullableWord (Symbol.terminal t :: w) := by
+  by_contra h
+  change g.Derives ([Symbol.terminal t] ++ w) [] at h
+  apply Derives.empty_of_append_left at h
+  obtain ⟨⟩ := h.eq_or_head
+  · contradiction
+  · rename_i h
+    obtain ⟨w, h1, h2⟩ := h
+    unfold Produces at h1
+    obtain ⟨r, _, hr⟩ := h1
+    cases hr
+    rename_i hrs
+    cases hrs
+
+omit [DecidableEq g.NT] in
+lemma k4 {w : List (Symbol T g.NT)} (h : NullableRelated [] w) : NullableWord w := by
+  induction w with
+  | nil => rfl
+  | cons hd tl ih =>
+    cases h with
+    | empty_left _ h => exact h
+    | cons_nterm_nullable _ _ h nt hn =>
+      change g.Derives ([Symbol.nonterminal nt] ++ tl) ([] ++ [])
+      apply Derives.trans
+      apply Derives.append_right
+      exact hn
+      exact ih h
+
+omit [DecidableEq g.NT] in
+lemma l4 {w : List (Symbol T g.NT)} (h : g.Derives [] w) : w = [] := by
+  induction h with
+  | refl => rfl
+  | tail hd hp ih =>
+    unfold Produces at hp
+    obtain ⟨r, _, hr⟩ := hp
+    cases hr <;> contradiction
+
+omit [DecidableEq g.NT] in
+lemma l5 {w : List (Symbol T g.NT)} (h : NullableRelated w []) : w = [] := by
+  cases h with
+  | empty_left => rfl
+
 lemma k3 {nullable : Finset g.NT} {o o': List (Symbol T g.NT)} (h : NullableRelated o' o)
-  (p : ∀ s ∈ nullable, NullableNonTerminal s) : o' ∈ remove_nullable nullable o := by sorry
-
-lemma k4 {w : List (Symbol T g.NT)} (h : NullableRelated [] w) : NullableWord w := by sorry
-
--- lemma k5 {w : List (Symbol T g.NT)} (h : NullableWord w) : NullableWord w.tail := by sorry
+  (p : ∀ s, s ∈ nullable ↔ NullableNonTerminal s) : o' ∈ remove_nullable nullable o := by
+  revert o'
+  induction o with
+  | nil =>
+    intro o' h
+    rw [l5 h]
+    unfold remove_nullable
+    exact List.mem_singleton.2 rfl
+  | cons o os ih =>
+    unfold remove_nullable
+    intro o' h
+    cases o with
+    | terminal t =>
+      simp
+      cases h with
+      | empty_left =>
+        rename_i h
+        exfalso
+        exact l3 h
+      | cons_term os' _ h =>
+        use os'
+        constructor
+        · exact ih h
+        · rfl
+    | nonterminal nt =>
+      simp
+      cases h with
+      | empty_left _ h =>
+        left
+        split
+        · apply ih
+          apply NullableRelated.empty_left
+          change NullableWord ([Symbol.nonterminal nt] ++ os) at h
+          apply Derives.empty_of_append_right
+          exact h
+        · rename_i h'
+          exfalso
+          apply h'
+          rw [p]
+          apply Derives.empty_of_append_left
+          exact h
+      | cons_nterm_match os' _ h =>
+        right
+        use os'
+        constructor
+        · exact ih h
+        · rfl
+      | cons_nterm_nullable os' _ h _ hn =>
+        left
+        split <;> rename_i h'
+        · exact ih h
+        · exfalso
+          apply h'
+          rw [p]
+          exact hn
 
 -- lemma l0 {w : List (Symbol T g.NT)} {v : Symbol T g.NT} (h : NullableWord w) (hin : v ∈ w) :
 --   ∃ nt, v = Symbol.nonterminal nt ∧ NullableNonTerminal nt := by sorry
@@ -657,9 +747,7 @@ lemma l2 {r : ContextFreeRule T g.NT} {o' : List (Symbol T g.NT)} (hrin : r ∈ 
   constructor
   · apply k3
     exact h
-    intro s hs
-    apply (compute_nullables_iff _).1
-    exact hs
+    exact compute_nullables_iff
   · cases h : o' <;> simp
     contradiction
 
@@ -773,15 +861,6 @@ lemma l2 {r : ContextFreeRule T g.NT} {o' : List (Symbol T g.NT)} (hrin : r ∈ 
 --       use r', v'
 --       repeat (constructor <;> try assumption)
 
-
-lemma l4 {w : List (Symbol T g.NT)} (h : g.Derives [] w) : w = [] := by sorry
-
-omit [DecidableEq g.NT] in
-lemma l5 {w : List (Symbol T g.NT)} (h : NullableRelated w []) : w = [] := by
-  cases h with
-  | empty_left => rfl
-
-
 lemma j4 {w1' w2' w3' w1 w2 w3 : List (Symbol T g.NT)} (h1 : NullableRelated w1' w1)
   (h2 : NullableRelated w2' w2) (h3 : NullableRelated w3' w3) :
   NullableRelated (w1' ++ w2' ++ w3') (w1 ++ w2 ++ w3) := by sorry
@@ -804,7 +883,7 @@ lemma empty_related_produces_derives'' {v w w': List (Symbol T g.NT)} (hp : g.Pr
     constructor
     · rw [hv, heq]
       apply j4 hw1 _ hw3
-      apply k1
+      apply NullableRelated.empty_left
       apply Produces.trans_derives
       apply rewrites_produces hrin
       exact k4 hw2
