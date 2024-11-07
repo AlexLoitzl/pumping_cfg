@@ -1165,7 +1165,32 @@ lemma implies_eliminate_empty {w : List (Symbol T g.NT)} {v : g.NT} {hneq : w �
     contradiction
 
 theorem eliminate_empty_correct :
-  g.language = (@eliminate_empty T g).language \ {[]} := by
-  sorry
+  g.language \ {[]} = (@eliminate_empty T g).language := by
+  unfold language Generates
+  apply Set.eq_of_subset_of_subset
+  · intro w h
+    rw [Set.mem_diff] at h
+    obtain ⟨h1, h2⟩ := h
+    simp at h1
+    rw [g.derives_iff_derivesIn] at h1
+    obtain ⟨n, h1⟩ := h1
+    apply implies_eliminate_empty
+    · intro h'
+      simp at h'
+      rw [h'] at h2
+      contradiction
+    · unfold eliminate_empty
+      simp
+      exact h1
+  · intro w h
+    simp at h
+    rw [Set.mem_diff]
+    constructor
+    · exact eliminate_empty_implies h
+    · rw [Set.not_mem_singleton_iff]
+      intro h'
+      apply derives_not_epsilon h
+      simp
+      rw [h', List.map_nil]
 
 end ContextFreeGrammar
