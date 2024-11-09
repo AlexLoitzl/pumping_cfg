@@ -153,34 +153,75 @@ lemma collect_unitPairs_unitPair {r : ContextFreeRule T g.NT} (pairs : List (g.N
 --  Single round of fixpoint iteration
 --  Add all rules' lefthand variable if all output symbols are in the set of nullable symbols
 noncomputable def add_unitPairs (pairs : Finset (g.NT × g.NT)) : Finset (g.NT × g.NT) :=
-  g.rules.attach.foldr (fun r p => collect_unitPairs r pairs.toList ∪ p) {}
+  g.rules.attach.foldr (fun r p => collect_unitPairs r pairs.toList ∪ p) pairs
+
+lemma collect_unitPairs_subset_generators_prod {r : ContextFreeRule T g.NT} (pairs : Finset (g.NT × g.NT))
+  (hp : pairs ⊆ g.generators ×ˢ g.generators) (hrin : r ∈ g.rules):
+  collect_unitPairs r pairs.toList ⊆ g.generators ×ˢ g.generators := by
+  unfold collect_unitPairs
+  intro p h
+  match heq : r.output with
+  | [Symbol.nonterminal v] =>
+    rw [heq] at h
+    simp at h
+    obtain h' := rec_collect_unitPairs_unitPairs h
+    cases h'
+    contradiction
+    simp
+    rename_i h'
+    obtain ⟨v', hin, hp2⟩ := h'
+    rw [hp2]
+    simp
+    constructor
+    · exact in_generators hrin
+    · rw [Finset.mem_toList] at hin
+      specialize hp hin
+      simp at hp
+      exact hp.2
+  | [] =>
+    rw [heq] at h
+    simp at h
+  | [Symbol.terminal _] =>
+    rw [heq] at h
+    simp at h
+  | x :: y :: tl =>
+    rw [heq] at h
+    simp at h
 
 lemma add_unitPairs_subset_generators_prod (pairs : Finset (g.NT × g.NT)) (p : pairs ⊆ g.generators ×ˢ g.generators) :
-  add_unitPairs pairs ⊆ g.generators ×ˢ g.generators := by sorry
-  -- unfold add_nullables
-  -- induction g.rules.attach with
-  -- | nil => simp; exact p
-  -- | cons hd tl ih => exact add_if_nullable_subset_generators ih hd.2
+  add_unitPairs pairs ⊆ g.generators ×ˢ g.generators := by
+  unfold add_unitPairs
+  induction g.rules.attach with
+  | nil => exact p
+  | cons hd tl ih =>
+    simp
+    apply Finset.union_subset
+    · apply collect_unitPairs_subset_generators_prod
+      exact p
+      exact hd.2
+    · exact ih
 
 lemma add_unitPairs_grows (pairs : Finset (g.NT × g.NT)) :
-  pairs ⊆ (add_unitPairs pairs) := by sorry
-  -- unfold add_nullables
-  -- induction g.rules.attach with
-  -- | nil => simp
-  -- | cons hd tl ih =>
-  --   apply subset_trans ih
-  --   apply add_if_nullable_subset hd.1
+  pairs ⊆ (add_unitPairs pairs) := by
+  unfold add_unitPairs
+  induction g.rules.attach with
+  | nil =>
+    simp
+  | cons hd tl ih =>
+    apply subset_trans ih
+    simp
+    exact Finset.subset_union_right
 
 -- Proof of our termination measure shrinking
 lemma generators_prod_limits_unitPairs (pairs : Finset (g.NT × g.NT)) (p : pairs ⊆ g.generators ×ˢ g.generators)
   (hneq : pairs ≠ add_unitPairs pairs) :
-  (g.generators ×ˢ g.generators).card - (add_unitPairs pairs).card < (g.generators ×ˢ g.generators).card - pairs.card := by sorry
-  -- have h := HasSubset.Subset.ssubset_of_ne (add_nullables_grows nullable) hneq
-  -- apply Nat.sub_lt_sub_left
-  -- · apply Nat.lt_of_lt_of_le
-  --   · apply Finset.card_lt_card h
-  --   · exact Finset.card_le_card (add_nullables_subset_generators nullable p)
-  -- · apply Finset.card_lt_card h
+  (g.generators ×ˢ g.generators).card - (add_unitPairs pairs).card < (g.generators ×ˢ g.generators).card - pairs.card := by
+   have h := HasSubset.Subset.ssubset_of_ne (add_unitPairs_grows pairs) hneq
+   apply Nat.sub_lt_sub_left
+   · apply Nat.lt_of_lt_of_le
+     · apply Finset.card_lt_card h
+     · exact Finset.card_le_card (add_unitPairs_subset_generators_prod pairs p)
+   · apply Finset.card_lt_card h
 
 noncomputable def add_unitPairs_iter (pairs : Finset (g.NT × g.NT)) (p : pairs ⊆ g.generators ×ˢ g.generators)
   : Finset (g.NT × g.NT) :=
@@ -229,7 +270,9 @@ lemma add_unitPairs_unitPairs (pairs : Finset (g.NT × g.NT)) (hin : ∀ p ∈ p
   unfold add_unitPairs
   induction g.rules.attach with
   | nil =>
+    intro p
     simp
+    exact hin p
   | cons hd tl ih =>
     intro p h
     simp at h
