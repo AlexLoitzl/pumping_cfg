@@ -444,4 +444,26 @@ lemma compute_unitPairs_iff (p : g.NT × g.NT) :
 
 end ComputeUnitPairs
 
+section EliminateUnitRules
+
+
+variable [DecidableEq g.NT]
+
+def nonUnit_rules (p : g.NT × g.NT) : List (ContextFreeRule T g.NT) :=
+  let fltrMp (r : ContextFreeRule T g.NT) : Option (ContextFreeRule T g.NT) :=
+    if r.input = p.2 then
+      match r.output with
+      | [Symbol.nonterminal _] => none
+      | o => ContextFreeRule.mk p.1 o
+    else none
+  g.rules.filterMap fltrMp
+
+noncomputable def remove_unitRules (pairs : Finset (g.NT × g.NT)) : List (ContextFreeRule T g.NT) :=
+  ((pairs.toList).map nonUnit_rules).join
+
+noncomputable def eliminate_unitRules [DecidableEq g.NT] : ContextFreeGrammar T :=
+  ContextFreeGrammar.mk g.NT g.initial (remove_unitRules compute_unitPairs)
+
+end EliminateUnitRules
+
 end ContextFreeGrammar
