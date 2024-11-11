@@ -16,6 +16,7 @@ section UnitPairs
 
 abbrev unitRule (v1 v2 : g.NT) : ContextFreeRule T g.NT := ContextFreeRule.mk v1 [Symbol.nonterminal v2]
 
+-- FIXME Actually only take things that are generators!
 inductive UnitPair : g.NT → g.NT → Prop :=
   | refl (v : g.NT) : UnitPair v v
   | trans {v1 v2 v3 : g.NT} (hr : unitRule v1 v2 ∈ g.rules)
@@ -63,6 +64,21 @@ lemma generators_prod_diag_subset : g.generators_prod_diag ⊆ g.generators ×ˢ
       simp
       right
       use p'
+
+lemma generators_prod_diag_unitPairs {p : g.NT × g.NT} (h : p ∈ g.generators_prod_diag) : UnitPair p.1 p.2  := by
+  unfold generators_prod_diag at h
+  revert h
+  cases g.rules with
+  | nil => tauto
+  | cons hd tl =>
+    simp
+    intro h
+    cases h with
+    | inl h =>
+      rw [h]
+    | inr h =>
+      obtain ⟨v, _, hv2⟩ := h
+      rw [← hv2]
 
 def collect_unitPair (input output : g.NT) (pair : g.NT × g.NT) (pairs : Finset (g.NT × g.NT)) : Finset (g.NT × g.NT) :=
   if output = pair.1 then insert (input, pair.2) pairs else pairs
@@ -244,27 +260,6 @@ noncomputable def compute_unitPairs : Finset (g.NT × g.NT) :=
 -- Only If direction of the main correctness theorem of compute_nullables --
 -- ********************************************************************** --
 
--- lemma rule_is_nullable_correct (nullable : Finset g.NT) (r : ContextFreeRule T g.NT)
---   (hrin : r ∈ g.rules) (hin : ∀ v ∈ nullable, NullableNonTerminal v) (hr : rule_is_nullable nullable r) :
---   NullableNonTerminal r.input := by sorry
---   unfold rule_is_nullable at hr
---   unfold NullableNonTerminal
---   have h1 : g.Produces [Symbol.nonterminal r.input] r.output := by
---     use r
---     constructor
---     exact hrin
---     rw [ContextFreeRule.rewrites_iff]
---     use [], []
---     simp
---   apply Produces.trans_derives h1
---   apply symbols_nullable_nullableWord
---   intro v hvin
---   simp at hr
---   specialize hr v hvin
---   unfold symbol_is_nullable at hr
---   cases v <;> simp at hr
---   exact hin _ hr
-
 lemma add_unitPairs_unitPairs (pairs : Finset (g.NT × g.NT)) (hin : ∀ p ∈ pairs, UnitPair p.1 p.2) :
   ∀ p ∈ add_unitPairs pairs, UnitPair p.1 p.2 := by
   unfold add_unitPairs
@@ -419,19 +414,21 @@ lemma add_unitPair_iter_only_unitPairs (pairs : Finset (g.NT × g.NT))
 --     rw [h1]
 --     exact nullable_in_add_nullables h hrin
 
--- -- Main correctness theorem of computing all nullable symbols --
--- lemma compute_nullables_iff (v : g.NT) :
---   v ∈ compute_nullables ↔ NullableNonTerminal v := by
---   constructor
---   · intro h
---     apply add_nullables_iter_only_nullable Finset.empty
---     tauto
---     exact h
---   · intro h
---     unfold NullableNonTerminal at h
---     obtain ⟨m, h⟩ := (derives_iff_derivesIn _ _ _).1 h
---     apply nullable_in_compute_nullables
---     exact h
+-- Main correctness theorem of computing all unit pairs --
+lemma compute_unitPairs_iff (p : g.NT × g.NT) :
+  p ∈ compute_unitPairs ↔ UnitPair p.1 p.2 := by
+  constructor
+  · intro h
+    apply add_unitPair_iter_only_unitPairs g.generators_prod_diag generators_prod_diag_subset
+    intro p hp
+    exact generators_prod_diag_unitPairs hp
+    exact h
+  · -- intro h
+    -- unfold NullableNonTerminal at h
+    -- obtain ⟨m, h⟩ := (derives_iff_derivesIn _ _ _).1 h
+    -- apply nullable_in_compute_nullables
+    -- exact h
+    sorry
 
 end ComputeUnitPairs
 
