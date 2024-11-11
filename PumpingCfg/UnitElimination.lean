@@ -14,16 +14,18 @@ variable {g : ContextFreeGrammar.{0,0} T}
 
 section UnitPairs
 
+variable [DecidableEq g.NT]
+
 abbrev unitRule (v1 v2 : g.NT) : ContextFreeRule T g.NT := ContextFreeRule.mk v1 [Symbol.nonterminal v2]
 
 -- FIXME Actually only take things that are generators!
 inductive UnitPair : g.NT → g.NT → Prop :=
-  | refl (v : g.NT) : UnitPair v v
+  | refl (v : g.NT) (h : v ∈ g.generators): UnitPair v v
   | trans {v1 v2 v3 : g.NT} (hr : unitRule v1 v2 ∈ g.rules)
          (hu : UnitPair v2 v3): UnitPair v1 v3
 
 @[refl]
-lemma UnitPair.rfl {v1 : g.NT} : UnitPair v1 v1 := UnitPair.refl v1
+lemma UnitPair.rfl {v1 : g.NT} {h : v1 ∈ generators} : UnitPair v1 v1 := UnitPair.refl v1 h
 
 lemma unitPair.derives {v1 v2 : g.NT} (h : UnitPair v1 v2) :
   g.Derives [Symbol.nonterminal v1] [Symbol.nonterminal v2] := by
@@ -68,7 +70,7 @@ lemma generators_prod_diag_subset : g.generators_prod_diag ⊆ g.generators ×ˢ
 lemma generators_prod_diag_unitPairs {p : g.NT × g.NT} (h : p ∈ g.generators_prod_diag) : UnitPair p.1 p.2  := by
   unfold generators_prod_diag at h
   revert h
-  cases g.rules with
+  cases heq : g.rules with
   | nil => tauto
   | cons hd tl =>
     simp
@@ -76,9 +78,19 @@ lemma generators_prod_diag_unitPairs {p : g.NT × g.NT} (h : p ∈ g.generators_
     cases h with
     | inl h =>
       rw [h]
+      simp
+      constructor
+      apply in_generators
+      rw [heq]
+      exact List.mem_cons_self hd tl
     | inr h =>
-      obtain ⟨v, _, hv2⟩ := h
+      obtain ⟨v, hin, hv2⟩ := h
       rw [← hv2]
+      simp
+      constructor
+      apply in_generators
+      rw [heq]
+      exact List.mem_cons_of_mem hd hin
 
 def collect_unitPair (input output : g.NT) (pair : g.NT × g.NT) (pairs : Finset (g.NT × g.NT)) : Finset (g.NT × g.NT) :=
   if output = pair.1 then insert (input, pair.2) pairs else pairs
