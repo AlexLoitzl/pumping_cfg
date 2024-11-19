@@ -41,6 +41,113 @@ lemma unitPair.derives {v1 v2 : g.NT} (h : UnitPair v1 v2) :
 
 end UnitPairs
 
+section Stuff
+
+lemma lists {p q x y : List (Symbol T g.NT)} {v : Symbol T g.NT} (h: p ++ q = x ++ [v] ++ y) :
+  ∃ w z, (y = w ++ z ∧ p = x ++ [v] ++ w ∧ q = z) ∨ (x = w ++ z ∧ p = w ∧ q = z ++ [v] ++ y) := by
+  induction p generalizing q x y with
+  | nil =>
+    use [], x
+    right
+    simp at h ⊢
+    exact h
+  | cons hd tl ih =>
+    cases x with
+    | nil =>
+      simp at h ⊢
+      use tl, q
+      left
+      constructor
+      rw [h.2]
+      exact ⟨⟨h.1, rfl⟩, rfl⟩
+    | cons x1 xs =>
+      simp at h ⊢
+      obtain ⟨h1, h2⟩ := h
+      change (tl ++ q = xs ++ ([v] ++ y)) at h2
+      rw [← List.append_assoc] at h2
+      obtain ⟨m, n, h⟩ := ih h2
+      cases h with
+      | inl h =>
+        obtain ⟨he1, he2, he3⟩ := h
+        use m, n
+        left
+        constructor
+        exact he1
+        constructor
+        constructor
+        exact h1
+        simp at he2
+        exact he2
+        exact he3
+      | inr h =>
+        obtain ⟨he1, he2, he3⟩ := h
+        rw[he2, h1, he1]
+        use (x1 :: m), n
+        right
+        constructor
+        simp
+        constructor
+        rfl
+        rw [he3]
+        simp
+
+lemma interesting {p q w : List (Symbol T g.NT)} (h : g.Derives (p ++ q) w) :
+  ∃ x y, w = x ++ y ∧ g.Derives p x ∧ g.Derives q y := by
+  cases (Derives.eq_or_head h) with
+  | inl h' =>
+    use p, q
+    constructor
+    · rw[h']
+    · exact ⟨Derives.refl p, Derives.refl q⟩
+  | inr h' =>
+    obtain ⟨v, hp, hd⟩ := h'
+    obtain ⟨r, hrin, hr⟩ := hp
+    obtain ⟨p', q', heq, hv⟩ := hr.exists_parts
+    obtain ⟨a, b, hc⟩ := lists heq
+    cases hc with
+    | inl hc =>
+      obtain ⟨heq1, heq2, heq3⟩ := hc
+      rw[hv, heq1, ← List.append_assoc] at hd
+      obtain ⟨x, y, hw, hd⟩ := interesting hd
+      obtain ⟨hd1, hd2⟩ := hd
+      use x, y
+      constructor
+      exact hw
+      constructor
+      apply Produces.trans_derives
+      use r
+      constructor
+      exact hrin
+      rw [heq2]
+      apply r.rewrites_of_exists_parts
+      exact hd1
+      rwa [heq3]
+    | inr hc =>
+      obtain ⟨heq1, heq2, heq3⟩ := hc
+      rw[hv, heq1, List.append_assoc, List.append_assoc] at hd
+      obtain ⟨x, y, hw, hd⟩ := interesting hd
+      obtain ⟨hd1, hd2⟩ := hd
+      use x, y
+      constructor
+      exact hw
+      constructor
+      rwa [heq2]
+      apply Produces.trans_derives
+      use r
+      constructor
+      exact hrin
+      rw [heq3]
+      apply r.rewrites_of_exists_parts
+      rwa [List.append_assoc]
+      -- Just a dummy for now
+      termination_by List.length p
+      decreasing_by
+        sorry
+        sorry
+
+end Stuff
+
+
 -- *********************************************************************************************** --
 -- ****************************************** Unit Pairs ***************************************** --
 -- *********************************************************************************************** --
