@@ -783,8 +783,36 @@ lemma eliminate_unitRules_produces {u v : g.NT} {w : List (Symbol T g.NT)}
   (h1 : UnitPair v u) (h2 : g.Produces [Symbol.nonterminal u] w)
   (h3 : NonUnit w) : (@eliminate_unitRules T g).Produces [Symbol.nonterminal v] w := by sorry
 
+lemma nonUnit_rules_nonUnit {r : ContextFreeRule T g.NT} (h1 : r ∈ g.rules) (h2 : NonUnit r.output) :
+  r ∈ nonUnit_rules (r.input, r.input) := by
+  unfold nonUnit_rules
+  simp
+  use r
+  constructor
+  exact h1
+  simp
+  unfold NonUnit at h2
+  match h : r.output with
+  | [Symbol.nonterminal v] => rw [h] at h2; simp at h2
+  | [Symbol.terminal _] => simp; rw [← h]
+  | [] => simp; rw [← h]
+  | _ :: _ :: _ => simp; rw [← h]
+
 lemma eliminate_unitRules_nonUnit {r : ContextFreeRule T g.NT} (h : r ∈ g.rules) (h' : NonUnit r.output) :
-  (r ∈ (@eliminate_unitRules T g).rules) := by sorry
+  (r ∈ (@eliminate_unitRules T g).rules) := by
+  unfold eliminate_unitRules
+  simp
+  unfold remove_unitRules
+  simp
+  use (nonUnit_rules (r.input, r.input))
+  constructor
+  · use r.input, r.input
+    constructor
+    · rw [compute_unitPairs_iff]
+      apply UnitPair.rfl
+      exact nonterminal_in_generators h rfl
+    · rfl
+  · exact nonUnit_rules_nonUnit h h'
 
 lemma implies_eliminate_unitRules {w : List (Symbol T g.NT)} {s : List T} {n : ℕ}
   (h : g.DerivesIn w (List.map Symbol.terminal s) n) :
