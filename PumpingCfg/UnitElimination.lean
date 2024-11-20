@@ -62,17 +62,17 @@ lemma lists {p q x y : List (Symbol T g.NT)} {v : Symbol T g.NT} (h: p ++ q = x 
         rw [he3]
         simp
 
--- Here we require wf on length of derives...
-lemma interesting {p q w : List (Symbol T g.NT)} (h : g.Derives (p ++ q) w) :
-  ∃ x y, w = x ++ y ∧ g.Derives p x ∧ g.Derives q y := by
-  cases (Derives.eq_or_head h) with
-  | inl h' =>
-    use p, q
+lemma interesting {p q w : List (Symbol T g.NT)} {n : ℕ} (h : g.DerivesIn (p ++ q) w n) :
+  ∃ x y m1 m2, w = x ++ y ∧ g.DerivesIn p x m1 ∧ g.DerivesIn q y m2 ∧ n = m1 + m2 := by
+  cases n with
+  | zero =>
+    use p, q, 0, 0
     constructor
-    · rw[h']
-    · exact ⟨Derives.refl p, Derives.refl q⟩
-  | inr h' =>
-    obtain ⟨v, hp, hd⟩ := h'
+    · cases h
+      rfl
+    · exact ⟨DerivesIn.refl p, DerivesIn.refl q, rfl⟩
+  | succ n =>
+    obtain ⟨v, hp, hd⟩ := h.head_of_succ
     obtain ⟨r, hrin, hr⟩ := hp
     obtain ⟨p', q', heq, hv⟩ := hr.exists_parts
     obtain ⟨a, b, hc⟩ := lists heq
@@ -80,42 +80,40 @@ lemma interesting {p q w : List (Symbol T g.NT)} (h : g.Derives (p ++ q) w) :
     | inl hc =>
       obtain ⟨heq1, heq2, heq3⟩ := hc
       rw[hv, heq1, ← List.append_assoc] at hd
-      obtain ⟨x, y, hw, hd⟩ := interesting hd
-      obtain ⟨hd1, hd2⟩ := hd
-      use x, y
+      obtain ⟨x, y, m1, m2, hw, hd1, hd2, hn⟩ := interesting hd
+      use x, y, (m1 + 1), m2
       constructor
       exact hw
       constructor
-      apply Produces.trans_derives
+      apply Produces.trans_derivesIn
       use r
       constructor
       exact hrin
       rw [heq2]
       apply r.rewrites_of_exists_parts
       exact hd1
+      constructor
       rwa [heq3]
+      rw [hn]
+      omega
     | inr hc =>
       obtain ⟨heq1, heq2, heq3⟩ := hc
       rw[hv, heq1, List.append_assoc, List.append_assoc] at hd
-      obtain ⟨x, y, hw, hd⟩ := interesting hd
-      obtain ⟨hd1, hd2⟩ := hd
-      use x, y
+      obtain ⟨x, y, m1, m2, hw, hd1, hd2, hn⟩ := interesting hd
+      use x, y, m1, m2 + 1
       constructor
       exact hw
       constructor
       rwa [heq2]
-      apply Produces.trans_derives
+      constructor
+      apply Produces.trans_derivesIn
       use r
       constructor
       exact hrin
       rw [heq3]
       apply r.rewrites_of_exists_parts
       rwa [List.append_assoc]
-      -- Just a dummy for now
-      termination_by List.length p
-      decreasing_by
-        sorry
-        sorry
+      omega
 
 lemma Produces.rule {v : g.NT } {w : List (Symbol T g.NT)} (h : g.Produces [Symbol.nonterminal v] w) :
   ContextFreeRule.mk v w ∈ g.rules := by
@@ -159,46 +157,43 @@ abbrev NonUnit (w : List (Symbol T g.NT)) :=
   | [Symbol.nonterminal _] => False
   | _ => True
 
--- Maybe possible with induction
-lemma Derives.unitPair_prefix {w : List T} {v : g.NT} (h: g.Derives [Symbol.nonterminal v] (List.map Symbol.terminal w))
-  {hv : v ∈ g.generators} : ∃ u x, UnitPair v u ∧ g.Produces [Symbol.nonterminal u] x ∧ NonUnit x
-    ∧ g.Derives x (List.map Symbol.terminal w) := by
-  cases h.eq_or_head with
-  | inl h' =>
-    cases w <;> simp at h'
-  | inr h' =>
-    obtain ⟨v', hp, hd⟩ := h'
+lemma Derives.unitPair_prefix' {w : List T} {w' : List (Symbol T g.NT)} {v : g.NT} {hv : v ∈ g.generators}
+  (h: g.Derives w' (List.map Symbol.terminal w)) (heq : [Symbol.nonterminal v] = w') :
+  ∃ u x, UnitPair v u ∧ g.Produces [Symbol.nonterminal u] x ∧ NonUnit x
+       ∧ g.Derives x (List.map Symbol.terminal w) := by
+  induction h using Relation.ReflTransGen.head_induction_on generalizing v with
+  | refl =>
+    cases w <;> simp at heq
+  | @head w'' v' hp hd ih =>
     by_cases h' : NonUnit v'
     · use v, v'
       constructor
       exact @UnitPair.rfl _ _ _ v hv
+      rw [heq]
       exact ⟨hp, h', hd⟩
     · unfold NonUnit at h'
       match v' with
       | [Symbol.nonterminal v'] =>
         have h' : v' ∈ generators := by
-          cases hd.eq_or_head with
+          cases hd.cases_head with
           | inl h => cases w <;> simp at h
           | inr h =>
-            obtain ⟨w, hp, hd⟩ := h
+            obtain ⟨w, hp, _⟩ := h
             apply nonterminal_in_generators
             apply hp.rule
             rfl
-        obtain ⟨v'', w', h1, h2, h3, h4⟩ := @Derives.unitPair_prefix _ _ hd h'
+        obtain ⟨v'', w', h1, h2, h3, h4⟩ := @ih v' h' rfl
         use v'', w'
         constructor
         · constructor
           · unfold unitRule
+            rw [←heq] at hp
             exact hp.rule
           · exact h1
         · exact ⟨h2, h3, h4⟩
       | [Symbol.terminal _] => simp at h'
       | [] => simp at h'
       | _ :: _ :: _ => simp at h'
-      -- Just a dummy for now
-      termination_by List.length w
-      decreasing_by
-        sorry
 
 end UnitPairs
 
