@@ -922,9 +922,21 @@ lemma eliminate_unitRules_implies {v w : List (Symbol T g.NT)}
 --     exact hvrv'
 --     exact Derives.trans hpv'u' huw'
 
--- lemma implies_eliminate_empty {w : List (Symbol T g.NT)} {v : g.NT} {hneq : w ≠ []} {n : ℕ}
---   (h : g.DerivesIn [Symbol.nonterminal v] w n) :
---   (@eliminate_empty T g).Derives [Symbol.nonterminal v] w := by
+lemma nonUnit_rules_correct {u v : g.NT} {w : List (Symbol T g.NT)}
+  (h : {input := u, output := w} ∈ g.rules) (h2 : NonUnit w) :
+  {input := v, output := w} ∈ nonUnit_rules (v, u) := by sorry
+
+lemma remove_unitRules_correct {u v : g.NT} {w : List (Symbol T g.NT)} {pairs : Finset (g.NT × g.NT)}
+  (h : {input := u, output := w} ∈ g.rules) (h2 : NonUnit w) (h3 : (u,v) ∈ pairs):
+  {input := v, output := w} ∈ remove_unitRules pairs := by sorry
+
+lemma eliminate_unitRules_produces {u v : g.NT} {w : List (Symbol T g.NT)}
+  (h1 : g.Derives [Symbol.nonterminal v] [Symbol.nonterminal u]) (h2 : g.Produces [Symbol.nonterminal u] w)
+  (h3 : NonUnit w) : (@eliminate_unitRules T g).Produces [Symbol.nonterminal v] w := by sorry
+
+lemma implies_eliminate_unitRules {w : List (Symbol T g.NT)} {v : g.NT}
+  (h : g.Derives [Symbol.nonterminal v] w) :
+  (@eliminate_unitRules T g).Derives [Symbol.nonterminal v] w := by sorry
 --   obtain ⟨w', hw', hw'w⟩ := implies_eliminate_empty_related hneq h
 --   cases hw'
 --   · rename_i h
