@@ -62,7 +62,7 @@ lemma lists {p q x y : List (Symbol T g.NT)} {v : Symbol T g.NT} (h: p ++ q = x 
         rw [he3]
         simp
 
-lemma interesting {p q w : List (Symbol T g.NT)} {n : ℕ} (h : g.DerivesIn (p ++ q) w n) :
+lemma DerivesIn.append_split {p q w : List (Symbol T g.NT)} {n : ℕ} (h : g.DerivesIn (p ++ q) w n) :
   ∃ x y m1 m2, w = x ++ y ∧ g.DerivesIn p x m1 ∧ g.DerivesIn q y m2 ∧ n = m1 + m2 := by
   cases n with
   | zero =>
@@ -80,7 +80,7 @@ lemma interesting {p q w : List (Symbol T g.NT)} {n : ℕ} (h : g.DerivesIn (p +
     | inl hc =>
       obtain ⟨heq1, heq2, heq3⟩ := hc
       rw[hv, heq1, ← List.append_assoc] at hd
-      obtain ⟨x, y, m1, m2, hw, hd1, hd2, hn⟩ := interesting hd
+      obtain ⟨x, y, m1, m2, hw, hd1, hd2, hn⟩ := hd.append_split
       use x, y, (m1 + 1), m2
       constructor
       exact hw
@@ -99,7 +99,7 @@ lemma interesting {p q w : List (Symbol T g.NT)} {n : ℕ} (h : g.DerivesIn (p +
     | inr hc =>
       obtain ⟨heq1, heq2, heq3⟩ := hc
       rw[hv, heq1, List.append_assoc, List.append_assoc] at hd
-      obtain ⟨x, y, m1, m2, hw, hd1, hd2, hn⟩ := interesting hd
+      obtain ⟨x, y, m1, m2, hw, hd1, hd2, hn⟩ := hd.append_split
       use x, y, m1, m2 + 1
       constructor
       exact hw
@@ -114,6 +114,22 @@ lemma interesting {p q w : List (Symbol T g.NT)} {n : ℕ} (h : g.DerivesIn (p +
       apply r.rewrites_of_exists_parts
       rwa [List.append_assoc]
       omega
+
+lemma DerivesIn.three_split {p q r w : List (Symbol T g.NT)} {n : ℕ} (h : g.DerivesIn (p ++ q ++ r) w n) :
+  ∃ x y z m1 m2 m3, w = x ++ y ++ z ∧ g.DerivesIn p x m1 ∧ g.DerivesIn q y m2
+    ∧ g.DerivesIn r z m3 ∧ n = m1 + m2 + m3 := by
+  obtain ⟨x', z, m1', m3, hw2, hd1', hd3, hn2⟩ := h.append_split
+  obtain ⟨x, y, m1, m2, hw1, hd1, hd2, hn1⟩ := hd1'.append_split
+  use x, y, z, m1, m2, m3
+  constructor
+  rw [hw2, hw1]
+  constructor
+  exact hd1
+  constructor
+  exact hd2
+  constructor
+  exact hd3
+  rw [hn2, hn1]
 
 lemma Produces.rule {v : g.NT } {w : List (Symbol T g.NT)} (h : g.Produces [Symbol.nonterminal v] w) :
   ContextFreeRule.mk v w ∈ g.rules := by
@@ -157,40 +173,40 @@ abbrev NonUnit (w : List (Symbol T g.NT)) :=
   | [Symbol.nonterminal _] => False
   | _ => True
 
-lemma Derives.unitPair_prefix' {w : List T} {w' : List (Symbol T g.NT)} {v : g.NT} {hv : v ∈ g.generators}
-  (h: g.Derives w' (List.map Symbol.terminal w)) (heq : [Symbol.nonterminal v] = w') :
-  ∃ u x, UnitPair v u ∧ g.Produces [Symbol.nonterminal u] x ∧ NonUnit x
-       ∧ g.Derives x (List.map Symbol.terminal w) := by
-  induction h using Relation.ReflTransGen.head_induction_on generalizing v with
+lemma DerivesIn.unitPair_prefix {w : List T} {w' : List (Symbol T g.NT)} {v : g.NT} {n : ℕ}
+  (h: g.DerivesIn w' (List.map Symbol.terminal w) n) (hv : v ∈ g.generators) (heq : [Symbol.nonterminal v] = w') :
+  ∃ u x m, UnitPair v u ∧ g.Produces [Symbol.nonterminal u] x ∧ NonUnit x ∧ m ≤ n
+       ∧ g.DerivesIn x (List.map Symbol.terminal w) m := by
+  induction h using DerivesIn.induction_refl_head generalizing v with
   | refl =>
     cases w <;> simp at heq
-  | @head w'' v' hp hd ih =>
+  | @head n w'' v' hp hd ih =>
     by_cases h' : NonUnit v'
-    · use v, v'
+    · use v, v', n
       constructor
       exact @UnitPair.rfl _ _ _ v hv
       rw [heq]
-      exact ⟨hp, h', hd⟩
+      repeat first | assumption | omega | constructor
     · unfold NonUnit at h'
       match v' with
       | [Symbol.nonterminal v'] =>
         have h' : v' ∈ generators := by
-          cases hd.cases_head with
-          | inl h => cases w <;> simp at h
-          | inr h =>
-            obtain ⟨w, hp, _⟩ := h
+          cases n with
+          | zero => cases w <;> cases hd
+          | succ n =>
+            obtain ⟨w', hp, hd⟩ := hd.head_of_succ
             apply nonterminal_in_generators
             apply hp.rule
             rfl
-        obtain ⟨v'', w', h1, h2, h3, h4⟩ := @ih v' h' rfl
-        use v'', w'
+        obtain ⟨v'', w', m, h1, h2, h3, h4, h5⟩ := @ih v' h' rfl
+        use v'', w', m
         constructor
         · constructor
           · unfold unitRule
             rw [←heq] at hp
             exact hp.rule
           · exact h1
-        · exact ⟨h2, h3, h4⟩
+        · repeat first | assumption | omega | constructor
       | [Symbol.terminal _] => simp at h'
       | [] => simp at h'
       | _ :: _ :: _ => simp at h'
@@ -755,168 +771,6 @@ lemma eliminate_unitRules_implies {v w : List (Symbol T g.NT)}
 -- If direction of the main correctness theorem of eliminate_unitPairs --
 -- ******************************************************************* --
 
--- lemma in_remove_nullable (nullable : Finset g.NT) (output : List (Symbol T g.NT)) :
---   output ∈ remove_nullable nullable output := by
---   induction output with
---   | nil =>
---     unfold remove_nullable
---     simp
---   | cons o output ih =>
---     unfold remove_nullable
---     cases o <;> simp
---     · exact ih
---     · rename_i nt
---       by_cases h : nt ∈ nullable <;> simp [h]
---       · right
---         exact ih
---       · exact ih
-
--- lemma in_remove_nullables (nullable : Finset g.NT) (r : ContextFreeRule T g.NT) (h : r ∈ g.rules)
---   (ho : r.output ≠ []):
---   r ∈ remove_nullables nullable := by
---   unfold remove_nullables
---   rw [List.mem_join]
---   use (remove_nullable_rule nullable r)
---   constructor
---   · simp
---     use r
---   · unfold remove_nullable_rule
---     rw [List.mem_filterMap]
---     use r.output
---     constructor
---     · apply in_remove_nullable
---     · obtain ⟨rin, rout⟩ := r
---       cases rout
---       contradiction
---       simp
-
--- lemma nullableRelated_in_remove_nullable {nullable : Finset g.NT} {o o': List (Symbol T g.NT)}
---   (h : NullableRelated o' o) (p : ∀ s, s ∈ nullable ↔ NullableNonTerminal s) :
---   o' ∈ remove_nullable nullable o := by
---   revert o'
---   induction o with
---   | nil =>
---     intro o' h
---     rw [h.empty_empty]
---     unfold remove_nullable
---     exact List.mem_singleton.2 rfl
---   | cons o os ih =>
---     unfold remove_nullable
---     intro o' h
---     cases o with
---     | terminal t =>
---       simp
---       cases h with
---       | empty_left =>
---         rename_i h
---         exfalso
---         exact nullable_not_terminal h
---       | cons_term os' _ h =>
---         use os'
---         constructor
---         · exact ih h
---         · rfl
---     | nonterminal nt =>
---       simp
---       cases h with
---       | empty_left _ h =>
---         left
---         split
---         · apply ih
---           apply NullableRelated.empty_left
---           change NullableWord ([Symbol.nonterminal nt] ++ os) at h
---           exact h.empty_of_append_right
---         · rename_i h'
---           exfalso
---           apply h'
---           rw [p]
---           exact h.empty_of_append_left
---       | cons_nterm_match os' _ h =>
---         right
---         use os'
---         constructor
---         · exact ih h
---         · rfl
---       | cons_nterm_nullable os' _ h _ hn =>
---         left
---         split <;> rename_i h'
---         · exact ih h
---         · exfalso
---           apply h'
---           rw [p]
---           exact hn
-
--- lemma nullableRelated_rule_in_rules {r : ContextFreeRule T g.NT} {o' : List (Symbol T g.NT)}
---   (hrin : r ∈ g.rules) (h : NullableRelated o' r.output) (hneq : o' ≠ []) :
---   { input := r.input, output := o' } ∈ (@eliminate_empty T g).rules := by
---   unfold eliminate_empty
---   simp
---   unfold remove_nullables
---   rw [List.mem_join]
---   use (remove_nullable_rule compute_nullables r)
---   constructor
---   rw [List.mem_map]
---   use r
---   unfold remove_nullable_rule
---   rw [List.mem_filterMap]
---   use o'
---   constructor
---   · exact nullableRelated_in_remove_nullable h compute_nullables_iff
---   · cases h : o' <;> simp
---     contradiction
-
--- lemma empty_related_produces_derives {v w w': List (Symbol T g.NT)} (hp : g.Produces v w)
---   (hn : NullableRelated w' w) : ∃ v', NullableRelated v' v ∧ (@eliminate_empty T g).Derives v' w' := by
---   unfold Produces at hp
---   obtain ⟨r, hrin, hr⟩ := hp
---   rw [r.rewrites_iff] at hr
---   obtain ⟨p,q, hv, hw⟩ := hr
---   rw [hw] at hn
---   obtain ⟨w1', w2', w3', heq, hw1, hw2, hw3⟩ := hn.append_split_three
---   cases w2' with
---   | nil =>
---     use w'
---     constructor
---     · rw [hv, heq]
---       apply (hw1.append _).append hw3
---       apply NullableRelated.empty_left
---       apply Produces.trans_derives
---       apply rewrites_produces hrin
---       exact hw2.empty_nullable
---     · rfl
---   | cons hd tl =>
---     use (w1' ++ [Symbol.nonterminal r.input] ++ w3')
---     constructor
---     · rw [hv]
---       apply (hw1.append _).append hw3
---       rfl
---     · rw [heq]
---       apply Produces.single
---       have hneq : (hd :: tl) ≠ [] := by simp
---       have h := nullableRelated_rule_in_rules hrin hw2 hneq
---       let r' : ContextFreeRule T g.NT := { input := r.input, output := hd :: tl }
---       use r'
---       constructor
---       exact h
---       change r'.Rewrites (w1' ++ [Symbol.nonterminal r'.input] ++ w3') (w1' ++ r'.output ++ w3')
---       apply ContextFreeRule.rewrites_of_exists_parts
-
--- lemma implies_eliminate_empty_related {v w : List (Symbol T g.NT)} (hneq : w ≠ []) {n : ℕ}
---   (h : g.DerivesIn v w n) :
---   ∃ v', NullableRelated v' v ∧ (@eliminate_empty T g).Derives v' w := by
---   cases n with
---   | zero =>
---     cases h
---     use v
---   | succ n =>
---     obtain ⟨u, huv, hvw⟩ := h.head_of_succ
---     obtain ⟨u', hru', huw'⟩ := @implies_eliminate_empty_related _ _ hneq _ hvw
---     obtain ⟨v', hvrv', hpv'u'⟩ := empty_related_produces_derives huv hru'
---     use v'
---     constructor
---     exact hvrv'
---     exact Derives.trans hpv'u' huw'
-
 lemma nonUnit_rules_correct {u v : g.NT} {w : List (Symbol T g.NT)}
   (h : {input := u, output := w} ∈ g.rules) (h2 : NonUnit w) :
   {input := v, output := w} ∈ nonUnit_rules (v, u) := by sorry
@@ -926,27 +780,63 @@ lemma remove_unitRules_correct {u v : g.NT} {w : List (Symbol T g.NT)} {pairs : 
   {input := v, output := w} ∈ remove_unitRules pairs := by sorry
 
 lemma eliminate_unitRules_produces {u v : g.NT} {w : List (Symbol T g.NT)}
-  (h1 : g.Derives [Symbol.nonterminal v] [Symbol.nonterminal u]) (h2 : g.Produces [Symbol.nonterminal u] w)
+  (h1 : UnitPair v u) (h2 : g.Produces [Symbol.nonterminal u] w)
   (h3 : NonUnit w) : (@eliminate_unitRules T g).Produces [Symbol.nonterminal v] w := by sorry
 
-lemma implies_eliminate_unitRules {w : List (Symbol T g.NT)} {v : g.NT}
-  (h : g.Derives [Symbol.nonterminal v] w) :
-  (@eliminate_unitRules T g).Derives [Symbol.nonterminal v] w := by sorry
---   obtain ⟨w', hw', hw'w⟩ := implies_eliminate_empty_related hneq h
---   cases hw'
---   · rename_i h
---     obtain ⟨h1, h1⟩ := Derives.eq_or_head hw'w
---     · contradiction
---     · apply Derives.empty_empty at hw'w
---       contradiction
---   · rename_i h
---     cases h
---     exact hw'w
---   · rename_i h
---     apply NullableRelated.empty_empty at h
---     rw [h] at hw'w
---     apply Derives.empty_empty at hw'w
---     contradiction
+lemma eliminate_unitRules_nonUnit {r : ContextFreeRule T g.NT} (h : r ∈ g.rules) (h' : NonUnit r.output) :
+  (r ∈ (@eliminate_unitRules T g).rules) := by sorry
+
+lemma implies_eliminate_unitRules {w : List (Symbol T g.NT)} {s : List T} {n : ℕ}
+  (h : g.DerivesIn w (List.map Symbol.terminal s) n) :
+  (@eliminate_unitRules T g).Derives w (List.map Symbol.terminal s):= by
+  cases n with
+  | zero =>
+    cases h
+    rfl
+  | succ n =>
+    obtain ⟨u, hp, hd⟩ := h.head_of_succ
+    obtain ⟨r, hrin, hr⟩ := hp
+    obtain ⟨p,q, hw, hu⟩ := hr.exists_parts
+    by_cases h' : NonUnit r.output
+    · apply Produces.trans_derives
+      use r
+      exact ⟨eliminate_unitRules_nonUnit hrin h', hr⟩
+      exact implies_eliminate_unitRules hd
+    · unfold NonUnit at h'
+      match h : r.output with
+      | [Symbol.nonterminal v] =>
+        rw [h] at hu
+        rw [hu] at hd
+        obtain ⟨s1', s2', s3', m1, m2, m3, hs, hd1, hd2, hd3, hn⟩ := hd.three_split
+        obtain ⟨s', s3, hs', hs'', hs3⟩ := (List.map_eq_append _).1 hs
+        obtain ⟨s1, s2, hs''', hs1, hs2⟩ := (List.map_eq_append _).1 hs''
+        rw [← hs1] at hd1
+        rw [← hs2] at hd2
+        rw [← hs3] at hd3
+        rw [hs, hw, ←hs1, ←hs2, ←hs3]
+        apply Derives.append_left_trans
+        apply implies_eliminate_unitRules hd3
+        apply Derives.append_left_trans
+        have h' : v ∈ generators := by
+          cases m2 with
+          | zero => cases s2 <;> cases hd2
+          | succ n =>
+            obtain ⟨w', hp, _⟩ := hd2.head_of_succ
+            apply nonterminal_in_generators
+            apply hp.rule
+            rfl
+        obtain ⟨u, w', m2', hvu, hp, hw', _, hd2'⟩ := hd2.unitPair_prefix h' rfl
+        apply Produces.trans_derives
+        · apply eliminate_unitRules_produces _ hp hw'
+          apply UnitPair.trans
+          unfold unitRule
+          rwa [← h]
+          exact hvu
+        · exact implies_eliminate_unitRules hd2'
+        exact implies_eliminate_unitRules hd1
+      | [Symbol.terminal _] => rw [h] at h'; simp at h'
+      | [] => rw [h] at h'; simp at h'
+      | _ :: _ :: _ => rw [h] at h'; simp at h'
 
 -- Main correctness theorem of eliminate_unitRules
 theorem eliminate_unitRules_correct:
