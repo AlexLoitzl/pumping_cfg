@@ -340,7 +340,7 @@ variable [DecidableEq g.NT]
 -- All lefthand side non-terminals
 def generators : Finset g.NT := (g.rules.map (fun r => r.input)).toFinset
 
-lemma in_generators {r : ContextFreeRule T g.NT} (h : r ∈ g.rules) :
+lemma input_in_generators {r : ContextFreeRule T g.NT} (h : r ∈ g.rules) :
   r.input ∈ g.generators := by
   unfold generators
   revert h
@@ -351,6 +351,20 @@ lemma in_generators {r : ContextFreeRule T g.NT} (h : r ∈ g.rules) :
     rintro (c1 | c2)
     · left
       rw [c1]
+    · right
+      exact ih c2
+
+lemma nonterminal_in_generators {v : g.NT} {r : ContextFreeRule T g.NT} (h : r ∈ g.rules) (h' : r.input = v):
+  v ∈ g.generators := by
+  unfold generators
+  revert h
+  induction g.rules with
+  | nil => simp
+  | cons hd tl ih =>
+    simp at ih ⊢
+    rintro (c1 | c2)
+    · left
+      rw [← h', c1]
     · right
       exact ih c2
 
@@ -372,7 +386,7 @@ lemma add_if_nullable_subset_generators {r : ContextFreeRule T g.NT} {nullable :
   add_if_nullable r nullable ⊆ g.generators := by
   unfold add_if_nullable
   split
-  · exact Finset.insert_subset (in_generators hin) p
+  · exact Finset.insert_subset (input_in_generators hin) p
   · exact p
 
 lemma add_if_nullable_subset (r : ContextFreeRule T g.NT) (nullable : Finset g.NT) :

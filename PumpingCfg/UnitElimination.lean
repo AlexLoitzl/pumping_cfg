@@ -12,35 +12,6 @@ namespace ContextFreeGrammar
 variable {T : Type}
 variable {g : ContextFreeGrammar.{0,0} T}
 
-section UnitPairs
-
-variable [DecidableEq g.NT]
-
-abbrev unitRule (v1 v2 : g.NT) : ContextFreeRule T g.NT := ContextFreeRule.mk v1 [Symbol.nonterminal v2]
-
-inductive UnitPair : g.NT → g.NT → Prop :=
-  | refl (v : g.NT) (h : v ∈ g.generators): UnitPair v v
-  | trans {v1 v2 v3 : g.NT} (hr : unitRule v1 v2 ∈ g.rules)
-         (hu : UnitPair v2 v3): UnitPair v1 v3
-
-@[refl]
-lemma UnitPair.rfl {v1 : g.NT} {h : v1 ∈ generators} : UnitPair v1 v1 := UnitPair.refl v1 h
-
-lemma unitPair.derives {v1 v2 : g.NT} (h : UnitPair v1 v2) :
-  g.Derives [Symbol.nonterminal v1] [Symbol.nonterminal v2] := by
-  induction h with
-  | refl => rfl
-  | trans hr _ ih =>
-    apply Produces.trans_derives
-    constructor
-    constructor
-    exact hr
-    unfold unitRule
-    constructor
-    exact ih
-
-end UnitPairs
-
 section Stuff
 
 lemma lists {p q x y : List (Symbol T g.NT)} {v : Symbol T g.NT} (h: p ++ q = x ++ [v] ++ y) :
@@ -91,6 +62,7 @@ lemma lists {p q x y : List (Symbol T g.NT)} {v : Symbol T g.NT} (h: p ++ q = x 
         rw [he3]
         simp
 
+-- Here we require wf on length of derives...
 lemma interesting {p q w : List (Symbol T g.NT)} (h : g.Derives (p ++ q) w) :
   ∃ x y, w = x ++ y ∧ g.Derives p x ∧ g.Derives q y := by
   cases (Derives.eq_or_head h) with
@@ -145,8 +117,90 @@ lemma interesting {p q w : List (Symbol T g.NT)} (h : g.Derives (p ++ q) w) :
         sorry
         sorry
 
+lemma Produces.rule {v : g.NT } {w : List (Symbol T g.NT)} (h : g.Produces [Symbol.nonterminal v] w) :
+  ContextFreeRule.mk v w ∈ g.rules := by
+  obtain ⟨r, hrin, hr⟩ := h
+  cases hr
+  simp
+  exact hrin
+  contradiction
+
 end Stuff
 
+section UnitPairs
+
+variable [DecidableEq g.NT]
+
+abbrev unitRule (v1 v2 : g.NT) : ContextFreeRule T g.NT := ContextFreeRule.mk v1 [Symbol.nonterminal v2]
+
+inductive UnitPair : g.NT → g.NT → Prop :=
+  | refl (v : g.NT) (h : v ∈ g.generators): UnitPair v v
+  | trans {v1 v2 v3 : g.NT} (hr : unitRule v1 v2 ∈ g.rules)
+         (hu : UnitPair v2 v3): UnitPair v1 v3
+
+@[refl]
+lemma UnitPair.rfl {v1 : g.NT} {h : v1 ∈ generators} : UnitPair v1 v1 := UnitPair.refl v1 h
+
+lemma unitPair.derives {v1 v2 : g.NT} (h : UnitPair v1 v2) :
+  g.Derives [Symbol.nonterminal v1] [Symbol.nonterminal v2] := by
+  induction h with
+  | refl => rfl
+  | trans hr _ ih =>
+    apply Produces.trans_derives
+    constructor
+    constructor
+    exact hr
+    unfold unitRule
+    constructor
+    exact ih
+
+abbrev NonUnit (w : List (Symbol T g.NT)) :=
+  match w with
+  | [Symbol.nonterminal _] => False
+  | _ => True
+
+-- Maybe possible with induction
+lemma Derives.unitPair_prefix {w : List T} {v : g.NT} (h: g.Derives [Symbol.nonterminal v] (List.map Symbol.terminal w))
+  {hv : v ∈ g.generators} : ∃ u x, UnitPair v u ∧ g.Produces [Symbol.nonterminal u] x ∧ NonUnit x
+    ∧ g.Derives x (List.map Symbol.terminal w) := by
+  cases h.eq_or_head with
+  | inl h' =>
+    cases w <;> simp at h'
+  | inr h' =>
+    obtain ⟨v', hp, hd⟩ := h'
+    by_cases h' : NonUnit v'
+    · use v, v'
+      constructor
+      exact @UnitPair.rfl _ _ _ v hv
+      exact ⟨hp, h', hd⟩
+    · unfold NonUnit at h'
+      match v' with
+      | [Symbol.nonterminal v'] =>
+        have h' : v' ∈ generators := by
+          cases hd.eq_or_head with
+          | inl h => cases w <;> simp at h
+          | inr h =>
+            obtain ⟨w, hp, hd⟩ := h
+            apply nonterminal_in_generators
+            apply hp.rule
+            rfl
+        obtain ⟨v'', w', h1, h2, h3, h4⟩ := @Derives.unitPair_prefix _ _ hd h'
+        use v'', w'
+        constructor
+        · constructor
+          · unfold unitRule
+            exact hp.rule
+          · exact h1
+        · exact ⟨h2, h3, h4⟩
+      | [Symbol.terminal _] => simp at h'
+      | [] => simp at h'
+      | _ :: _ :: _ => simp at h'
+      -- Just a dummy for now
+      termination_by List.length w
+      decreasing_by
+        sorry
+
+end UnitPairs
 
 -- *********************************************************************************************** --
 -- ****************************************** Unit Pairs ***************************************** --
@@ -190,7 +244,7 @@ lemma generators_prod_diag_unitPairs {p : g.NT × g.NT} (h : p ∈ g.generators_
       rw [h]
       simp
       constructor
-      apply in_generators
+      apply input_in_generators
       rw [heq]
       exact List.mem_cons_self hd tl
     | inr h =>
@@ -198,7 +252,7 @@ lemma generators_prod_diag_unitPairs {p : g.NT × g.NT} (h : p ∈ g.generators_
       rw [← hv2]
       simp
       constructor
-      apply in_generators
+      apply input_in_generators
       rw [heq]
       exact List.mem_cons_of_mem hd hin
 
@@ -311,7 +365,7 @@ lemma collect_unitPairs_subset_generators_prod {r : ContextFreeRule T g.NT} (pai
     rw [hp2]
     simp
     constructor
-    · exact in_generators hrin
+    · exact input_in_generators hrin
     · rw [Finset.mem_toList] at hin
       specialize hp hin
       simp at hp
