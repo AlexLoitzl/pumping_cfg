@@ -20,8 +20,8 @@ lemma NullableWord.empty_of_append {u v w : List (Symbol T g.NT)}
     (huvw : NullableWord (u ++ v ++ w)) : NullableWord v := by
   unfold NullableWord at *
   rw [derives_iff_derivesIn] at huvw ⊢
-  obtain ⟨n, hwe⟩ := huvw
-  obtain ⟨m, _, _⟩ := hwe.empty_of_append
+  obtain ⟨n, hn⟩ := huvw
+  obtain ⟨m, _, _⟩ := hn.empty_of_append
   use m
 
 lemma NullableWord.empty_of_append_left {u v : List (Symbol T g.NT)}
@@ -106,12 +106,12 @@ lemma symbols_nullable_nullableWord (w : List (Symbol T g.NT)) (hw : ∀ a ∈ w
 
 lemma DerivesIn.nullable_mem_nonterminal {w : List (Symbol T g.NT)} {s : Symbol T g.NT} {n : ℕ}
     (hwn : g.DerivesIn w [] n) (hin : s ∈ w) : ∃ v, s = Symbol.nonterminal v := by
-  have ⟨m, _, hse⟩ := hwn.mem_nullable hin
+  have ⟨m, _, hsm⟩ := hwn.mem_nullable hin
   cases m with
   | zero =>
     contradiction
   | succ m =>
-    obtain ⟨u, hwu, _⟩ := hse.head_of_succ
+    obtain ⟨u, hwu, _⟩ := hsm.head_of_succ
     obtain ⟨r, _, hsu⟩ := hwu
     obtain ⟨p, q, hi, _⟩ := (r.rewrites_iff _ _).1 hsu
     cases p <;> simp at hi
@@ -126,15 +126,16 @@ lemma NullableWord.nullableNonTerminal {w : List (Symbol T g.NT)} {v : Symbol T 
   | nil => simp
   | cons d l ih =>
     intro _ hin
-    cases hin
-    · cases d with
+    cases hin with
+    | head =>
+      cases d with
       | terminal => exact (nullable_not_terminal hw).elim
       | nonterminal a => exact ⟨a, rfl, hw.empty_of_append_left⟩
-    · apply ih
-      · apply NullableWord.empty_of_append_right
-        change NullableWord ([d] ++ l) at hw
-        exact hw
-      assumption
+    | tail _ hmem =>
+      apply ih _ hmem
+      apply NullableWord.empty_of_append_right
+      change NullableWord ([d] ++ l) at hw
+      exact hw
 
 
 section NullableRelated
