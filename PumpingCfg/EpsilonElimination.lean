@@ -9,146 +9,131 @@ import PumpingCfg.CountingSteps
 
 namespace ContextFreeGrammar
 
-variable {T : Type}
-variable {g : ContextFreeGrammar T}
+variable {T : Type} {g : ContextFreeGrammar T}
 
 abbrev NullableNonTerminal (v : g.NT) : Prop := g.Derives [Symbol.nonterminal v] []
 
 abbrev NullableWord (w : List (Symbol T g.NT)) : Prop := g.Derives w []
 
--- Properties of NullableNonTerminal, NullableWord and Derives/Produces/Rewrites to empty
-lemma NullableWord.empty_of_append {w u v: List (Symbol T g.NT)}
-  (hwe : NullableWord (w ++ u ++ v)) : NullableWord u := by
+-- Properties of `NullableNonTerminal`, `NullableWord` and `Derives`/`Produces`/`Rewrites` to empty
+lemma NullableWord.empty_of_append {u v w : List (Symbol T g.NT)}
+    (huvw : NullableWord (u ++ v ++ w)) : NullableWord v := by
   unfold NullableWord at *
-  rw [derives_iff_derivesIn] at hwe ⊢
-  obtain ⟨n, hwe⟩ := hwe
-  obtain ⟨m, _, hue⟩ := hwe.empty_of_append
+  rw [derives_iff_derivesIn] at huvw ⊢
+  obtain ⟨n, hwe⟩ := huvw
+  obtain ⟨m, _, _⟩ := hwe.empty_of_append
   use m
 
-lemma NullableWord.empty_of_append_left {u v: List (Symbol T g.NT)}
-  (hwe : NullableWord (u ++ v)) : NullableWord u := by
-  apply @NullableWord.empty_of_append _ _ []
-  exact hwe
+lemma NullableWord.empty_of_append_left {u v : List (Symbol T g.NT)}
+    (huv : NullableWord (u ++ v)) : NullableWord u :=
+  @NullableWord.empty_of_append _ _ [] _ _ huv
 
-lemma NullableWord.empty_of_append_right {u v: List (Symbol T g.NT)}
-  (hwe : NullableWord (u ++ v) ): NullableWord v := by
-  apply @NullableWord.empty_of_append _ _ _ _ []
-  simp
-  exact hwe
+lemma NullableWord.empty_of_append_right {u v : List (Symbol T g.NT)}
+    (huv : NullableWord (u ++ v)): NullableWord v := by
+  apply NullableWord.empty_of_append
+  rw [List.append_nil]
+  exact huv
 
 lemma DerivesIn.mem_nullable {w : List (Symbol T g.NT)} {s : Symbol T g.NT} {n : ℕ}
-  (h: g.DerivesIn w [] n) (hin: s ∈ w) : ∃ m ≤ n, g.DerivesIn [s] [] m := by
+    (hw : g.DerivesIn w [] n) (hin : s ∈ w) :
+    ∃ m ≤ n, g.DerivesIn [s] [] m := by
   revert n
   induction w with
   | nil => contradiction
   | cons v t ih =>
-    intro n h
+    intro n hn
     cases hin with
     | head =>
-      change g.DerivesIn ([s] ++ t) [] n at h
-      exact DerivesIn.empty_of_append_left h
+      change g.DerivesIn ([s] ++ t) [] n at hn
+      exact hn.empty_of_append_left
     | tail _ hs =>
-      change g.DerivesIn ([v] ++ t) [] n at h
-      obtain ⟨m, hmn, hte⟩ := DerivesIn.empty_of_append_right h
-      obtain ⟨m', hm'm,hse⟩ := ih hs hte
-      use m'
-      exact ⟨Nat.le_trans hm'm hmn, hse⟩
+      change g.DerivesIn ([v] ++ t) [] n at hn
+      obtain ⟨m, hmn, hte⟩ := hn.empty_of_append_right
+      obtain ⟨m', hmm, hse⟩ := ih hs hte
+      exact ⟨m', hmm.trans hmn, hse⟩
 
-lemma rewrites_empty_output {v : List (Symbol T g.NT)} {r : ContextFreeRule T g.NT} (h : r.Rewrites v []) :
-  r.output = [] := by
-  obtain ⟨p,q,_,h2⟩ := h.exists_parts
-  simp at h2
-  tauto
+lemma rewrites_empty_output {v : List (Symbol T g.NT)} {r : ContextFreeRule T g.NT} (hr : r.Rewrites v []) :
+    r.output = [] := by
+  obtain ⟨_, _, -, _⟩ := hr.exists_parts
+  simp_all
 
 lemma Derives.append_left_trans {v w x y: List (Symbol T g.NT)}
     (hvw : g.Derives v w) (hxy : g.Derives x y) :
-    g.Derives (x ++ v) (y ++ w) := by
-    apply Derives.trans
-    exact Derives.append_left hvw _
-    exact Derives.append_right hxy _
+    g.Derives (x ++ v) (y ++ w) :=
+  (hvw.append_left _).trans (hxy.append_right _)
 
-lemma rewrites_produces {r : ContextFreeRule T g.NT} (h : r ∈ g.rules) :
-  g.Produces [Symbol.nonterminal r.input] r.output := by
-  use r
-  constructor
-  exact h
-  rw [r.rewrites_iff]
+lemma rewrites_produces {r : ContextFreeRule T g.NT} (hr : r ∈ g.rules) :
+    g.Produces [Symbol.nonterminal r.input] r.output := by
+  refine ⟨r, hr, ?_⟩
+  rw [r.rewrites_iff] -- TODO after bumping Mathlib, apply `Rewrites.input_output`
   use [], []
   simp
 
-lemma nullable_not_terminal {t : T} {w : List (Symbol T g.NT)} : ¬ NullableWord (Symbol.terminal t :: w) := by
-  by_contra h
-  change g.Derives ([Symbol.terminal t] ++ w) [] at h
-  apply NullableWord.empty_of_append_left at h
-  obtain ⟨⟩ := h.eq_or_head
-  · contradiction
-  · rename_i h
-    obtain ⟨w, h1, h2⟩ := h
-    unfold Produces at h1
-    obtain ⟨r, _, hr⟩ := h1
-    cases hr
-    rename_i hrs
-    cases hrs
+lemma nullable_not_terminal {t : T} {w : List (Symbol T g.NT)} :
+    ¬ NullableWord (Symbol.terminal t :: w) := by
+  by_contra htw
+  change g.Derives ([Symbol.terminal t] ++ w) [] at htw
+  cases (NullableWord.empty_of_append_left htw).eq_or_head with
+  | inl => contradiction
+  | inr hv =>
+    obtain ⟨_, ⟨r, _, hr⟩, _⟩ := hv
+    cases hr with
+    | cons _ hrs =>
+      cases hrs
 
-lemma Derives.empty_empty {w : List (Symbol T g.NT)} (h : g.Derives [] w) : w = [] := by
-  induction h with
+lemma Derives.empty_empty {w : List (Symbol T g.NT)} (hw : g.Derives [] w) : w = [] := by
+  induction hw with
   | refl => rfl
-  | tail hd hp ih =>
-    unfold Produces at hp
+  | tail _ hp _ =>
     obtain ⟨r, _, hr⟩ := hp
     cases hr <;> contradiction
 
-lemma symbols_nullable_nullableWord (w : List (Symbol T g.NT)) (h: ∀ v ∈ w, g.Derives [v] []) :
-  NullableWord w := by
+lemma symbols_nullable_nullableWord (w : List (Symbol T g.NT)) (hw : ∀ a ∈ w, g.Derives [a] []) :
+    NullableWord w := by
   induction w with
-  | nil => exact Derives.refl []
-  | cons hd tl ih =>
-    change g.Derives ([hd] ++ tl) []
-    apply Derives.trans
+  | nil => rfl
+  | cons d l ih =>
+    show g.Derives ([d] ++ l) []
+    trans
     · apply Derives.append_right
-      apply h
-      exact List.mem_cons_self hd tl
-    · simp
-      apply ih
+      apply hw
+      exact List.mem_cons_self d l
+    · apply ih
       intro v hv
-      apply h
+      apply hw
       right
       exact hv
 
 lemma DerivesIn.nullable_mem_nonterminal {w : List (Symbol T g.NT)} {s : Symbol T g.NT} {n : ℕ}
-  (hwe: g.DerivesIn w [] n) (hin: s ∈ w) : ∃ v, s = Symbol.nonterminal v := by
-  have ⟨m, hmn, hse⟩ := hwe.mem_nullable hin
+    (hwn : g.DerivesIn w [] n) (hin : s ∈ w) : ∃ v, s = Symbol.nonterminal v := by
+  have ⟨m, _, hse⟩ := hwn.mem_nullable hin
   cases m with
   | zero =>
     contradiction
   | succ m =>
     obtain ⟨u, hwu, _⟩ := hse.head_of_succ
     obtain ⟨r, _, hsu⟩ := hwu
-    obtain ⟨p,q, hi, ho⟩ := (r.rewrites_iff _ _).1  hsu
+    obtain ⟨p, q, hi, _⟩ := (r.rewrites_iff _ _).1 hsu
     cases p <;> simp at hi
     cases q <;> simp at hi
     use r.input
 
 lemma NullableWord.nullableNonTerminal {w : List (Symbol T g.NT)} {v : Symbol T g.NT}
-  (h : NullableWord w) (hin : v ∈ w) : ∃ nt, v = Symbol.nonterminal nt ∧ NullableNonTerminal nt := by
+    (hw : NullableWord w) (hin : v ∈ w) :
+    ∃ x, v = Symbol.nonterminal x ∧ NullableNonTerminal x := by
   revert v
   induction w with
   | nil => simp
-  | cons hd tl ih =>
-    intro v hin
+  | cons d l ih =>
+    intro _ hin
     cases hin
-    · cases hd
-      · exfalso
-        exact nullable_not_terminal h
-      · rename_i nt
-        use nt
-        constructor
-        rfl
-        exact h.empty_of_append_left
+    · cases d with
+      | terminal => exact (nullable_not_terminal hw).elim
+      | nonterminal a => exact ⟨a, rfl, hw.empty_of_append_left⟩
     · apply ih
-      apply NullableWord.empty_of_append_right
-      change NullableWord ([hd] ++ tl) at h
-      exact h
+      · apply NullableWord.empty_of_append_right
+        change NullableWord ([d] ++ l) at hw
+        exact hw
       assumption
 
 
