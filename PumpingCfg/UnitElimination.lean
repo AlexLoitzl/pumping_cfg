@@ -820,7 +820,20 @@ lemma implies_eliminate_unitRules {w : List (Symbol T g.NT)} {s : List T} {n : �
 
 -- Main correctness theorem of eliminate_unitRules
 theorem eliminate_unitRules_correct:
-  g.language = (@eliminate_unitRules T g).language := by sorry
+  g.language = (@eliminate_unitRules T g).language := by
+  unfold language Generates
+  have h' : eliminate_unitRules.initial = g.initial := by unfold eliminate_unitRules; rfl
+  apply Set.eq_of_subset_of_subset
+  · intro w h
+    simp at h ⊢
+    have h' : eliminate_unitRules.initial = g.initial := by unfold eliminate_unitRules; rfl
+    rw [h']
+    obtain ⟨n, h⟩ := (derives_iff_derivesIn _ _ _).1 h
+    exact implies_eliminate_unitRules h
+  · intro w h
+    simp at h ⊢
+    rw [←h']
+    exact eliminate_unitRules_implies h
 
 end EliminateUnitRules
 
