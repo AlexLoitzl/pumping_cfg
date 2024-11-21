@@ -602,10 +602,11 @@ lemma add_unitPair_iter_only_unitPairs (pairs : Finset (g.NT × g.NT))
 --     exact nullable_in_add_nullables h hrin
 
 -- Main correctness theorem of computing all unit pairs --
-lemma compute_unitPairs_iff (p : g.NT × g.NT) :
-  p ∈ compute_unitPairs ↔ UnitPair p.1 p.2 := by
+lemma compute_unitPairs_iff {u v : g.NT} :
+  (u,v) ∈ compute_unitPairs ↔ UnitPair u v := by
   constructor
   · intro h
+    change (UnitPair (u,v).1 (u,v).2)
     apply add_unitPair_iter_only_unitPairs g.generators_prod_diag generators_prod_diag_subset
     intro p hp
     exact generators_prod_diag_unitPairs hp
@@ -773,15 +774,40 @@ lemma eliminate_unitRules_implies {v w : List (Symbol T g.NT)}
 
 lemma nonUnit_rules_correct {u v : g.NT} {w : List (Symbol T g.NT)}
   (h : {input := u, output := w} ∈ g.rules) (h2 : NonUnit w) :
-  {input := v, output := w} ∈ nonUnit_rules (v, u) := by sorry
+  {input := v, output := w} ∈ nonUnit_rules (v, u) := by
+  unfold nonUnit_rules
+  simp
+  use ContextFreeRule.mk u w
+  simp
+  constructor
+  exact h
+  unfold NonUnit at h2
+  match h' : w with
+  | [Symbol.nonterminal v] => simp at h2
+  | [Symbol.terminal _] => rfl
+  | [] => rfl
+  | _ :: _ :: _ => simp
 
 lemma remove_unitRules_correct {u v : g.NT} {w : List (Symbol T g.NT)} {pairs : Finset (g.NT × g.NT)}
-  (h : {input := u, output := w} ∈ g.rules) (h2 : NonUnit w) (h3 : (u,v) ∈ pairs):
-  {input := v, output := w} ∈ remove_unitRules pairs := by sorry
+  (h : {input := v, output := w} ∈ g.rules) (h2 : NonUnit w) (h3 : (u, v) ∈ pairs):
+  {input := u, output := w} ∈ remove_unitRules pairs := by
+  unfold remove_unitRules
+  simp
+  use nonUnit_rules (u, v)
+  constructor
+  · use u, v
+  · exact nonUnit_rules_correct h h2
 
 lemma eliminate_unitRules_produces {u v : g.NT} {w : List (Symbol T g.NT)}
-  (h1 : UnitPair v u) (h2 : g.Produces [Symbol.nonterminal u] w)
-  (h3 : NonUnit w) : (@eliminate_unitRules T g).Produces [Symbol.nonterminal v] w := by sorry
+  (h1 : UnitPair u v) (h2 : g.Produces [Symbol.nonterminal v] w)
+  (h3 : NonUnit w) : (@eliminate_unitRules T g).Produces [Symbol.nonterminal u] w := by
+  unfold eliminate_unitRules Produces
+  simp
+  constructor
+  constructor
+  exact remove_unitRules_correct h2.rule h3 ((compute_unitPairs_iff).2 h1)
+  nth_rewrite 2 [← w.append_nil]
+  constructor
 
 lemma nonUnit_rules_nonUnit {r : ContextFreeRule T g.NT} (h1 : r ∈ g.rules) (h2 : NonUnit r.output) :
   r ∈ nonUnit_rules (r.input, r.input) := by
