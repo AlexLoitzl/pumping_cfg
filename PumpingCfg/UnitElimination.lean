@@ -155,7 +155,7 @@ inductive UnitPair : g.NT → g.NT → Prop :=
 @[refl]
 lemma UnitPair.rfl {v1 : g.NT} {h : v1 ∈ generators} : UnitPair v1 v1 := UnitPair.refl v1 h
 
-lemma unitPair.derives {v1 v2 : g.NT} (h : UnitPair v1 v2) :
+lemma UnitPair.derives {v1 v2 : g.NT} (h : UnitPair v1 v2) :
   g.Derives [Symbol.nonterminal v1] [Symbol.nonterminal v2] := by
   induction h with
   | refl => rfl
@@ -194,7 +194,7 @@ lemma DerivesIn.unitPair_prefix {w : List T} {w' : List (Symbol T g.NT)} {v : g.
           cases n with
           | zero => cases w <;> cases hd
           | succ n =>
-            obtain ⟨w', hp, hd⟩ := hd.head_of_succ
+            obtain ⟨w', hp, _⟩ := hd.head_of_succ
             apply nonterminal_in_generators
             apply hp.rule
             rfl
@@ -648,125 +648,51 @@ noncomputable def eliminate_unitRules [DecidableEq g.NT] : ContextFreeGrammar T 
 -- ************************************************************************ --
 
 -- -- First we prove that the grammar cannot derive empty (Given the input non-empty)
+lemma nonUnit_rules_stuff {p : g.NT × g.NT} {r : ContextFreeRule T g.NT} (h : r ∈ nonUnit_rules p) :
+  r.input = p.1 ∧ ∃ r' ∈ g.rules, r.output = r'.output ∧ r'.input = p.2 := by
+  revert h
+  unfold nonUnit_rules
+  simp
+  intro r' hrin'
+  split ; rename_i h
+  split <;> simp ; rename_i w u heq
+  intro hr
+  rw [← hr]
+  simp
+  use r'
+  simp
 
--- lemma in_remove_nullable_rule {r r': ContextFreeRule T g.NT} {nullable : Finset g.NT}
---   (h: r' ∈ remove_nullable_rule nullable r) : r'.output ≠ [] := by
---   unfold remove_nullable_rule at h
---   rw [List.mem_filterMap] at h
---   obtain ⟨a, h1, h2⟩ := h
---   cases a <;> simp at h2
---   · rw [←h2]
---     simp
-
--- lemma in_remove_not_epsilon {r : ContextFreeRule T g.NT} {nullable : Finset g.NT}
---   (h : r ∈ remove_nullables nullable) : r.output ≠ [] := by
---   unfold remove_nullables at h
---   rw [List.mem_join] at h
---   obtain ⟨l, hlin, hrin⟩ := h
---   rw [List.mem_map] at hlin
---   obtain ⟨r',hr'in, hr'l⟩ := hlin
---   rw [←hr'l] at hrin
---   exact in_remove_nullable_rule hrin
-
--- lemma produces_not_epsilon {v w : List (Symbol T g.NT)} (h : (g.eliminate_empty).Produces v w) :
---   w ≠ [] := by
---   unfold Produces at h
---   change ∃ r ∈ (remove_nullables compute_nullables), r.Rewrites v w at h
---   obtain ⟨r, hin, hr⟩ := h
---   intro hw
---   rw [hw] at hr
---   apply in_remove_not_epsilon hin
---   exact rewrites_empty_output hr
-
--- lemma derives_not_epsilon {v w : List (Symbol T g.NT)} (h : (g.eliminate_empty).Derives v w) (he : v ≠ []) :
---   w ≠ [] := by
---   induction h using Relation.ReflTransGen.head_induction_on with
---   | refl => exact he
---   | head hd _ ih =>
---     apply ih
---     exact produces_not_epsilon hd
-
--- -- Main proof of the only if direction: If the eliminate_empty grammar derives a string,
--- -- it is derivable in the original grammar
-
--- lemma remove_nullable_related {o o': List (Symbol T g.NT)} (nullable : Finset g.NT)
---   (p : ∀ x ∈ nullable, NullableNonTerminal x) (hin : o ∈ (remove_nullable nullable o')) :
---   NullableRelated o o' := by
---   revert o
---   induction o' with
---   | nil =>
---     intro o hin
---     unfold remove_nullable at hin
---     simp at hin
---     rw [hin]
---   | cons hd tl ih =>
---     intro o hin
---     unfold remove_nullable at hin
---     cases hd with
---     | nonterminal nt =>
---       simp at hin
---       cases hin <;> rename_i h
---       · by_cases h' : nt ∈ nullable <;> simp [h'] at h
---         constructor
---         exact ih h
---         exact p _ h'
---       · obtain ⟨o1, hoin, ho⟩ := h
---         rw [←ho]
---         constructor
---         exact ih hoin
---     | terminal t =>
---       simp at hin
---       obtain ⟨o1, hoin, ho⟩ := hin
---       rw [←ho]
---       constructor
---       exact ih hoin
-
--- lemma remove_nullable_rule_related {r': ContextFreeRule T g.NT}
---   {r : ContextFreeRule T (@eliminate_empty T g).NT} {h : r ∈ remove_nullable_rule compute_nullables r'} :
---   r.input = r'.input ∧ @NullableRelated _ g r.output r'.output := by
---   unfold remove_nullable_rule at h
---   rw [List.mem_filterMap] at h
---   obtain ⟨o, ho1, ho2⟩ := h
---   cases o <;> simp at ho2
---   rw [←ho2]
---   constructor
---   rfl
---   apply remove_nullable_related
---   intro
---   apply (compute_nullables_iff _).1
---   exact ho1
-
--- lemma eliminate_empty_rules (r : ContextFreeRule T (@eliminate_empty T g).NT) {h : r ∈ (@eliminate_empty T g).rules} :
---   ∃ r' ∈ g.rules, r.input = r'.input ∧ @NullableRelated _ g r.output r'.output := by
---   unfold eliminate_empty remove_nullables at h
---   simp at h
---   obtain ⟨r', hrin', hr'⟩ := h
---   use r'
---   constructor
---   exact hrin'
---   apply remove_nullable_rule_related
---   exact hr'
-
--- lemma eliminate_empty_step_derives {v w : List (Symbol T g.NT)} (h : (@eliminate_empty T g).Produces v w) :
---   g.Derives v w := by
---   obtain ⟨r, hrin, hr⟩ := h
---   obtain ⟨p, q, rfl, rfl⟩ := hr.exists_parts
---   apply Derives.append_right
---   apply Derives.append_left
---   obtain ⟨r', hin, heq, hn⟩ := @eliminate_empty_rules _ _ _ r hrin
---   rw [heq]
---   apply Produces.trans_derives
---   exact rewrites_produces hin
---   apply hn.derives
+lemma remove_unitRules_stuff {pairs : Finset (g.NT × g.NT)} {r : ContextFreeRule T g.NT}
+  (h : r ∈ remove_unitRules pairs) :
+    ∃ p r', p ∈ pairs ∧ r' ∈ g.rules ∧ r.input = p.1 ∧ r.output = r'.output ∧ r'.input = p.2 := by
+    unfold remove_unitRules at h
+    simp at h
+    obtain ⟨_, ⟨⟨u,v, hpin, rfl⟩, hrin⟩⟩ := h
+    obtain ⟨h1, ⟨r', hrin', ho, hi⟩⟩ := nonUnit_rules_stuff hrin
+    use (u, v), r'
 
 lemma eliminate_unitRules_implies {v w : List (Symbol T g.NT)}
-  (h : (@eliminate_unitRules T g).Derives v w) : g.Derives v w := by sorry
-  -- induction h using Relation.ReflTransGen.head_induction_on with
-  -- | refl => rfl
-  -- | head hp _ ih =>
-  --   apply Derives.trans
-  --   exact eliminate_empty_step_derives hp
-  --   exact ih
+  (h : (@eliminate_unitRules T g).Derives v w) : g.Derives v w := by
+  induction h using Relation.ReflTransGen.head_induction_on with
+  | refl => rfl
+  | @head v u hp _ ih =>
+    obtain ⟨r, hrin, hr⟩ := hp
+    unfold eliminate_unitRules at hrin
+    obtain ⟨⟨p1,p2⟩, r', hpin, hrin', heq1, heq2, heq3⟩ := remove_unitRules_stuff hrin
+    simp at heq1 heq3
+    rw [r.rewrites_iff] at hr
+    obtain ⟨p, q, hv, hu⟩ := hr
+    rw [hv]
+    apply Derives.trans
+    · apply Derives.append_right
+      apply Derives.append_left
+      apply Derives.trans_produces
+      rewrite [compute_unitPairs_iff] at hpin
+      rewrite [heq1]
+      apply hpin.derives
+      rw [← heq3]
+      exact rewrites_produces hrin'
+    · rwa [← heq2, ←hu]
 
 -- ******************************************************************* --
 -- If direction of the main correctness theorem of eliminate_unitPairs --
