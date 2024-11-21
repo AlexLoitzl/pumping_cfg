@@ -491,68 +491,6 @@ lemma add_unitPair_iter_only_unitPairs (pairs : Finset (g.NT × g.NT))
 -- If direction of the main correctness theorem of compute_unitPairs --
 -- ***************************************************************** --
 
--- lemma subset_add_if_nullable_subset {r: ContextFreeRule T g.NT} {nullable nullable' : Finset g.NT}
---   (p : nullable ⊆ nullable') : add_if_nullable r nullable ⊆ add_if_nullable r nullable' := by
---   intro v hvin
---   unfold add_if_nullable rule_is_nullable at hvin ⊢
---   by_cases  h : decide (∀ s ∈ r.output, symbol_is_nullable nullable s) = true <;> simp [h] at hvin; simp at h
---   · split <;> rename_i h'; simp at h'
---     · cases hvin with
---       | inl h =>
---         rw [h]
---         exact Finset.mem_insert_self r.input nullable'
---       | inr h =>
---         exact Finset.mem_insert_of_mem (p h)
---     · cases hvin with
---       | inl h'' =>
---         unfold symbol_is_nullable at h' h
---         simp at h' h
---         obtain ⟨s, hsin, hs⟩ := h'
---         specialize h s
---         cases s <;> simp at hs h
---         · contradiction
---         · rename_i u
---           apply h at hsin
---           apply p at hsin
---           contradiction
---       | inr h =>
---         exact p h
---   · split
---     · exact Finset.mem_insert_of_mem (p hvin)
---     · exact (p hvin)
-
--- private lemma add_if_nullable_subset_rec {l : List {x // x ∈ g.rules}} {nullable : Finset g.NT} :
---   nullable ⊆ List.foldr (fun x : {x // x ∈ g.rules} ↦ add_if_nullable ↑x) nullable l := by
---   induction l with
---   | nil => rfl
---   | cons h t ih =>
---     simp
---     apply Finset.Subset.trans ih
---     apply add_if_nullable_subset
-
--- lemma nullable_in_add_nullables {r : ContextFreeRule T g.NT} {nullable : Finset g.NT}
---   (h : rule_is_nullable nullable r) (hr : r ∈ g.rules) : r.input ∈ add_nullables nullable := by
---   unfold add_nullables
---   have h := List.mem_attach g.rules ⟨r, hr⟩
---   revert r nullable
---   induction g.rules.attach with
---   | nil =>
---     intro r nullable _ hrin
---     simp
---   | cons r t ih =>
---     intro r' nullable h hr' hr''
---     cases hr'' <;> simp at ih ⊢
---     · apply Finset.mem_of_subset
---       apply subset_add_if_nullable_subset
---       apply add_if_nullable_subset_rec
---       unfold add_if_nullable
---       simp [h]
---     · rename_i hr''
---       apply Finset.mem_of_subset
---       apply add_if_nullable_subset
---       apply ih h
---       exact hr''
-
 lemma add_unitPairs_add_unitPairs_iter (pairs: Finset (g.NT × g.NT)) (p : pairs ⊆ generators ×ˢ generators) :
   add_unitPairs_iter pairs p = add_unitPairs (add_unitPairs_iter pairs p) := by
   unfold add_unitPairs_iter
@@ -564,42 +502,6 @@ lemma add_unitPairs_add_unitPairs_iter (pairs: Finset (g.NT × g.NT)) (p : pairs
   decreasing_by
     rename_i h'
     exact generators_prod_limits_unitPairs pairs p h'
-
--- lemma nullable_in_compute_nullables (nullable : Finset g.NT) (p : nullable ⊆ generators) (v : g.NT)
---   (n : ℕ) (h: g.DerivesIn [Symbol.nonterminal v] [] n) : v ∈ add_nullables_iter nullable p := by
---   cases n with
---   | zero =>
---     cases h
---   | succ n =>
---     obtain ⟨u, hwu, hue⟩ := h.head_of_succ
---     obtain ⟨r, hrin, hwu⟩ := hwu
---     have h : rule_is_nullable (add_nullables_iter nullable p) r := by
---       have h1 : u = r.output := by
---         obtain ⟨p,q,h1,h2⟩ := (r.rewrites_iff _ _).1 hwu
---         cases p <;> simp at h1
---         cases q <;> simp at h1
---         simp at h2
---         exact h2
---       unfold rule_is_nullable
---       simp
---       intro s hsin
---       rw [←h1] at hsin
---       obtain ⟨v', hv'⟩ := hue.nullable_mem_nonterminal hsin
---       unfold symbol_is_nullable
---       rw [hv']
---       simp
---       have ⟨m,_, hse⟩ := hue.mem_nullable hsin
---       apply nullable_in_compute_nullables
---       rw [←hv']
---       exact hse
---     have h1 : v = r.input := by
---       obtain ⟨p,q,h2,_⟩ := (r.rewrites_iff _ _).1 hwu
---       cases p <;> simp at h2
---       cases q <;> simp at h2
---       exact h2
---     rw [add_nullable_add_nullable_iter]
---     rw [h1]
---     exact nullable_in_add_nullables h hrin
 
 lemma add_unitPairs_iter_grows {pairs : Finset (g.NT × g.NT)} {h : pairs ⊆ g.generators ×ˢ g.generators} :
   pairs ⊆ (add_unitPairs_iter pairs h) := by
