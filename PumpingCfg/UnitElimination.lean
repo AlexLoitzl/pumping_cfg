@@ -553,17 +553,17 @@ lemma add_unitPair_iter_only_unitPairs (pairs : Finset (g.NT × g.NT))
 --       apply ih h
 --       exact hr''
 
--- lemma add_nullable_add_nullable_iter (nullable: Finset g.NT) (p : nullable ⊆ generators) :
---   add_nullables_iter nullable p = add_nullables (add_nullables_iter nullable p) := by
---   unfold add_nullables_iter
---   simp
---   split <;> rename_i h
---   · exact h
---   · apply add_nullable_add_nullable_iter
---   termination_by ((g.generators).card - nullable.card)
---   decreasing_by
---     rename_i h
---     exact generators_limits_nullable nullable p h
+lemma add_unitPairs_add_unitPairs_iter (pairs: Finset (g.NT × g.NT)) (p : pairs ⊆ generators ×ˢ generators) :
+  add_unitPairs_iter pairs p = add_unitPairs (add_unitPairs_iter pairs p) := by
+  unfold add_unitPairs_iter
+  simp
+  split <;> rename_i h
+  · exact h
+  · apply add_unitPairs_add_unitPairs_iter
+  termination_by ((g.generators ×ˢ g.generators).card - pairs.card)
+  decreasing_by
+    rename_i h'
+    exact generators_prod_limits_unitPairs pairs p h'
 
 -- lemma nullable_in_compute_nullables (nullable : Finset g.NT) (p : nullable ⊆ generators) (v : g.NT)
 --   (n : ℕ) (h: g.DerivesIn [Symbol.nonterminal v] [] n) : v ∈ add_nullables_iter nullable p := by
@@ -601,6 +601,79 @@ lemma add_unitPair_iter_only_unitPairs (pairs : Finset (g.NT × g.NT))
 --     rw [h1]
 --     exact nullable_in_add_nullables h hrin
 
+lemma add_unitPairs_iter_grows {pairs : Finset (g.NT × g.NT)} {h : pairs ⊆ g.generators ×ˢ g.generators} :
+  pairs ⊆ (add_unitPairs_iter pairs h) := by
+  unfold add_unitPairs_iter
+  intro p h'
+  simp
+  split
+  · exact h'
+  · apply add_unitPairs_iter_grows
+    apply add_unitPairs_grows
+    exact h'
+  termination_by ((g.generators ×ˢ g.generators).card - pairs.card)
+  decreasing_by
+    rename_i h'
+    exact generators_prod_limits_unitPairs pairs h h'
+
+lemma in_collect_unitPairs {pairs : List (g.NT × g.NT)} {v1 v2 v3 : g.NT} (h : (v2, v3) ∈ pairs) :
+  (v1, v3) ∈ collect_unitPairs (unitRule v1 v2) pairs := by
+  unfold collect_unitPairs
+  simp
+  induction pairs with
+  | nil => contradiction
+  | cons hd tl ih =>
+    simp at h ⊢
+    unfold collect_unitPair
+    cases h with
+    | inl h =>
+      rw [← h]
+      simp
+    | inr h =>
+      split
+      · simp
+        right
+        exact ih h
+      · exact ih h
+
+lemma in_add_unitPairs {pairs : Finset (g.NT × g.NT)} {v1 v2 v3 : g.NT} (hpin : (v2, v3) ∈ pairs)
+  (hrin : ContextFreeRule.mk v1 [Symbol.nonterminal v2] ∈ g.rules) :
+  (v1, v3) ∈ add_unitPairs pairs := by
+  unfold add_unitPairs
+  have h := List.mem_attach g.rules ⟨_, hrin⟩
+  revert h v2 pairs
+  induction g.rules.attach with
+  | nil =>
+    intro pairs v2 _ hrin h
+    contradiction
+  | cons r t ih =>
+    intro pairs v2 hpin hrin h
+    cases h <;> simp at ih ⊢
+    · left
+      rw [← Finset.mem_toList] at hpin
+      exact in_collect_unitPairs hpin
+    · rename_i h
+      right
+      apply ih hpin hrin h
+
+lemma unitPair_in_add_unitPairs_iter {pairs : Finset (g.NT × g.NT)} {u v : g.NT}
+  (h1 : pairs ⊆ g.generators ×ˢ g.generators) (h2 : generators_prod_diag ⊆ pairs) (h3 : UnitPair u v) :
+  (u, v) ∈ add_unitPairs_iter pairs h1 := by
+  induction h3 with
+  | refl v hin =>
+    apply Finset.mem_of_subset add_unitPairs_iter_grows
+    apply Finset.mem_of_subset h2
+    unfold generators at hin
+    unfold generators_prod_diag
+    rw [List.mem_toFinset, List.mem_map] at hin ⊢
+    obtain ⟨r, hrin, hr⟩ := hin
+    use r
+    rw [hr]
+    exact ⟨hrin, rfl⟩
+  | @trans v1 v2 v3 hur hp ih =>
+    rw [add_unitPairs_add_unitPairs_iter]
+    apply in_add_unitPairs ih hur
+
 -- Main correctness theorem of computing all unit pairs --
 lemma compute_unitPairs_iff {u v : g.NT} :
   (u,v) ∈ compute_unitPairs ↔ UnitPair u v := by
@@ -611,12 +684,11 @@ lemma compute_unitPairs_iff {u v : g.NT} :
     intro p hp
     exact generators_prod_diag_unitPairs hp
     exact h
-  · -- intro h
-    -- unfold NullableNonTerminal at h
-    -- obtain ⟨m, h⟩ := (derives_iff_derivesIn _ _ _).1 h
-    -- apply nullable_in_compute_nullables
-    -- exact h
-    sorry
+  · intro h
+    unfold compute_unitPairs
+    apply unitPair_in_add_unitPairs_iter
+    rfl
+    exact h
 
 end ComputeUnitPairs
 
