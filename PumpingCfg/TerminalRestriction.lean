@@ -32,8 +32,17 @@ lemma derives_exists_rule {s : Symbol T g.NT} {u v : List (Symbol T g.NT)} (h : 
   (hin : s ∈ v) :
   ∃ r ∈ g.rules, s ∈ r.output := by
   induction h using Derives.head_induction_on with
-  | refl => sorry
-  | step => sorry
+  | refl => contradiction
+  | @step u w hp _ ih =>
+    obtain ⟨r, hrin, hr⟩ := hp
+    obtain ⟨p,q,hp,hq⟩ := hr.exists_parts
+    by_cases h : s ∈ r.output
+    · use r
+    · apply ih
+      rw [hq]
+      rw [hp] at hnin
+      simp at hnin ⊢
+      exact ⟨hnin.1, h, hnin.2.2⟩
 
 end Stuff
 
@@ -111,6 +120,10 @@ lemma left_lift_terminals_eq {w : List T} :
   induction w with
   | nil => rfl
   | cons t w ih => sorry
+
+lemma lift_nonterminal_eq {nt : NT} :
+  lift_symbol (Symbol.nonterminal nt) = (@Symbol.nonterminal T (NT ⊕ T)) (Sum.inl nt) := by
+  sorry
 
 lemma unlift_lift_eq {w : List (Symbol T NT)} : unlift_string (lift_string w) = w := by
   induction w with
@@ -315,7 +328,25 @@ lemma restrict_terminals_lift_derives {v : List T} (h : ∀ t ∈ v, ∃ r ∈ g
 
 lemma implies_restrict_terminals' {u v : List (Symbol T g.NT)} (h : g.Derives u v) :
   (restrict_terminals g).Derives (lift_string u) (lift_string v) := by
-  sorry
+  induction h using Derives.head_induction_on with
+  | refl => rfl
+  | step hp _ ih =>
+    obtain ⟨r, hrin, hr⟩ := hp
+    apply Produces.trans_derives _ ih
+    · use ContextFreeRule.mk (Sum.inl r.input) (lift_string r.output)
+      constructor
+      · unfold restrict_terminals restrict_terminal_rules
+        simp
+        unfold restrict_terminal_rule
+        use r
+        simp
+        exact hrin
+      · obtain ⟨p,q, hu, hw⟩ := hr.exists_parts
+        rw [hu, hw]
+        unfold lift_string
+        simp
+        rw [lift_nonterminal_eq, ← List.singleton_append, ← List.append_assoc, ← List.append_assoc]
+        apply ContextFreeRule.rewrites_of_exists_parts
 
 theorem restrict_terminals_correct:
   g.language = (restrict_terminals g).language := by
