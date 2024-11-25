@@ -67,6 +67,8 @@ lemma Derives.append_left_trans {v w x y: List (Symbol T g.NT)}
     exact Derives.append_left hvw _
     exact Derives.append_right hxy _
 
+#check Derives.append_left_trans
+
 lemma rewrites_produces {r : ContextFreeRule T g.NT} (h : r ∈ g.rules) :
   g.Produces [Symbol.nonterminal r.input] r.output := by
   use r

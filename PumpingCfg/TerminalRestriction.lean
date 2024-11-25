@@ -6,6 +6,7 @@ Authors: Alexander Loitzl
 
 import Mathlib.Computability.ContextFreeGrammar
 import PumpingCfg.CountingSteps
+import PumpingCfg.EpsilonElimination
 
 namespace ContextFreeGrammar
 
@@ -26,6 +27,13 @@ lemma rewrites_rule {r : ContextFreeRule T g.NT} : r.Rewrites [Symbol.nontermina
   rw [← r.output.append_nil, ← r.output.nil_append]
   rw [← [Symbol.nonterminal r.input].append_nil, ← [Symbol.nonterminal r.input].nil_append]
   exact r.rewrites_of_exists_parts [] []
+
+lemma derives_exists_rule {s : Symbol T g.NT} {u v : List (Symbol T g.NT)} (h : g.Derives u v) (hnin : s ∉ u)
+  (hin : s ∈ v) :
+  ∃ r ∈ g.rules, s ∈ r.output := by
+  induction h using Derives.head_induction_on with
+  | refl => sorry
+  | step => sorry
 
 end Stuff
 
@@ -49,6 +57,13 @@ def lift_symbol (s : Symbol T NT) : Symbol T (NT ⊕ T) :=
   | Symbol.nonterminal n => Symbol.nonterminal (Sum.inl n)
 
 def lift_string (w : List (Symbol T NT)) : List (Symbol T (NT ⊕ T)) := w.map lift_symbol
+
+def left_lift_symbol (s : Symbol T NT) : Symbol T (NT ⊕ T) :=
+  match s with
+  | Symbol.terminal t => Symbol.terminal t
+  | Symbol.nonterminal n => Symbol.nonterminal (Sum.inl n)
+
+def left_lift_string (w : List (Symbol T NT)) : List (Symbol T (NT ⊕ T)) := w.map left_lift_symbol
 
 def unlift_symbol (s : Symbol T (NT ⊕ T)) : Symbol T NT :=
   match s with
@@ -91,18 +106,11 @@ lemma nonterminal_terminal_related_eq {v : NT} {u : List (Symbol T (NT ⊕ T))}
     cases h1
     rfl
 
-lemma lift_terminals {w : List T} :
-  lift_string (List.map (@Symbol.terminal T NT) w) = List.map Symbol.terminal w := by
+lemma left_lift_terminals_eq {w : List T} :
+  left_lift_string (List.map (@Symbol.terminal T NT) w) = List.map Symbol.terminal w := by
   induction w with
   | nil => rfl
-  | cons t w ih =>
-    unfold lift_string
-    simp
-    constructor
-    · unfold lift_symbol
-      simp
-      sorry
-    · sorry
+  | cons t w ih => sorry
 
 lemma unlift_lift_eq {w : List (Symbol T NT)} : unlift_string (lift_string w) = w := by
   induction w with
@@ -269,41 +277,63 @@ lemma restrict_terminals_implies {u' v' : List (Symbol T (g.NT ⊕ T))} (h : (re
 -- If direction of the main correctness theorem of restrict_terminals --
 -- ****************************************************************** --
 
-
 lemma implies_restrict_terminals {u v : List (Symbol T g.NT)} (h : g.Derives u v) :
   ∃ u' v' : List (Symbol T (g.NT ⊕ T)), TerminalRelated u u' ∧ TerminalRelated v v' ∧
     (restrict_terminals g).Derives u' v' := by sorry
 
-lemma implies_restrict_terminals' {u v : List (Symbol T g.NT)} (h : g.Derives u v) :
-  (restrict_terminals g).Derives (lift_string u) (lift_string v) := by sorry
+lemma produces_terminal {r : ContextFreeRule T g.NT} {t : T} (hrin : r ∈ g.rules) (h : Symbol.terminal t ∈ r.output) :
+  g.restrict_terminals.Produces [Symbol.nonterminal (Sum.inr t)] [Symbol.terminal t] := by
+  use ContextFreeRule.mk (Sum.inr t) [Symbol.terminal t]
+  constructor
+  · unfold restrict_terminals restrict_terminal_rules restrict_terminal_rule new_terminal_rules
+    simp
+    use r
+    constructor
+    exact hrin
+    use (Symbol.terminal t)
+  · exact rewrites_rule
 
-theorem eliminate_empty_correct' :
-  g.language = (restrict_terminals g).language := by
-  unfold language
-  apply Set.eq_of_subset_of_subset
-  · intro w h
-    simp at h ⊢
-    unfold Generates at h ⊢
-    apply implies_restrict_terminals' at h
-    rw [lift_terminals] at h
-    unfold lift_string lift_symbol at h
+lemma restrict_terminals_lift_derives {v : List T} (h : ∀ t ∈ v, ∃ r ∈ g.rules, (Symbol.terminal t) ∈ r.output) :
+  (restrict_terminals g).Derives (lift_string (List.map Symbol.terminal v)) (List.map Symbol.terminal v) := by
+  induction v with
+  | nil =>
+    unfold lift_string
+    rfl
+  | cons hd tl ih =>
     simp at h
+    unfold lift_string at ih ⊢
+    simp at ih ⊢
+    rw [← List.singleton_append]
+    nth_rewrite 2 [← List.singleton_append]
+    apply Derives.append_left_trans
+    · exact ih h.2
+    · unfold lift_symbol
+      simp
+      apply Produces.single
+      obtain ⟨r, hrin, hr⟩ := h.1
+      exact produces_terminal hrin hr
 
-    exact h
-  · sorry
+lemma implies_restrict_terminals' {u v : List (Symbol T g.NT)} (h : g.Derives u v) :
+  (restrict_terminals g).Derives (lift_string u) (lift_string v) := by
+  sorry
 
-theorem eliminate_empty_correct :
+theorem restrict_terminals_correct:
   g.language = (restrict_terminals g).language := by
   unfold language
   apply Set.eq_of_subset_of_subset
   · intro w h
     simp at h ⊢
     unfold Generates at h ⊢
-    obtain ⟨u', v', h1, h2, h3⟩ := implies_restrict_terminals h
-    rw [nonterminal_terminal_related_eq h1] at h3
-    apply Derives.trans h3
-
-    sorry
+    have h' : [Symbol.nonterminal g.restrict_terminals.initial] = lift_string [Symbol.nonterminal g.initial] := by
+      unfold restrict_terminals lift_string lift_symbol
+      rfl
+    rw [h']
+    apply Derives.trans
+    exact implies_restrict_terminals' h
+    apply restrict_terminals_lift_derives
+    intro t ht
+    apply derives_exists_rule h <;> simp
+    exact ht
   · intro w h
     simp at h ⊢
     unfold Generates at h ⊢
@@ -313,6 +343,28 @@ theorem eliminate_empty_correct :
     simp at h
     rw [unlift_symbol_nonterminal] at h
     exact h
+
+-- theorem eliminate_empty_correct :
+--   g.language = (restrict_terminals g).language := by
+--   unfold language
+--   apply Set.eq_of_subset_of_subset
+--   · intro w h
+--     simp at h ⊢
+--     unfold Generates at h ⊢
+--     obtain ⟨u', v', h1, h2, h3⟩ := implies_restrict_terminals h
+--     rw [nonterminal_terminal_related_eq h1] at h3
+--     apply Derives.trans h3
+
+--     sorry
+--   · intro w h
+--     simp at h ⊢
+--     unfold Generates at h ⊢
+--     apply restrict_terminals_implies' at h
+--     rw [unlift_string_terminals] at h
+--     unfold restrict_terminals unlift_string at h
+--     simp at h
+--     rw [unlift_symbol_nonterminal] at h
+--     exact h
 
 end CorrectnessProof
 
