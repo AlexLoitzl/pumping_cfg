@@ -46,19 +46,10 @@ lemma derives_exists_rule {s : Symbol T g.NT} {u v : List (Symbol T g.NT)} (h : 
 
 end Stuff
 
-
-
-section TerminalRelated
+-- TODO Name this embedd and project
+section Lifts
 
 variable {NT : Type}
-
-inductive SymbolsRelated : (s : Symbol T NT) → (s' : Symbol T (NT ⊕ T)) → Prop :=
-  | term {t : T} : SymbolsRelated (Symbol.terminal t) (Symbol.terminal t)
-  | nterm_left {nt : NT} : SymbolsRelated (Symbol.nonterminal nt) (Symbol.nonterminal (Sum.inl nt))
-  | nterm_right {t : T} : SymbolsRelated (Symbol.terminal t) (Symbol.nonterminal (Sum.inr t))
-
-abbrev TerminalRelated : List (Symbol T NT) → List (Symbol T (NT ⊕ T)) → Prop :=
-  List.Forall₂ SymbolsRelated
 
 def lift_symbol (s : Symbol T NT) : Symbol T (NT ⊕ T) :=
   match s with
@@ -66,13 +57,6 @@ def lift_symbol (s : Symbol T NT) : Symbol T (NT ⊕ T) :=
   | Symbol.nonterminal n => Symbol.nonterminal (Sum.inl n)
 
 def lift_string (w : List (Symbol T NT)) : List (Symbol T (NT ⊕ T)) := w.map lift_symbol
-
-def left_lift_symbol (s : Symbol T NT) : Symbol T (NT ⊕ T) :=
-  match s with
-  | Symbol.terminal t => Symbol.terminal t
-  | Symbol.nonterminal n => Symbol.nonterminal (Sum.inl n)
-
-def left_lift_string (w : List (Symbol T NT)) : List (Symbol T (NT ⊕ T)) := w.map left_lift_symbol
 
 def unlift_symbol (s : Symbol T (NT ⊕ T)) : Symbol T NT :=
   match s with
@@ -82,48 +66,10 @@ def unlift_symbol (s : Symbol T (NT ⊕ T)) : Symbol T NT :=
 
 def unlift_string (w : List (Symbol T (NT ⊕ T))) : List (Symbol T NT) := w.map unlift_symbol
 
-lemma unlift_symbol_SymbolsRelated {s' : Symbol T (NT ⊕ T)} : SymbolsRelated (unlift_symbol s') s' := by
-  unfold unlift_symbol
-  split <;> constructor
-
-lemma unlift_string_terminalRelated {w' : List (Symbol T (NT ⊕ T))} : TerminalRelated (unlift_string w') w' := by
-  induction w' with
-  | nil => constructor
-  | cons s' w' ih =>
-    constructor
-    exact unlift_symbol_SymbolsRelated
-    exact ih
-
--- lemma word_terminal_related_eq {w1 w2 : List T}
---   (h : @TerminalRelated T NT (List.map Symbol.terminal w1) (List.map Symbol.terminal w2)) : w1 = w2 := by
---   match w1, w2 with
---   | [], []  => rfl
---   | s1 :: w1, s2 :: w2 =>
---     simp at h ⊢
---     constructor
---     · cases h.1
---       rfl
---     · apply word_terminal_related_eq
---       simp
---       exact h.2
-
-lemma nonterminal_terminal_related_eq {v : NT} {u : List (Symbol T (NT ⊕ T))}
-  (h : TerminalRelated [Symbol.nonterminal v] u) : u = [Symbol.nonterminal (Sum.inl v)] := by
-  cases h with
-  | cons h1 h2 =>
-    cases h2
-    cases h1
-    rfl
-
-lemma left_lift_terminals_eq {w : List T} :
-  left_lift_string (List.map (@Symbol.terminal T NT) w) = List.map Symbol.terminal w := by
-  induction w with
-  | nil => rfl
-  | cons t w ih => sorry
-
 lemma lift_nonterminal_eq {nt : NT} :
   lift_symbol (Symbol.nonterminal nt) = (@Symbol.nonterminal T (NT ⊕ T)) (Sum.inl nt) := by
-  sorry
+  unfold lift_symbol
+  rfl
 
 lemma unlift_lift_eq {w : List (Symbol T NT)} : unlift_string (lift_string w) = w := by
   induction w with
@@ -154,7 +100,7 @@ lemma unlift_symbol_nonterminal {nt : NT} :
   unfold unlift_symbol
   rfl
 
-end TerminalRelated
+end Lifts
 
 -- *********************************************************************************************** --
 -- ********************************** Terminal Rule Restriction ********************************** --
@@ -270,29 +216,16 @@ lemma restrict_terminals_produces_derives {u' v' : List (Symbol T (g.NT ⊕ T))}
     simp
     rfl
 
-lemma restrict_terminals_implies' {u' v' : List (Symbol T (g.NT ⊕ T))}
+lemma restrict_terminals_implies {u' v' : List (Symbol T (g.NT ⊕ T))}
   (h : (restrict_terminals g).Derives u' v') : g.Derives (unlift_string u') (unlift_string v') := by
   induction h using Derives.head_induction_on with
   | refl => rfl
   | step hp _ ih =>
     exact Derives.trans (restrict_terminals_produces_derives hp) ih
 
-lemma restrict_terminals_implies {u' v' : List (Symbol T (g.NT ⊕ T))} (h : (restrict_terminals g).Derives u' v') :
-  ∃ u v, TerminalRelated u u' ∧ TerminalRelated v v' ∧ g.Derives u v := by
-  induction h using Derives.head_induction_on with
-  | refl =>
-    use (unlift_string v'), (unlift_string v')
-    repeat first | constructor | rfl | apply unlift_string_terminalRelated
-  | @step u' w' hp hd ih =>
-    sorry
-
 -- ****************************************************************** --
 -- If direction of the main correctness theorem of restrict_terminals --
 -- ****************************************************************** --
-
-lemma implies_restrict_terminals {u v : List (Symbol T g.NT)} (h : g.Derives u v) :
-  ∃ u' v' : List (Symbol T (g.NT ⊕ T)), TerminalRelated u u' ∧ TerminalRelated v v' ∧
-    (restrict_terminals g).Derives u' v' := by sorry
 
 lemma produces_terminal {r : ContextFreeRule T g.NT} {t : T} (hrin : r ∈ g.rules) (h : Symbol.terminal t ∈ r.output) :
   g.restrict_terminals.Produces [Symbol.nonterminal (Sum.inr t)] [Symbol.terminal t] := by
@@ -326,7 +259,7 @@ lemma restrict_terminals_lift_derives {v : List T} (h : ∀ t ∈ v, ∃ r ∈ g
       obtain ⟨r, hrin, hr⟩ := h.1
       exact produces_terminal hrin hr
 
-lemma implies_restrict_terminals' {u v : List (Symbol T g.NT)} (h : g.Derives u v) :
+lemma implies_restrict_terminals {u v : List (Symbol T g.NT)} (h : g.Derives u v) :
   (restrict_terminals g).Derives (lift_string u) (lift_string v) := by
   induction h using Derives.head_induction_on with
   | refl => rfl
@@ -360,7 +293,7 @@ theorem restrict_terminals_correct:
       rfl
     rw [h']
     apply Derives.trans
-    exact implies_restrict_terminals' h
+    exact implies_restrict_terminals h
     apply restrict_terminals_lift_derives
     intro t ht
     apply derives_exists_rule h <;> simp
@@ -368,34 +301,12 @@ theorem restrict_terminals_correct:
   · intro w h
     simp at h ⊢
     unfold Generates at h ⊢
-    apply restrict_terminals_implies' at h
+    apply restrict_terminals_implies at h
     rw [unlift_string_terminals] at h
     unfold restrict_terminals unlift_string at h
     simp at h
     rw [unlift_symbol_nonterminal] at h
     exact h
-
--- theorem eliminate_empty_correct :
---   g.language = (restrict_terminals g).language := by
---   unfold language
---   apply Set.eq_of_subset_of_subset
---   · intro w h
---     simp at h ⊢
---     unfold Generates at h ⊢
---     obtain ⟨u', v', h1, h2, h3⟩ := implies_restrict_terminals h
---     rw [nonterminal_terminal_related_eq h1] at h3
---     apply Derives.trans h3
-
---     sorry
---   · intro w h
---     simp at h ⊢
---     unfold Generates at h ⊢
---     apply restrict_terminals_implies' at h
---     rw [unlift_string_terminals] at h
---     unfold restrict_terminals unlift_string at h
---     simp at h
---     rw [unlift_symbol_nonterminal] at h
---     exact h
 
 end CorrectnessProof
 
