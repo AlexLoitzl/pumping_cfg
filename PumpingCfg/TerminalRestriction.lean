@@ -21,7 +21,15 @@ theorem Derives.head_induction_on {v : List (Symbol T g.NT)} {P : ∀ u, g.Deriv
   (refl : P v (Derives.refl v))
   (step : ∀ {u w} (h' : g.Produces u w) (h : g.Derives w v), P w h → P u (h.head h')) : P u h :=
   Relation.ReflTransGen.head_induction_on h refl step
+
+lemma rewrites_rule {r : ContextFreeRule T g.NT} : r.Rewrites [Symbol.nonterminal r.input] r.output := by
+  rw [← r.output.append_nil, ← r.output.nil_append]
+  rw [← [Symbol.nonterminal r.input].append_nil, ← [Symbol.nonterminal r.input].nil_append]
+  exact r.rewrites_of_exists_parts [] []
+
 end Stuff
+
+
 
 section TerminalRelated
 
@@ -129,8 +137,47 @@ section CorrectnessProof
 
 variable {g : ContextFreeGrammar.{0,0} T}
 
-lemma restrict_terminals_implies' {u' v' : List (Symbol T (g.NT ⊕ T))} (h : (restrict_terminals g).Derives u' v') :
-  g.Derives (unlift_string u') (unlift_string v') := by sorry
+lemma restrict_terminals_rule_right {t : T} {r' : ContextFreeRule T (g.NT ⊕ T)}
+  (h : r' ∈ restrict_terminal_rules g.rules) (h' : r'.input = Sum.inr t) : r'.output = [Symbol.terminal t] := by sorry
+
+lemma restrict_terminals_rule_left {nt : g.NT} {r' : ContextFreeRule T (g.NT ⊕ T)}
+  (h : r' ∈ restrict_terminal_rules g.rules) (h' : r'.input = Sum.inl nt) :
+  ∃ r ∈ g.rules, r.input = nt ∧ r.output = unlift_string r'.output := by sorry
+
+lemma restrict_terminals_produces_derives {u' v' : List (Symbol T (g.NT ⊕ T))}
+  (h : (restrict_terminals g).Produces u' v') : g.Derives (unlift_string u') (unlift_string v') := by
+  obtain ⟨r', hrin', hr'⟩ := h
+  obtain ⟨p, q, hu', hv'⟩ := hr'.exists_parts
+  cases h : r'.input with
+  | inl nt =>
+    obtain ⟨r, hrin, hri, hro⟩ := restrict_terminals_rule_left hrin' h
+    rw [hu', hv', h]
+    unfold unlift_string at hro ⊢
+    repeat rw [List.map_append]
+    apply Produces.single
+    apply Produces.append_right
+    apply Produces.append_left
+    use r
+    constructor
+    · exact hrin
+    · rw [← hro]
+      unfold unlift_symbol
+      simp
+      rw [←hri]
+      exact rewrites_rule
+  | inr t =>
+    rw [hu', hv', h]
+    rw [restrict_terminals_rule_right hrin' h]
+    unfold unlift_string unlift_symbol
+    simp
+    rfl
+
+lemma restrict_terminals_implies' {u' v' : List (Symbol T (g.NT ⊕ T))}
+  (h : (restrict_terminals g).Derives u' v') : g.Derives (unlift_string u') (unlift_string v') := by
+  induction h using Derives.head_induction_on with
+  | refl => rfl
+  | step hp _ ih =>
+    exact Derives.trans (restrict_terminals_produces_derives hp) ih
 
 lemma restrict_terminals_implies {u' v' : List (Symbol T (g.NT ⊕ T))} (h : (restrict_terminals g).Derives u' v') :
   ∃ u v, TerminalRelated u u' ∧ TerminalRelated v v' ∧ g.Derives u v := by
@@ -145,7 +192,6 @@ lemma restrict_terminals_implies {u' v' : List (Symbol T (g.NT ⊕ T))} (h : (re
 -- If direction of the main correctness theorem of restrict_terminals --
 -- ****************************************************************** --
 
-lemma restrict_terminals_derivs_lift : (restrict_terminals g).Derives ()
 
 lemma implies_restrict_terminals {u v : List (Symbol T g.NT)} (h : g.Derives u v) :
   ∃ u' v' : List (Symbol T (g.NT ⊕ T)), TerminalRelated u u' ∧ TerminalRelated v v' ∧
