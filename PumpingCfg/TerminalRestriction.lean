@@ -5,7 +5,6 @@ Authors: Alexander Loitzl
 -/
 
 import Mathlib.Computability.ContextFreeGrammar
-import PumpingCfg.CountingSteps
 import PumpingCfg.EpsilonElimination
 
 namespace ContextFreeGrammar
