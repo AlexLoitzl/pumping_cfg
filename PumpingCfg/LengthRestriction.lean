@@ -7,14 +7,21 @@ Authors: Alexander Loitzl
 import Mathlib.Computability.ContextFreeGrammar
 import PumpingCfg.ChomskyNormalForm
 
-namespace ContextFreeGrammar
-
 variable {T : Type}
 
+namespace ContextFreeRule
+def well_formed {g : ContextFreeGrammar T} (r : ContextFreeRule T g.NT) : Prop :=
+  match r.output with
+  | [Symbol.terminal _] => True
+  | [Symbol.nonterminal _] => False -- Unit Elimination
+  | [] => False -- Epsilon Elimination
+  | _ => ∀ s ∈ r.output, match s with | Symbol.nonterminal _ => True | _ => False
+end ContextFreeRule
+
+namespace ContextFreeGrammar
 -- **************************************************************************************** --
 -- ********************************** Length Restriction ********************************** --
 -- **************************************************************************************** --
-
 section RestrictLength
 
 variable {g : ContextFreeGrammar T}
@@ -48,6 +55,30 @@ end RestrictLength
 def restrict_length (g : ContextFreeGrammar.{0,0} T) : (CNF T) :=
   CNF.mk g.NT' (Sum.inl g.initial) (restrict_length_rules g.rules)
 
+def well_formed (g : ContextFreeGrammar T) : Prop :=
+  ∀ r ∈ g.rules, r.well_formed
+
+section Lifts
+
+variable {g : ContextFreeGrammar T}
+
+def lift_symbol (s : Symbol T g.NT) : Symbol T g.NT' :=
+  match s with
+  | Symbol.terminal t => Symbol.terminal t
+  | Symbol.nonterminal nt => Symbol.nonterminal (Sum.inl nt)
+
+def lift_string (w : List (Symbol T g.NT)) : List (Symbol T g.NT') := w.map lift_symbol
+
+def unlift_symbol (s : Symbol T g.NT') : List (Symbol T g.NT) :=
+  match s with
+  | Symbol.terminal t => [Symbol.terminal t]
+  | Symbol.nonterminal (Sum.inl nt) => [Symbol.nonterminal nt]
+  | Symbol.nonterminal (Sum.inr ⟨r, ⟨i, _⟩⟩) => List.drop (r.output.length - 2 - i) r.output
+
+def unlift_string (w : List (Symbol T g.NT')) : List (Symbol T g.NT) := (w.map unlift_symbol).join
+
+end Lifts
+
 -- ******************************************************************** --
 -- Only If direction of the main correctness theorem of restrict_length --
 -- ******************************************************************** --
@@ -64,7 +95,7 @@ lemma restrict_terminals_implies {u' v' : List (Symbol T g.NT')}
 -- *************************************************************** --
 
 lemma implies_restrict_terminals {u v : List (Symbol T g.NT)} (h : g.Derives u v) :
-  ∃ u' v', (restrict_length g).Derives u' v' := by sorry
+  (restrict_length g).Derives (lift_string u) (lift_string v) := by sorry
 
 theorem restrict_terminals_correct:
   g.language = (restrict_length g).language := by sorry
