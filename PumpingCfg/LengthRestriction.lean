@@ -96,6 +96,24 @@ lemma unlift_lift_eq {w : List (Symbol T g.NT)} : unlift_string (lift_string w) 
     unfold unlift_symbol lift_symbol
     cases hd <;> rfl
 
+lemma unlift_string_nonterminal {nt : g.NT} :
+  unlift_string [Symbol.nonterminal (Sum.inl nt)] = [Symbol.nonterminal nt] := by
+  unfold unlift_string unlift_symbol
+  simp
+
+lemma unlift_symbol_terminal {t : T} :
+  unlift_symbol (@Symbol.terminal T g.NT' t) = [Symbol.terminal t] := by
+  unfold unlift_symbol
+  simp
+
+lemma unlift_string_terminals {w : List T} :
+  unlift_string (List.map (@Symbol.terminal T g.NT') w) = List.map Symbol.terminal w := by
+  induction w with
+  | nil => rfl
+  | cons hd tl ih =>
+    rw [←List.singleton_append, List.map_append, List.map_append, unlift_string_append]
+    congr
+
 end Lifts
 
 -- ******************************************************************** --
@@ -261,7 +279,6 @@ lemma restrict_length_produces_implies {u' v' : List (Symbol T g.NT')}
   unfold restrict_length_rules at hrin'
   simp at hrin'
   obtain ⟨r, hrin, hrin'⟩ := hrin'
-
   cases h : r'.input with
   | inl nt =>
     obtain ⟨heqo, heqi⟩ := compute_rules_inl hrin' h
@@ -276,38 +293,11 @@ lemma restrict_length_produces_implies {u' v' : List (Symbol T g.NT')}
     apply compute_rules_inr_length hrin' h
     exact Nat.lt_add_one 2
 
-  -- unfold compute_rules at hrin'
-  -- revert hrin'
-  -- split <;> intro hrin'
-  -- · rename_i nt1 nt2 heq
-  --   simp at hrin'
-  --   rw [hrin']
-  --   unfold unlift_string unlift_symbol
-  --   simp
-  --   rw [←heq]
-  --   exact Produces.single (rewrites_produces hrin)
-  -- · rename_i t heq
-  --   simp at hrin'
-  --   rw [hrin']
-  --   unfold unlift_string unlift_symbol
-  --   simp
-  --   rw[← heq]
-  --   exact Produces.single (rewrites_produces hrin)
-  -- · rename_i nt x1 x2 xs heq
-  --   cases r'.input with
-  --   | inl nt =>
-
-  --     sorry
-  --   | inr => sorry
-  -- · contradiction
-
 lemma restrict_length_implies {u' v' : List (Symbol T g.NT')}
   (h : (restrict_length g).Derives u' v') : g.Derives (unlift_string u') (unlift_string v') := by
   induction h using Relation.ReflTransGen.head_induction_on with
   | refl => rfl
-  | @head u' w' hp hd ih =>
-
-    sorry
+  | @head u' w' hp _ ih => exact Derives.trans (restrict_length_produces_implies hp) ih
 
 -- *************************************************************** --
 -- If direction of the main correctness theorem of restrict_length --
@@ -317,7 +307,22 @@ lemma implies_restrict_length {u v : List (Symbol T g.NT)} (h : g.Derives u v) :
   (restrict_length g).Derives (lift_string u) (lift_string v) := by sorry
 
 theorem restrict_length_correct:
-  g.language = (restrict_length g).language := by sorry
+  g.language = (restrict_length g).language := by
+  unfold language CNF.language
+  apply Set.eq_of_subset_of_subset
+  · intro w h
+    unfold Generates at h
+    unfold CNF.Generates
+    sorry
+  · intro w h
+    unfold Generates
+    unfold CNF.Generates at h
+    simp at h ⊢
+    apply restrict_length_implies at h
+    unfold restrict_length at h
+    simp at h
+    rw [unlift_string_nonterminal, unlift_string_terminals] at h
+    exact h
 
 end CorrectnessProof
 
