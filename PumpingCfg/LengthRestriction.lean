@@ -133,13 +133,17 @@ lemma compute_rules_rec_unlift {r : ContextFreeRule T g.NT} {i : Fin (r.output.l
       unfold unlift_string unlift_symbol
       simp
       rw [List.drop_eq_getElem_cons, List.drop_eq_getElem_cons]
-      simp
-      constructor
-      exact heq1.symm
-      constructor
-      rw [←heq2]
-      congr
+      swap
       omega
+      swap
+      omega
+      congr
+      · rw [← heq1]
+      · rw [← heq2]
+        congr
+        omega
+      · simp
+        omega
   | succ n ih =>
     unfold compute_rules_rec at h
     simp at h
