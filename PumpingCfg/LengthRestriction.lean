@@ -114,10 +114,48 @@ variable {g : ContextFreeGrammar.{0,0} T}
 -- lemma compute_rules_stuff {r : ContextFreeRule T g.NT} {initial : g.NT'} {rules}
 --   (h: compute_rules r ⊆ rules) : (CNF.mk g.NT' initial rules).Derives [Symbol.nonterminal (Sum.inl r.input)]
 --     (lift_string r.output) := by sorry
+-- set_option trace.Elab.definition true
+-- set_option pp.explicit true
 
--- lemma compute_rules_rec_suffix {r : ContextFreeRule T g.NT} {i : Fin (r.output.length - 2)}
---   {r' : CNFRule T g.NT'} (h: r' ∈ compute_rules_rec r i) :
---   unlift_string r'.output = (List.drop (r.output.length - 2 - i) r.output) := by sorry
+lemma compute_rules_rec_unlift {r : ContextFreeRule T g.NT} {i : Fin (r.output.length - 2)}
+  {r' : CNFRule T g.NT'} (h : r' ∈ compute_rules_rec r i) :
+  unlift_string r'.output = unlift_string [Symbol.nonterminal r'.input] := by
+  obtain ⟨val, p⟩ := i
+  induction val with
+  | zero =>
+    unfold compute_rules_rec at h
+    simp at h
+    revert h
+    split <;> intro h <;> simp at h
+    · rename_i nt1 nt2 heq1 heq2
+      rw [h]
+      simp
+      unfold unlift_string unlift_symbol
+      simp
+      rw [List.drop_eq_getElem_cons, List.drop_eq_getElem_cons]
+      simp
+      constructor
+      exact heq1.symm
+      constructor
+      rw [←heq2]
+      congr
+      omega
+  | succ n ih =>
+    unfold compute_rules_rec at h
+    simp at h
+    revert h
+    split <;> intro h <;> simp at h
+    cases h <;> rename_i heq h
+    · rw [h]
+      simp
+      unfold unlift_string unlift_symbol
+      simp
+      nth_rewrite 2 [List.drop_eq_getElem_cons]
+      congr
+      exact heq.symm
+      omega
+    · apply ih
+      exact h
 
 lemma compute_rules_rec_inl {nt : g.NT} {r : ContextFreeRule T g.NT} {r' : CNFRule T g.NT'}
   {i : Fin (r.output.length - 2)} (h' : r'.input = Sum.inl nt) : r' ∉ compute_rules_rec r i := by
@@ -141,6 +179,32 @@ lemma compute_rules_rec_inl {nt : g.NT} {r : ContextFreeRule T g.NT} {r' : CNFRu
         simp at h'
       · apply ih
     · exact List.not_mem_nil r'
+
+lemma compute_rules_inr_length {nt : Σ r : ContextFreeRule T g.NT, Fin (r.output.length - 2)}
+  {r : ContextFreeRule T g.NT} {r' : CNFRule T g.NT'} (h : r' ∈ compute_rules r) (h' : r'.input = Sum.inr nt) :
+  3 ≤ r.output.length := by
+  unfold compute_rules at h
+  revert h
+  split <;> intro h <;> simp at h
+  · rw [h] at h'; simp at h'
+  · rw [h] at h'; simp at h'
+  · cases h <;> rename_i heq h
+    · rw [h] at h'; simp at h'
+    · rw [heq]
+      simp
+
+lemma compute_rules_inr_in_rec {nt : Σ r : ContextFreeRule T g.NT, Fin (r.output.length - 2)}
+  {r : ContextFreeRule T g.NT} {r' : CNFRule T g.NT'} {p : r.output.length - 3 < r.output.length - 2}
+  (h : r' ∈ compute_rules r) (h' : r'.input = Sum.inr nt) :
+  r' ∈ compute_rules_rec r ⟨r.output.length - 3, p⟩ := by
+  unfold compute_rules at h
+  revert h
+  split <;> intro h <;> simp at h
+  · rw [h] at h'; simp at h'
+  · rw [h] at h'; simp at h'
+  · cases h <;> rename_i h
+    · rw [h] at h'; simp at h'
+    · exact h
 
 lemma compute_rules_inl {nt : g.NT} {r : ContextFreeRule T g.NT} {r' : CNFRule T g.NT'}
   (h : r' ∈ compute_rules r) (h' : r'.input = Sum.inl nt) : unlift_string r'.output = r.output ∧ nt = r.input := by
@@ -201,32 +265,37 @@ lemma restrict_length_produces_implies {u' v' : List (Symbol T g.NT')}
     unfold unlift_string unlift_symbol
     simp
     exact Produces.single (rewrites_produces hrin)
-  | inr => sorry
+  | inr =>
+    rw [compute_rules_rec_unlift, h]
+    apply compute_rules_inr_in_rec hrin' h
+    apply Nat.sub_lt_sub_left
+    apply compute_rules_inr_length hrin' h
+    exact Nat.lt_add_one 2
 
-  unfold compute_rules at hrin'
-  revert hrin'
-  split <;> intro hrin'
-  · rename_i nt1 nt2 heq
-    simp at hrin'
-    rw [hrin']
-    unfold unlift_string unlift_symbol
-    simp
-    rw [←heq]
-    exact Produces.single (rewrites_produces hrin)
-  · rename_i t heq
-    simp at hrin'
-    rw [hrin']
-    unfold unlift_string unlift_symbol
-    simp
-    rw[← heq]
-    exact Produces.single (rewrites_produces hrin)
-  · rename_i nt x1 x2 xs heq
-    cases r'.input with
-    | inl nt =>
+  -- unfold compute_rules at hrin'
+  -- revert hrin'
+  -- split <;> intro hrin'
+  -- · rename_i nt1 nt2 heq
+  --   simp at hrin'
+  --   rw [hrin']
+  --   unfold unlift_string unlift_symbol
+  --   simp
+  --   rw [←heq]
+  --   exact Produces.single (rewrites_produces hrin)
+  -- · rename_i t heq
+  --   simp at hrin'
+  --   rw [hrin']
+  --   unfold unlift_string unlift_symbol
+  --   simp
+  --   rw[← heq]
+  --   exact Produces.single (rewrites_produces hrin)
+  -- · rename_i nt x1 x2 xs heq
+  --   cases r'.input with
+  --   | inl nt =>
 
-      sorry
-    | inr => sorry
-  · contradiction
+  --     sorry
+  --   | inr => sorry
+  -- · contradiction
 
 lemma restrict_length_implies {u' v' : List (Symbol T g.NT')}
   (h : (restrict_length g).Derives u' v') : g.Derives (unlift_string u') (unlift_string v') := by
