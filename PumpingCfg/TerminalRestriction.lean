@@ -7,13 +7,13 @@ Authors: Alexander Loitzl
 import Mathlib.Computability.ContextFreeGrammar
 import PumpingCfg.EpsilonElimination
 
-namespace ContextFreeGrammar
-
 variable {T : Type}
+namespace ContextFreeGrammar
 
 -- General Props of `Derives`
 section Stuff
 
+variable {T : Type}
 variable {g : ContextFreeGrammar T}
 
 theorem Derives.head_induction_on {v : List (Symbol T g.NT)} {P : ∀ u, g.Derives u v → Prop}
@@ -45,6 +45,7 @@ lemma derives_exists_rule {s : Symbol T g.NT} {u v : List (Symbol T g.NT)} (h : 
 
 end Stuff
 
+end ContextFreeGrammar
 -- TODO Name this embedd and project
 section Lifts
 
@@ -101,6 +102,7 @@ lemma unlift_symbol_nonterminal {nt : NT} :
 
 end Lifts
 
+namespace ContextFreeGrammar
 -- *********************************************************************************************** --
 -- ********************************** Terminal Rule Restriction ********************************** --
 -- *********************************************************************************************** --

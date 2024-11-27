@@ -6,6 +6,8 @@ Authors: Alexander Loitzl
 
 import Mathlib.Computability.ContextFreeGrammar
 import PumpingCfg.ChomskyNormalForm
+import PumpingCfg.TerminalRestriction
+import PumpingCfg.EpsilonElimination
 
 variable {T : Type}
 
@@ -19,6 +21,7 @@ def well_formed {g : ContextFreeGrammar T} (r : ContextFreeRule T g.NT) : Prop :
 end ContextFreeRule
 
 namespace ContextFreeGrammar
+
 -- **************************************************************************************** --
 -- ********************************** Length Restriction ********************************** --
 -- **************************************************************************************** --
@@ -75,7 +78,23 @@ def unlift_symbol (s : Symbol T g.NT') : List (Symbol T g.NT) :=
   | Symbol.nonterminal (Sum.inl nt) => [Symbol.nonterminal nt]
   | Symbol.nonterminal (Sum.inr ⟨r, ⟨i, _⟩⟩) => List.drop (r.output.length - 2 - i) r.output
 
-def unlift_string (w : List (Symbol T g.NT')) : List (Symbol T g.NT) := (w.map unlift_symbol).join
+abbrev unlift_string (w : List (Symbol T g.NT')) : List (Symbol T g.NT) := (w.map unlift_symbol).join
+
+def unlift_string_append {u v : List (Symbol T g.NT')} :
+  unlift_string (u ++ v) = unlift_string u ++ unlift_string v := by
+  unfold unlift_string
+  rw [List.map_append, List.join_append]
+
+lemma unlift_lift_eq {w : List (Symbol T g.NT)} : unlift_string (lift_string w) = w := by
+  unfold unlift_string lift_string
+  induction w with
+  | nil => rfl
+  | cons hd tl ih =>
+    simp at ih ⊢
+    rw [← List.singleton_append, ih]
+    congr
+    unfold unlift_symbol lift_symbol
+    cases hd <;> rfl
 
 end Lifts
 
@@ -87,17 +106,144 @@ section CorrectnessProof
 
 variable {g : ContextFreeGrammar.{0,0} T}
 
-lemma restrict_terminals_implies {u' v' : List (Symbol T g.NT')}
-  (h : (restrict_length g).Derives u' v') : ∃ u v, g.Derives u v := by sorry
+-- lemma compute_rules_rec_derives {r : ContextFreeRule T g.NT} {i : Fin (r.output.length - 2)}
+--   {initial : g.NT'} {rules} (h: compute_rules_rec r i ⊆ rules) :
+--   (CNF.mk g.NT' initial rules).Derives [Symbol.nonterminal (Sum.inr ⟨r, i⟩)]
+--     (lift_string (List.drop (r.output.length - 2 - i) r.output)) := by sorry
+
+-- lemma compute_rules_stuff {r : ContextFreeRule T g.NT} {initial : g.NT'} {rules}
+--   (h: compute_rules r ⊆ rules) : (CNF.mk g.NT' initial rules).Derives [Symbol.nonterminal (Sum.inl r.input)]
+--     (lift_string r.output) := by sorry
+
+-- lemma compute_rules_rec_suffix {r : ContextFreeRule T g.NT} {i : Fin (r.output.length - 2)}
+--   {r' : CNFRule T g.NT'} (h: r' ∈ compute_rules_rec r i) :
+--   unlift_string r'.output = (List.drop (r.output.length - 2 - i) r.output) := by sorry
+
+lemma compute_rules_rec_inl {nt : g.NT} {r : ContextFreeRule T g.NT} {r' : CNFRule T g.NT'}
+  {i : Fin (r.output.length - 2)} (h' : r'.input = Sum.inl nt) : r' ∉ compute_rules_rec r i := by
+  obtain ⟨val, p⟩ := i
+  induction val with
+  | zero =>
+    unfold compute_rules_rec
+    split
+    · simp
+      intro h
+      rw [h] at h'
+      simp at h'
+    · exact List.not_mem_nil r'
+  | succ n ih =>
+    unfold compute_rules_rec
+    split
+    · simp
+      constructor
+      · intro h
+        rw [h] at h'
+        simp at h'
+      · apply ih
+    · exact List.not_mem_nil r'
+
+lemma compute_rules_inl {nt : g.NT} {r : ContextFreeRule T g.NT} {r' : CNFRule T g.NT'}
+  (h : r' ∈ compute_rules r) (h' : r'.input = Sum.inl nt) : unlift_string r'.output = r.output ∧ nt = r.input := by
+  unfold compute_rules at h
+  revert h
+  split <;> intro h
+  · unfold unlift_string unlift_symbol
+    rename_i nt1 nt2 heq
+    simp at h
+    rw [h, heq]
+    rw[h] at h'
+    simp at h' ⊢
+    exact h'.symm
+  · unfold unlift_string unlift_symbol
+    rename_i t heq
+    simp at h
+    rw [h, heq]
+    rw[h] at h'
+    simp at h' ⊢
+    exact h'.symm
+  · simp at h
+    cases h <;> rename_i heq h
+    · constructor
+      · rw [h]
+        simp
+        rw [← List.singleton_append]
+        rw [unlift_string_append]
+        unfold unlift_string unlift_symbol
+        simp
+        rw [heq]
+        congr
+        simp
+      · rw [h] at h'
+        simp at h'
+        exact h'.symm
+    · exfalso
+      exact compute_rules_rec_inl h' h
+  · contradiction
+
+lemma restrict_length_produces_implies {u' v' : List (Symbol T g.NT')}
+  (h : (restrict_length g).Produces u' v') : g.Derives (unlift_string u') (unlift_string v') := by
+  obtain ⟨r', hrin', hr'⟩ := h
+  obtain ⟨p, q, hu', hv'⟩ := hr'.exists_parts
+  unfold restrict_length at *
+  simp at r' hrin' p q
+  rw [hu', hv']
+  repeat rw[unlift_string_append]
+  apply Derives.append_right
+  apply Derives.append_left
+  unfold restrict_length_rules at hrin'
+  simp at hrin'
+  obtain ⟨r, hrin, hrin'⟩ := hrin'
+
+  cases h : r'.input with
+  | inl nt =>
+    obtain ⟨heqo, heqi⟩ := compute_rules_inl hrin' h
+    rw [heqo, heqi]
+    unfold unlift_string unlift_symbol
+    simp
+    exact Produces.single (rewrites_produces hrin)
+  | inr => sorry
+
+  unfold compute_rules at hrin'
+  revert hrin'
+  split <;> intro hrin'
+  · rename_i nt1 nt2 heq
+    simp at hrin'
+    rw [hrin']
+    unfold unlift_string unlift_symbol
+    simp
+    rw [←heq]
+    exact Produces.single (rewrites_produces hrin)
+  · rename_i t heq
+    simp at hrin'
+    rw [hrin']
+    unfold unlift_string unlift_symbol
+    simp
+    rw[← heq]
+    exact Produces.single (rewrites_produces hrin)
+  · rename_i nt x1 x2 xs heq
+    cases r'.input with
+    | inl nt =>
+
+      sorry
+    | inr => sorry
+  · contradiction
+
+lemma restrict_length_implies {u' v' : List (Symbol T g.NT')}
+  (h : (restrict_length g).Derives u' v') : g.Derives (unlift_string u') (unlift_string v') := by
+  induction h using Relation.ReflTransGen.head_induction_on with
+  | refl => rfl
+  | @head u' w' hp hd ih =>
+
+    sorry
 
 -- *************************************************************** --
 -- If direction of the main correctness theorem of restrict_length --
 -- *************************************************************** --
 
-lemma implies_restrict_terminals {u v : List (Symbol T g.NT)} (h : g.Derives u v) :
+lemma implies_restrict_length {u v : List (Symbol T g.NT)} (h : g.Derives u v) :
   (restrict_length g).Derives (lift_string u) (lift_string v) := by sorry
 
-theorem restrict_terminals_correct:
+theorem restrict_length_correct:
   g.language = (restrict_length g).language := by sorry
 
 end CorrectnessProof
