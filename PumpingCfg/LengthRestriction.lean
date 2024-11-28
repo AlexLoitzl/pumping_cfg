@@ -70,7 +70,24 @@ def lift_symbol (s : Symbol T g.NT) : Symbol T g.NT' :=
   | Symbol.terminal t => Symbol.terminal t
   | Symbol.nonterminal nt => Symbol.nonterminal (Sum.inl nt)
 
-def lift_string (w : List (Symbol T g.NT)) : List (Symbol T g.NT') := w.map lift_symbol
+abbrev lift_string (w : List (Symbol T g.NT)) : List (Symbol T g.NT') := w.map lift_symbol
+
+lemma lift_string_nonterminal {nt : g.NT} :
+  lift_string [Symbol.nonterminal nt] = [Symbol.nonterminal (Sum.inl nt)] := by rfl
+
+lemma lift_string_terminals {w : List T} :
+  lift_string (List.map Symbol.terminal w) = List.map (@Symbol.terminal T g.NT') w := by
+  induction w with
+  | nil => rfl
+  | cons hd tl ih =>
+    simp at ih ⊢
+    constructor
+    · unfold lift_symbol
+      rfl
+    · exact ih
+
+def lift_string_append {u v : List (Symbol T g.NT)} :
+  lift_string (u ++ v) = lift_string u ++ lift_string v := List.map_append lift_symbol u v
 
 def unlift_symbol (s : Symbol T g.NT') : List (Symbol T g.NT) :=
   match s with
@@ -123,17 +140,6 @@ end Lifts
 section CorrectnessProof
 
 variable {g : ContextFreeGrammar.{0,0} T}
-
--- lemma compute_rules_rec_derives {r : ContextFreeRule T g.NT} {i : Fin (r.output.length - 2)}
---   {initial : g.NT'} {rules} (h: compute_rules_rec r i ⊆ rules) :
---   (CNF.mk g.NT' initial rules).Derives [Symbol.nonterminal (Sum.inr ⟨r, i⟩)]
---     (lift_string (List.drop (r.output.length - 2 - i) r.output)) := by sorry
-
--- lemma compute_rules_stuff {r : ContextFreeRule T g.NT} {initial : g.NT'} {rules}
---   (h: compute_rules r ⊆ rules) : (CNF.mk g.NT' initial rules).Derives [Symbol.nonterminal (Sum.inl r.input)]
---     (lift_string r.output) := by sorry
--- set_option trace.Elab.definition true
--- set_option pp.explicit true
 
 lemma compute_rules_rec_unlift {r : ContextFreeRule T g.NT} {i : Fin (r.output.length - 2)}
   {r' : CNFRule T g.NT'} (h : r' ∈ compute_rules_rec r i) :
@@ -303,8 +309,36 @@ lemma restrict_length_implies {u' v' : List (Symbol T g.NT')}
 -- If direction of the main correctness theorem of restrict_length --
 -- *************************************************************** --
 
+-- lemma compute_rules_rec_derives {r : ContextFreeRule T g.NT} {i : Fin (r.output.length - 2)}
+--   {initial : g.NT'} {rules} (h: compute_rules_rec r i ⊆ rules) :
+--   (CNF.mk g.NT' initial rules).Derives [Symbol.nonterminal (Sum.inr ⟨r, i⟩)]
+--     (lift_string (List.drop (r.output.length - 2 - i) r.output)) := by sorry
+
+lemma compute_rules_stuff {r : ContextFreeRule T g.NT} {initial : g.NT'} {rules}
+  (h: compute_rules r ⊆ rules) : (CNF.mk g.NT' initial rules).Derives [Symbol.nonterminal (Sum.inl r.input)]
+    (lift_string r.output) := by sorry
+
+lemma restrict_length_produces_derives {u v : List (Symbol T g.NT)} (h : g.Produces u v) :
+  (restrict_length g).Derives (lift_string u) (lift_string v) := by
+  obtain ⟨r, hrin, hr⟩ := h
+  obtain ⟨p,q, hu, hv⟩ := hr.exists_parts
+  rw[hu, hv]
+  repeat rw [lift_string_append]
+  apply CNF.Derives.append_right
+  apply CNF.Derives.append_left
+  rw [lift_string_nonterminal]
+  apply compute_rules_stuff
+  unfold restrict_length_rules
+  intro r' hrin'
+  simp
+  use r
+
 lemma implies_restrict_length {u v : List (Symbol T g.NT)} (h : g.Derives u v) :
-  (restrict_length g).Derives (lift_string u) (lift_string v) := by sorry
+  (restrict_length g).Derives (lift_string u) (lift_string v) := by
+  induction h using Derives.head_induction_on with
+  | refl => rfl
+  | step hp _ ih =>
+    exact CNF.Derives.trans (restrict_length_produces_derives hp) ih
 
 theorem restrict_length_correct:
   g.language = (restrict_length g).language := by
@@ -313,7 +347,9 @@ theorem restrict_length_correct:
   · intro w h
     unfold Generates at h
     unfold CNF.Generates
-    sorry
+    apply implies_restrict_length at h
+    rw [lift_string_nonterminal, lift_string_terminals] at h
+    exact h
   · intro w h
     unfold Generates
     unfold CNF.Generates at h
