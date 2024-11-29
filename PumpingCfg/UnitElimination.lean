@@ -10,11 +10,11 @@ import PumpingCfg.EpsilonElimination
 namespace ContextFreeGrammar
 
 variable {T : Type}
-variable {g : ContextFreeGrammar.{0,0} T}
 
 section Stuff
+variable {NT : Type}
 
-lemma lists {p q x y : List (Symbol T g.NT)} {v : Symbol T g.NT} (h: p ++ q = x ++ [v] ++ y) :
+lemma lists {p q x y : List (Symbol T NT)} {v : Symbol T NT} (h: p ++ q = x ++ [v] ++ y) :
   ∃ w z, (y = w ++ z ∧ p = x ++ [v] ++ w ∧ q = z) ∨ (x = w ++ z ∧ p = w ∧ q = z ++ [v] ++ y) := by
   induction p generalizing q x y with
   | nil =>
@@ -61,6 +61,8 @@ lemma lists {p q x y : List (Symbol T g.NT)} {v : Symbol T g.NT} (h: p ++ q = x 
         rfl
         rw [he3]
         simp
+
+variable {g : ContextFreeGrammar.{0,0} T}
 
 lemma DerivesIn.append_split {p q w : List (Symbol T g.NT)} {n : ℕ} (h : g.DerivesIn (p ++ q) w n) :
   ∃ x y m1 m2, w = x ++ y ∧ g.DerivesIn p x m1 ∧ g.DerivesIn q y m2 ∧ n = m1 + m2 := by
@@ -143,6 +145,7 @@ end Stuff
 
 section UnitPairs
 
+variable {g : ContextFreeGrammar.{0,0} T}
 variable [DecidableEq g.NT]
 
 abbrev unitRule (v1 v2 : g.NT) : ContextFreeRule T g.NT := ContextFreeRule.mk v1 [Symbol.nonterminal v2]
@@ -219,6 +222,7 @@ end UnitPairs
 
 section ComputeUnitPairs
 
+variable {g : ContextFreeGrammar.{0,0} T}
 variable [DecidableEq g.NT]
 
 def generators_prod_diag : Finset (g.NT × g.NT) := (g.rules.map (fun r => (r.input, r.input))).toFinset
@@ -600,6 +604,7 @@ end ComputeUnitPairs
 
 section EliminateUnitRules
 
+variable {g : ContextFreeGrammar T}
 variable [DecidableEq g.NT]
 
 def nonUnit_rules (p : g.NT × g.NT) : List (ContextFreeRule T g.NT) :=
@@ -614,7 +619,7 @@ def nonUnit_rules (p : g.NT × g.NT) : List (ContextFreeRule T g.NT) :=
 noncomputable def remove_unitRules (pairs : Finset (g.NT × g.NT)) : List (ContextFreeRule T g.NT) :=
   ((pairs.toList).map nonUnit_rules).join
 
-noncomputable def eliminate_unitRules [DecidableEq g.NT] : ContextFreeGrammar T :=
+noncomputable def eliminate_unitRules (g : ContextFreeGrammar T) [DecidableEq g.NT] : ContextFreeGrammar T :=
   ContextFreeGrammar.mk g.NT g.initial (remove_unitRules compute_unitPairs)
 
 -- ************************************************************************ --
@@ -796,11 +801,11 @@ lemma implies_eliminate_unitRules {w : List (Symbol T g.NT)} {s : List T} {n : �
 theorem eliminate_unitRules_correct:
   g.language = (@eliminate_unitRules T g).language := by
   unfold language Generates
-  have h' : eliminate_unitRules.initial = g.initial := by unfold eliminate_unitRules; rfl
+  have h' : g.eliminate_unitRules.initial = g.initial := by unfold eliminate_unitRules; rfl
   apply Set.eq_of_subset_of_subset
   · intro w h
     simp at h ⊢
-    have h' : eliminate_unitRules.initial = g.initial := by unfold eliminate_unitRules; rfl
+    have h' : g.eliminate_unitRules.initial = g.initial := by unfold eliminate_unitRules; rfl
     rw [h']
     obtain ⟨n, h⟩ := (derives_iff_derivesIn _ _ _).1 h
     exact implies_eliminate_unitRules h
