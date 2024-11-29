@@ -657,7 +657,7 @@ def remove_nullable_rule (nullable : Finset g.NT) (r: ContextFreeRule T g.NT) : 
 def remove_nullables (nullable : Finset g.NT) : List (ContextFreeRule T g.NT) :=
   (g.rules.map (remove_nullable_rule nullable)).join
 
-def eliminate_empty [DecidableEq g.NT] : ContextFreeGrammar T :=
+def eliminate_empty (g : ContextFreeGrammar T) [DecidableEq g.NT] : ContextFreeGrammar T :=
   ContextFreeGrammar.mk g.NT g.initial (remove_nullables compute_nullables)
 
 -- ******************************************************************** --
