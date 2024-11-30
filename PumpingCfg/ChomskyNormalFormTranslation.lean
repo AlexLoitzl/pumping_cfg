@@ -87,6 +87,46 @@ noncomputable def toCNF (g : ContextFreeGrammar.{0,0} T) [DecidableEq g.NT] : CN
 
 variable {g : ContextFreeGrammar T}
 
+lemma terminal_restriction_nonUnit (h : ∀ r ∈ g.rules, NonUnit r.output) :
+  ∀ r' ∈ g.restrict_terminals.rules, NonUnit r'.output := by
+  unfold restrict_terminals restrict_terminal_rules restrict_terminal_rule new_terminal_rules
+  simp
+  intro r' r hrin h'
+  cases h' <;> rename_i h'
+  · revert h'
+    split <;> intro h'
+    · rw [h']
+      constructor
+    · rw [h']
+      simp
+      apply lift_string_nonUnit
+      apply h
+      exact hrin
+      assumption
+  · obtain ⟨s, ⟨hsin, h'⟩⟩ := h'
+    cases s <;> simp at h'
+    rw [←h']
+    constructor
+
+lemma terminal_restriction_nonempty (h : ∀ r ∈ g.rules, r.output ≠ []) :
+  ∀ r' ∈ g.restrict_terminals.rules, r'.output ≠ [] := by
+  unfold restrict_terminals restrict_terminal_rules restrict_terminal_rule new_terminal_rules
+  simp
+  intro r' r hrin h'
+  cases h' <;> rename_i h'
+  · revert h'
+    split <;> intro h'
+    · rw [h']
+      simp
+    · rw [h']
+      simp
+      apply h
+      exact hrin
+  · obtain ⟨s, ⟨hsin, h'⟩⟩ := h'
+    cases s <;> simp at h'
+    rw [←h']
+    simp
+
 variable [DecidableEq g.NT]
 
 lemma eliminate_unitRules_nonempty (h : ∀ r ∈ g.rules, r.output ≠ []) : ∀ r' ∈ g.eliminate_unitRules.rules, r'.output ≠ [] := by
@@ -107,29 +147,31 @@ lemma eliminate_unitRules_nonempty (h : ∀ r ∈ g.rules, r.output ≠ []) : �
       exact hrin'
   · intro; contradiction
 
--- TODO I cannot prove this as I generate unit rules again :(
-lemma terminal_restriction_nonempty_nonUnit (h : ∀ r ∈ g.rules, r.output ≠ [] ∧ NonUnit r.output) :
-  ∀ r' ∈ g.restrict_terminals.rules, r'.output ≠ [] ∧ NonUnit r'.output := by
-  unfold restrict_terminals restrict_terminal_rules restrict_terminal_rule new_terminal_rules
+lemma eliminate_empty_nonempty : ∀ r ∈ g.eliminate_empty.rules, r.output ≠ [] := by
+  unfold eliminate_empty
   simp
-  intro r' r hrin h'
-  cases h' <;> rename_i h'
-  · rw[h']
-    simp
-    obtain ⟨h1, h2⟩ := h r hrin
-    constructor
-    · exact lift_string_nonempty h1
-    · sorry
-  · obtain ⟨s, ⟨hsin, h'⟩⟩ := h'
-    cases s <;> simp at h'
-    rw [←h']
-    simp
-
-lemma terminal_restriction_preserves_nonUnit (h : ∀ r ∈ g.rules, NonUnit r.output) : ∀ r' ∈ g.eliminate_unitRules.rules, NonUnit r'.output := by sorry
+  intro r hrin
+  exact in_remove_not_epsilon hrin
 
 theorem toCNF_correct : g.language \ {[]} = g.toCNF.language := by
   unfold toCNF
   rw [eliminate_empty_correct, eliminate_unitRules_correct, restrict_terminals_correct, restrict_length_correct]
-  sorry
+  unfold wellformed
+  intro r hrin
+  unfold ContextFreeRule.wellformed
+  match h : r.output with
+  | [] =>
+    simp
+    apply terminal_restriction_nonempty at hrin
+    exact hrin h
+    exact eliminate_unitRules_nonempty eliminate_empty_nonempty
+  | [Symbol.terminal _] => constructor
+  | [Symbol.nonterminal _] =>
+    simp
+    apply terminal_restriction_nonUnit at hrin
+    · rw [h] at hrin
+      contradiction
+    · sorry
+  | _ :: _ :: _ => sorry
 
 end ContextFreeGrammar

@@ -123,6 +123,18 @@ lemma lift_string_terminals {w : List T} : lift_string (List.map (@Symbol.termin
 
 lemma lift_string_append {u v : List (Symbol T NT)} : lift_string (u ++ v) = lift_string u ++ lift_string v := List.map_append lift_symbol u v
 
+lemma lift_string_nonUnit {u : List (Symbol T NT)} (h : ContextFreeGrammar.NonUnit u) (h' : ∀ t, u ≠ [Symbol.terminal t]) : ContextFreeGrammar.NonUnit (right_lift_string u) := by
+  match u with
+  | [] => constructor
+  | [Symbol.nonterminal _] => contradiction
+  | [Symbol.terminal t] =>
+    specialize h' t
+    contradiction
+  | _ :: _ :: _ =>
+    simp
+    unfold ContextFreeGrammar.NonUnit
+    simp
+
 end Lifts
 
 namespace ContextFreeGrammar
