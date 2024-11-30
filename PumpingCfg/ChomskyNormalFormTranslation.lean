@@ -153,6 +153,29 @@ lemma eliminate_empty_nonempty : ∀ r ∈ g.eliminate_empty.rules, r.output ≠
   intro r hrin
   exact in_remove_not_epsilon hrin
 
+lemma eliminate_unitRules_nonUnit : ∀ r ∈ g.eliminate_unitRules.rules, NonUnit r.output := by
+  unfold eliminate_unitRules remove_unitRules nonUnit_rules
+  simp
+  intro r l nt1 nt2 _ h hrin
+  rw [← h] at hrin
+  simp at hrin
+  obtain ⟨r', _, hr'⟩ := hrin
+  revert hr'
+  split
+  · split
+    · simp
+    · simp
+      intro heq
+      rw [←heq]
+      rename_i h
+      simp
+      unfold NonUnit
+      split
+      · apply h
+        assumption
+      · constructor
+  · simp
+
 theorem toCNF_correct : g.language \ {[]} = g.toCNF.language := by
   unfold toCNF
   rw [eliminate_empty_correct, eliminate_unitRules_correct, restrict_terminals_correct, restrict_length_correct]
@@ -171,7 +194,9 @@ theorem toCNF_correct : g.language \ {[]} = g.toCNF.language := by
     apply terminal_restriction_nonUnit at hrin
     · rw [h] at hrin
       contradiction
-    · sorry
-  | _ :: _ :: _ => sorry
+    · exact eliminate_unitRules_nonUnit
+  | _ :: _ :: _ =>
+
+    sorry
 
 end ContextFreeGrammar

@@ -729,7 +729,7 @@ lemma nonUnit_rules_nonUnit {r : ContextFreeRule T g.NT} (h1 : r ∈ g.rules) (h
   | [] => simp; rw [← h]
   | _ :: _ :: _ => simp; rw [← h]
 
-lemma eliminate_unitRules_nonUnit {r : ContextFreeRule T g.NT} (h : r ∈ g.rules) (h' : NonUnit r.output) :
+lemma nonUnit_in_eliminate_unitRules {r : ContextFreeRule T g.NT} (h : r ∈ g.rules) (h' : NonUnit r.output) :
   (r ∈ (@eliminate_unitRules T g).rules) := by
   unfold eliminate_unitRules
   simp
@@ -759,7 +759,7 @@ lemma implies_eliminate_unitRules {w : List (Symbol T g.NT)} {s : List T} {n : �
     by_cases h' : NonUnit r.output
     · apply Produces.trans_derives
       use r
-      exact ⟨eliminate_unitRules_nonUnit hrin h', hr⟩
+      exact ⟨nonUnit_in_eliminate_unitRules hrin h', hr⟩
       exact implies_eliminate_unitRules hd
     · unfold NonUnit at h'
       match h : r.output with
