@@ -127,6 +127,42 @@ lemma terminal_restriction_nonempty (h : ∀ r ∈ g.rules, r.output ≠ []) :
     rw [←h']
     simp
 
+lemma new_terminal_rules_terminals {r : ContextFreeRule T g.NT} : ∀ r' ∈ new_terminal_rules r, ∃ t, r'.output = [Symbol.terminal t] := by
+  unfold new_terminal_rules
+  simp
+  intro r' s hs
+  split <;> intro h <;> simp at h
+  · rw [← h]
+    simp
+
+lemma restrict_terminals_no_terminals : ∀ r ∈ g.restrict_terminals.rules, (∃ t, r.output = [Symbol.terminal t]) ∨ (∀ s ∈ r.output, ∃ nt, s = Symbol.nonterminal nt) := by
+  unfold restrict_terminals restrict_terminal_rules restrict_terminal_rule
+  simp
+  intro r' r _
+  split <;> intro h
+  · cases h <;> rename_i h
+    · left
+      rw [h]
+      simp
+    · left
+      exact new_terminal_rules_terminals r' h
+  · cases h <;> rename_i h
+    · right
+      rw [h]
+      simp
+      intro s hs
+      cases s
+      · right
+        rename_i t
+        use t
+        rfl
+      · left
+        rename_i nt
+        use nt
+        rfl
+    · left
+      exact new_terminal_rules_terminals r' h
+
 variable [DecidableEq g.NT]
 
 lemma eliminate_unitRules_nonempty (h : ∀ r ∈ g.rules, r.output ≠ []) : ∀ r' ∈ g.eliminate_unitRules.rules, r'.output ≠ [] := by
@@ -196,7 +232,21 @@ theorem toCNF_correct : g.language \ {[]} = g.toCNF.language := by
       contradiction
     · exact eliminate_unitRules_nonUnit
   | _ :: _ :: _ =>
-
-    sorry
+    simp
+    apply restrict_terminals_no_terminals at hrin
+    cases hrin <;> rename_i hrin
+    · obtain ⟨t, hr⟩ := hrin
+      rw [hr] at h
+      simp at h
+    · rw [h] at hrin
+      simp at hrin
+      obtain ⟨nt1, hnt1⟩ := hrin.1
+      obtain ⟨nt2, hnt2⟩ := hrin.2.1
+      rw [hnt1, hnt2]
+      simp
+      intro s hsin
+      obtain ⟨nt3, hs⟩ := hrin.2.2 s hsin
+      rw [hs]
+      constructor
 
 end ContextFreeGrammar
