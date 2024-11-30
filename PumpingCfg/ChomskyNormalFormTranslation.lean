@@ -78,5 +78,58 @@ lemma Generates.match_toCFG {s : List (Symbol T g.NT)} (hg : g.toCFG.Generates s
 theorem toCFG_correct {s : List (Symbol T g.NT)} : g.Generates s ↔ g.toCFG.Generates s :=
   ⟨Generates.toCFG_match, Generates.match_toCFG⟩
 
-
 end CNF
+
+namespace ContextFreeGrammar
+
+noncomputable def toCNF (g : ContextFreeGrammar.{0,0} T) [DecidableEq g.NT] : CNF T :=
+  g.eliminate_empty.eliminate_unitRules.restrict_terminals.restrict_length
+
+variable {g : ContextFreeGrammar T}
+
+variable [DecidableEq g.NT]
+
+lemma eliminate_unitRules_nonempty (h : ∀ r ∈ g.rules, r.output ≠ []) : ∀ r' ∈ g.eliminate_unitRules.rules, r'.output ≠ [] := by
+  unfold eliminate_unitRules remove_unitRules nonUnit_rules
+  simp
+  intro r _ _ _ _ h'
+  rw [←h']
+  simp
+  intro r' hrin'
+  split
+  · split
+    · intro; contradiction
+    · simp
+      intro heq
+      rw [←heq]
+      simp
+      apply h
+      exact hrin'
+  · intro; contradiction
+
+-- TODO I cannot prove this as I generate unit rules again :(
+lemma terminal_restriction_nonempty_nonUnit (h : ∀ r ∈ g.rules, r.output ≠ [] ∧ NonUnit r.output) :
+  ∀ r' ∈ g.restrict_terminals.rules, r'.output ≠ [] ∧ NonUnit r'.output := by
+  unfold restrict_terminals restrict_terminal_rules restrict_terminal_rule new_terminal_rules
+  simp
+  intro r' r hrin h'
+  cases h' <;> rename_i h'
+  · rw[h']
+    simp
+    obtain ⟨h1, h2⟩ := h r hrin
+    constructor
+    · exact lift_string_nonempty h1
+    · sorry
+  · obtain ⟨s, ⟨hsin, h'⟩⟩ := h'
+    cases s <;> simp at h'
+    rw [←h']
+    simp
+
+lemma terminal_restriction_preserves_nonUnit (h : ∀ r ∈ g.rules, NonUnit r.output) : ∀ r' ∈ g.eliminate_unitRules.rules, NonUnit r'.output := by sorry
+
+theorem toCNF_correct : g.language \ {[]} = g.toCNF.language := by
+  unfold toCNF
+  rw [eliminate_empty_correct, eliminate_unitRules_correct, restrict_terminals_correct, restrict_length_correct]
+  sorry
+
+end ContextFreeGrammar

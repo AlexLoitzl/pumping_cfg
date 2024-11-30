@@ -171,7 +171,7 @@ lemma UnitPair.derives {v1 v2 : g.NT} (h : UnitPair v1 v2) :
     constructor
     exact ih
 
-abbrev NonUnit (w : List (Symbol T g.NT)) :=
+abbrev NonUnit {N : Type} (w : List (Symbol T N)) :=
   match w with
   | [Symbol.nonterminal _] => False
   | _ => True

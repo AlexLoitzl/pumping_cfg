@@ -6,6 +6,7 @@ Authors: Alexander Loitzl
 
 import Mathlib.Computability.ContextFreeGrammar
 import PumpingCfg.EpsilonElimination
+import PumpingCfg.UnitElimination
 
 variable {T : Type}
 namespace ContextFreeGrammar
@@ -99,6 +100,25 @@ lemma unlift_symbol_nonterminal {nt : NT} :
   unlift_symbol (@Symbol.nonterminal T (NT ⊕ T) (Sum.inl nt)) = Symbol.nonterminal nt := by
   unfold unlift_symbol
   rfl
+
+lemma lift_string_nonempty {w : List (Symbol T NT)} (h: w ≠ []): lift_string w ≠ [] := by
+  cases w
+  contradiction
+  intro
+  contradiction
+
+-- FIXME I messed up here
+lemma lift_string_nonUnit {w : List (Symbol T NT)} (h: ContextFreeGrammar.NonUnit w): ContextFreeGrammar.NonUnit (lift_string w) := by sorry
+  -- unfold ContextFreeGrammar.NonUnit at h ⊢
+  -- unfold lift_string
+  -- match w with
+  -- | [] => simp
+  -- | [Symbol.nonterminal nt] => simp at h
+  -- | [Symbol.terminal n] =>
+  --   unfold lift_symbol
+  --   simp at h
+  --   simp
+  -- | _ => sorry
 
 end Lifts
 
