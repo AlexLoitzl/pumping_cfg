@@ -54,10 +54,17 @@ variable {NT : Type}
 
 def lift_symbol (s : Symbol T NT) : Symbol T (NT ⊕ T) :=
   match s with
+  | Symbol.terminal t => Symbol.terminal t
+  | Symbol.nonterminal n => Symbol.nonterminal (Sum.inl n)
+
+abbrev lift_string (w : List (Symbol T NT)) : List (Symbol T (NT ⊕ T)) := w.map lift_symbol
+
+def right_lift_symbol (s : Symbol T NT) : Symbol T (NT ⊕ T) :=
+  match s with
   | Symbol.terminal t => Symbol.nonterminal (Sum.inr t)
   | Symbol.nonterminal n => Symbol.nonterminal (Sum.inl n)
 
-def lift_string (w : List (Symbol T NT)) : List (Symbol T (NT ⊕ T)) := w.map lift_symbol
+abbrev right_lift_string (w : List (Symbol T NT)) : List (Symbol T (NT ⊕ T)) := w.map right_lift_symbol
 
 def unlift_symbol (s : Symbol T (NT ⊕ T)) : Symbol T NT :=
   match s with
@@ -72,14 +79,14 @@ lemma lift_nonterminal_eq {nt : NT} :
   unfold lift_symbol
   rfl
 
-lemma unlift_lift_eq {w : List (Symbol T NT)} : unlift_string (lift_string w) = w := by
+lemma unlift_right_lift_eq {w : List (Symbol T NT)} : unlift_string (right_lift_string w) = w := by
   induction w with
   | nil => rfl
   | cons hd tl ih =>
-    unfold lift_string unlift_string at *
+    unfold right_lift_string unlift_string at *
     simp
     constructor
-    · unfold unlift_symbol lift_symbol
+    · unfold unlift_symbol right_lift_symbol
       cases hd <;> rfl
     · simp at ih
       exact ih
@@ -106,6 +113,15 @@ lemma lift_string_nonempty {w : List (Symbol T NT)} (h: w ≠ []): lift_string w
   contradiction
   intro
   contradiction
+
+lemma lift_string_terminals {w : List T} : lift_string (List.map (@Symbol.terminal T NT) w) = List.map Symbol.terminal w := by
+  induction w with
+  | nil => rfl
+  | cons =>
+    unfold lift_string lift_symbol
+    simp
+
+lemma lift_string_append {u v : List (Symbol T NT)} : lift_string (u ++ v) = lift_string u ++ lift_string v := List.map_append lift_symbol u v
 
 -- FIXME I messed up here
 lemma lift_string_nonUnit {w : List (Symbol T NT)} (h: ContextFreeGrammar.NonUnit w): ContextFreeGrammar.NonUnit (lift_string w) := by sorry
@@ -137,7 +153,9 @@ def new_terminal_rules {NT : Type} (r : ContextFreeRule T NT) : List (ContextFre
   r.output.filterMap terminal_rule
 
 def restrict_terminal_rule {NT : Type} (r : ContextFreeRule T NT) : List (ContextFreeRule T (NT ⊕ T)) :=
-  (ContextFreeRule.mk (Sum.inl r.input) (lift_string r.output)) :: new_terminal_rules r
+  match r.output with
+  | [Symbol.terminal t] => [ContextFreeRule.mk (Sum.inl r.input) ([Symbol.terminal t])]
+  | _ => (ContextFreeRule.mk (Sum.inl r.input) (right_lift_string r.output)) :: new_terminal_rules r
 
 def restrict_terminal_rules {NT : Type} (rs : List (ContextFreeRule T NT)) : List (ContextFreeRule T (NT ⊕ T)) :=
   (rs.map restrict_terminal_rule).join
@@ -159,17 +177,20 @@ lemma restrict_terminal_rule_right {t : T} {r : ContextFreeRule T g.NT}
   {r' : ContextFreeRule T (g.NT ⊕ T)} (h : r' ∈ restrict_terminal_rule r) (h' : r'.input = Sum.inr t) :
   r'.output = [Symbol.terminal t] := by
   unfold restrict_terminal_rule at h
-  simp at h
-  cases h <;> rename_i h
+  revert h
+  split <;> simp <;> intro h
   · rw [h] at h'
-    simp at h'
-  · unfold new_terminal_rules at h
-    simp at h
-    obtain ⟨s, hsin, h⟩ := h
-    cases s <;> simp at h
-    rw [←h] at h' ⊢
-    simp at h' ⊢
-    exact h'
+    contradiction
+  · cases h <;> rename_i h
+    · rw [h] at h'
+      simp at h'
+    · unfold new_terminal_rules at h
+      simp at h
+      obtain ⟨s, hsin, h⟩ := h
+      cases s <;> simp at h
+      rw [←h] at h' ⊢
+      simp at h' ⊢
+      exact h'
 
 lemma restrict_terminals_rule_right {t : T} {r' : ContextFreeRule T (g.NT ⊕ T)}
   (h : r' ∈ restrict_terminal_rules g.rules) (h' : r'.input = Sum.inr t) : r'.output = [Symbol.terminal t] := by
@@ -183,19 +204,25 @@ lemma restrict_terminal_rule_left {nt : g.NT} {r : ContextFreeRule T g.NT}
   {r' : ContextFreeRule T (g.NT ⊕ T)} (h : r' ∈ restrict_terminal_rule r) (h' : r'.input = Sum.inl nt) :
   r.input = nt ∧ r.output = unlift_string r'.output := by
   unfold restrict_terminal_rule at h
-  simp at h
-  cases h <;> rename_i h
+  revert h
+  split <;> simp <;> intro h
   · rw [h] at h' ⊢
     simp at h' ⊢
     constructor
-    · exact h'
-    · rw [unlift_lift_eq]
-  · unfold new_terminal_rules at h
-    simp at h
-    obtain ⟨r'', hrin, h⟩ := h
-    cases r'' <;> simp at h
-    rw [← h] at h'
-    simp at h'
+    exact h'
+    assumption
+  · cases h <;> rename_i h
+    · rw [h] at h' ⊢
+      simp at h' ⊢
+      constructor
+      · exact h'
+      · rw [unlift_right_lift_eq]
+    · unfold new_terminal_rules at h
+      simp at h
+      obtain ⟨r'', hrin, h⟩ := h
+      cases r'' <;> simp at h
+      rw [← h] at h'
+      simp at h'
 
 lemma restrict_terminals_rules_left {nt : g.NT} {r' : ContextFreeRule T (g.NT ⊕ T)}
   (h : r' ∈ restrict_terminal_rules g.rules) (h' : r'.input = Sum.inl nt) :
@@ -248,59 +275,84 @@ lemma restrict_terminals_implies {u' v' : List (Symbol T (g.NT ⊕ T))}
 -- If direction of the main correctness theorem of restrict_terminals --
 -- ****************************************************************** --
 
-lemma produces_terminal {r : ContextFreeRule T g.NT} {t : T} (hrin : r ∈ g.rules) (h : Symbol.terminal t ∈ r.output) :
-  g.restrict_terminals.Produces [Symbol.nonterminal (Sum.inr t)] [Symbol.terminal t] := by
-  use ContextFreeRule.mk (Sum.inr t) [Symbol.terminal t]
-  constructor
-  · unfold restrict_terminals restrict_terminal_rules restrict_terminal_rule new_terminal_rules
-    simp
-    use r
-    constructor
-    exact hrin
-    use (Symbol.terminal t)
-  · exact rewrites_rule
+-- lemma produces_terminal {r : ContextFreeRule T g.NT} {t : T} (hrin : r ∈ g.rules) (h : Symbol.terminal t ∈ r.output) :
+--   g.restrict_terminals.Produces [Symbol.nonterminal (Sum.inr t)] [Symbol.terminal t] := by
+--   use ContextFreeRule.mk (Sum.inr t) [Symbol.terminal t]
+--   constructor
+--   · unfold restrict_terminals restrict_terminal_rules restrict_terminal_rule new_terminal_rules
+--     simp
+--     use r
+--     constructor
+--     exact hrin
+--     use (Symbol.terminal t)
+--   · exact rewrites_rule
 
-lemma restrict_terminals_lift_derives {v : List T} (h : ∀ t ∈ v, ∃ r ∈ g.rules, (Symbol.terminal t) ∈ r.output) :
-  (restrict_terminals g).Derives (lift_string (List.map Symbol.terminal v)) (List.map Symbol.terminal v) := by
-  induction v with
-  | nil =>
-    unfold lift_string
-    rfl
-  | cons hd tl ih =>
-    simp at h
-    unfold lift_string at ih ⊢
-    simp at ih ⊢
-    rw [← List.singleton_append]
-    nth_rewrite 2 [← List.singleton_append]
-    apply Derives.append_left_trans
-    · exact ih h.2
-    · unfold lift_symbol
-      simp
-      apply Produces.single
-      obtain ⟨r, hrin, hr⟩ := h.1
-      exact produces_terminal hrin hr
+lemma new_terminal_rules_in {t : T} {r : ContextFreeRule T g.NT} (h : (Symbol.terminal t) ∈ r.output) :
+  ContextFreeRule.mk (Sum.inr t) ([Symbol.terminal t]) ∈ new_terminal_rules r := by sorry
+
+lemma new_terminal_rules_derives {r : ContextFreeRule T g.NT} {initial : g.NT ⊕ T} {rules} (h: new_terminal_rules r ⊆ rules) :
+  (ContextFreeGrammar.mk (g.NT ⊕ T) initial rules).Derives (right_lift_string r.output) (lift_string r.output) := by sorry
 
 lemma implies_restrict_terminals {u v : List (Symbol T g.NT)} (h : g.Derives u v) :
   (restrict_terminals g).Derives (lift_string u) (lift_string v) := by
   induction h using Derives.head_induction_on with
   | refl => rfl
-  | step hp _ ih =>
+  | @step u w hp _ ih =>
     obtain ⟨r, hrin, hr⟩ := hp
-    apply Produces.trans_derives _ ih
-    · use ContextFreeRule.mk (Sum.inl r.input) (lift_string r.output)
+    apply Derives.trans _ ih
+    obtain ⟨p,q,hu,hw⟩ := hr.exists_parts
+    rw [hu, hw]
+    repeat rw [lift_string_append]
+    apply Derives.append_right
+    apply Derives.append_left
+    by_cases h' : ∃ t, r.output = [Symbol.terminal t]
+    · obtain ⟨t,ht⟩ := h'
+      apply Produces.single
+      use ContextFreeRule.mk (Sum.inl r.input) [Symbol.terminal t]
       constructor
-      · unfold restrict_terminals restrict_terminal_rules
+      · unfold restrict_terminals restrict_terminal_rules restrict_terminal_rule
         simp
-        unfold restrict_terminal_rule
         use r
+        constructor
+        · exact hrin
+        · rw [ht]
+          simp
+      · unfold lift_string lift_symbol
+        rw [ht]
         simp
-        exact hrin
-      · obtain ⟨p,q, hu, hw⟩ := hr.exists_parts
-        rw [hu, hw]
-        unfold lift_string
+        exact rewrites_rule
+    · apply Produces.trans_derives
+      · use ContextFreeRule.mk (Sum.inl r.input) (right_lift_string r.output)
+        constructor
+        · unfold restrict_terminals restrict_terminal_rules restrict_terminal_rule
+          simp
+          use r
+          constructor
+          · exact hrin
+          · split <;> rename_i heq
+            · rename_i t'
+              exfalso
+              apply h'
+              use t'
+            · simp
+        · unfold lift_string lift_symbol
+          simp
+          exact rewrites_rule
+      · apply new_terminal_rules_derives
+        intro r' hrin'
+        unfold restrict_terminal_rules restrict_terminal_rule
         simp
-        rw [lift_nonterminal_eq, ← List.singleton_append, ← List.append_assoc, ← List.append_assoc]
-        apply ContextFreeRule.rewrites_of_exists_parts
+        use r
+        constructor
+        · exact hrin
+        · split
+          · rename_i t' heq
+            exfalso
+            apply h'
+            use t'
+          · simp
+            right
+            exact hrin'
 
 theorem restrict_terminals_correct:
   g.language = (restrict_terminals g).language := by
@@ -309,16 +361,12 @@ theorem restrict_terminals_correct:
   · intro w h
     simp at h ⊢
     unfold Generates at h ⊢
-    have h' : [Symbol.nonterminal g.restrict_terminals.initial] = lift_string [Symbol.nonterminal g.initial] := by
-      unfold restrict_terminals lift_string lift_symbol
-      rfl
-    rw [h']
-    apply Derives.trans
-    exact implies_restrict_terminals h
-    apply restrict_terminals_lift_derives
-    intro t ht
-    apply derives_exists_rule h <;> simp
-    exact ht
+    apply implies_restrict_terminals at h
+    rw [lift_string_terminals] at h
+    unfold lift_string at h
+    unfold restrict_terminals
+    simp at h ⊢
+    exact h
   · intro w h
     simp at h ⊢
     unfold Generates at h ⊢
