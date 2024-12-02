@@ -117,20 +117,7 @@ lemma DerivesIn.induction_refl_head {b : List (Symbol T g.NT)}
     apply ih
     · exact head last _ refl
     · intro _ _ _ produc deriv
-      exact head produc (deriv.tail _ last)
-
--- Generic well-founded induction
-@[elab_as_elim]
-lemma induction_wf_head {n : ℕ} {b : List (Symbol T g.NT)}
-    {P : ∀ n : ℕ, ∀ a : List (Symbol T g.NT), g.DerivesIn a b n → Prop}
-    (step : ∀ {n a} {hab : g.DerivesIn a b n} (_ : ∀ m < n, ∀ c, (hcb : g.DerivesIn c b m) → P m c hcb),
-      P n a hab)
-    {a : List (Symbol T g.NT)} (hab : g.DerivesIn a b n) :
-    P n a hab := by
-    apply step
-    intros m _ c hcb
-    apply induction_wf_head
-    exact step
+      exact head produc (deriv.tail _ _ _ _ last)
 
 private lemma DerivesIn.empty_of_append_left_aux {w u v : List (Symbol T g.NT)} {n : ℕ}
   (hwe : g.DerivesIn w [] n) (heq : w = u ++ v) : ∃ m ≤ n, g.DerivesIn u [] m := by
