@@ -38,16 +38,23 @@ end CNFRule
 
 namespace CNF
 
-def toCFG (g : CNF T) : ContextFreeGrammar T where
+variable [DecidableEq T]
+
+noncomputable def toCFG [DecidableEq T] (g : CNF T) [DecidableEq g.NT] : ContextFreeGrammar T where
   NT := g.NT
   initial := g.initial
-  rules := g.rules.map CNFRule.toCFGRule
+  rules := (g.rules.toList.map CNFRule.toCFGRule).toFinset
 
-variable {g : CNF T}
+variable {g : CNF T} [DecidableEq g.NT]
 
 lemma Produces.toCFG_match {v w : List (Symbol T g.NT)} (hvw : g.Produces v w) : g.toCFG.Produces v w := by
   rcases hvw with ⟨r, rin, hrw⟩
-  exact ⟨r.toCFGRule, List.mem_map_of_mem _ rin, CNFRule.Rewrites.toCFGRule_match hrw⟩
+  use r.toCFGRule
+  constructor
+  · unfold toCFG
+    simp
+    use r
+  · exact CNFRule.Rewrites.toCFGRule_match hrw
 
 lemma Derives.toCFG_match {v w : List (Symbol T g.NT)} (hvw : g.Derives v w) : g.toCFG.Derives v w := by
   induction hvw with
@@ -62,8 +69,9 @@ lemma Generates.toCFG_match {s : List (Symbol T g.NT)} (hg : g.Generates s) : g.
 lemma Produces.match_toCFG {v w : List (Symbol T g.NT)} (hvw : g.toCFG.Produces v w) : g.Produces v w := by
   rcases hvw with ⟨r, rin, hrw⟩
   simp only [toCFG, List.mem_map] at rin
-  rcases rin with ⟨r', rin', rfl⟩
-  exact ⟨r', rin', CNFRule.Rewrites.match_toCFGRule hrw⟩
+  rw [List.mem_toFinset] at rin
+  obtain ⟨r', rin', rfl⟩ := List.mem_map.1 rin
+  exact ⟨r', Finset.mem_toList.1 rin', CNFRule.Rewrites.match_toCFGRule hrw⟩
 
 lemma Derives.match_toCFG {v w : List (Symbol T g.NT)} (hvw : g.toCFG.Derives v w) : g.Derives v w := by
   induction hvw with
@@ -82,10 +90,22 @@ end CNF
 
 namespace ContextFreeGrammar
 
-noncomputable def toCNF (g : ContextFreeGrammar.{0,0} T) [DecidableEq g.NT] : CNF T :=
+noncomputable def toCNF [DecidableEq T] (g : ContextFreeGrammar.{0,0} T) [DecidableEq g.NT]
+  [DecidableEq g.eliminate_empty.eliminate_unitRules.restrict_terminals.NT] -- FIXME How can I provide it
+  : CNF T :=
   g.eliminate_empty.eliminate_unitRules.restrict_terminals.restrict_length
 
 variable {g : ContextFreeGrammar T}
+
+lemma new_terminal_rules_terminals {r : ContextFreeRule T g.NT} : ∀ r' ∈ new_terminal_rules r, ∃ t, r'.output = [Symbol.terminal t] := by
+  unfold new_terminal_rules
+  simp
+  intro r' s hs
+  split <;> intro h <;> simp at h
+  · rw [← h]
+    simp
+
+variable [DecidableEq g.NT] [DecidableEq T]
 
 lemma terminal_restriction_nonUnit (h : ∀ r ∈ g.rules, NonUnit r.output) :
   ∀ r' ∈ g.restrict_terminals.rules, NonUnit r'.output := by
@@ -127,13 +147,6 @@ lemma terminal_restriction_nonempty (h : ∀ r ∈ g.rules, r.output ≠ []) :
     rw [←h']
     simp
 
-lemma new_terminal_rules_terminals {r : ContextFreeRule T g.NT} : ∀ r' ∈ new_terminal_rules r, ∃ t, r'.output = [Symbol.terminal t] := by
-  unfold new_terminal_rules
-  simp
-  intro r' s hs
-  split <;> intro h <;> simp at h
-  · rw [← h]
-    simp
 
 lemma restrict_terminals_no_terminals : ∀ r ∈ g.restrict_terminals.rules, (∃ t, r.output = [Symbol.terminal t]) ∨ (∀ s ∈ r.output, ∃ nt, s = Symbol.nonterminal nt) := by
   unfold restrict_terminals restrict_terminal_rules restrict_terminal_rule
@@ -163,25 +176,21 @@ lemma restrict_terminals_no_terminals : ∀ r ∈ g.restrict_terminals.rules, (�
     · left
       exact new_terminal_rules_terminals r' h
 
-variable [DecidableEq g.NT]
-
 lemma eliminate_unitRules_nonempty (h : ∀ r ∈ g.rules, r.output ≠ []) : ∀ r' ∈ g.eliminate_unitRules.rules, r'.output ≠ [] := by
   unfold eliminate_unitRules remove_unitRules nonUnit_rules
   simp
   intro r _ _ _ _ h'
   rw [←h']
   simp
-  intro r' hrin'
+  intro r' hrin' hr'
   split
-  · split
-    · intro; contradiction
-    · simp
-      intro heq
-      rw [←heq]
-      simp
-      apply h
-      exact hrin'
   · intro; contradiction
+  · simp
+    intro heq
+    rw [←heq]
+    simp
+    apply h
+    exact hrin'
 
 lemma eliminate_empty_nonempty : ∀ r ∈ g.eliminate_empty.rules, r.output ≠ [] := by
   unfold eliminate_empty
@@ -195,22 +204,22 @@ lemma eliminate_unitRules_nonUnit : ∀ r ∈ g.eliminate_unitRules.rules, NonUn
   intro r l nt1 nt2 _ h hrin
   rw [← h] at hrin
   simp at hrin
-  obtain ⟨r', _, hr'⟩ := hrin
+  obtain ⟨r', _, heq, hr'⟩ := hrin
   revert hr'
   split
-  · split
-    · simp
-    · simp
-      intro heq
-      rw [←heq]
-      rename_i h
-      simp
-      unfold NonUnit
-      split
-      · apply h
-        assumption
-      · constructor
   · simp
+  · simp
+    intro heq
+    rw [←heq]
+    rename_i h
+    simp
+    unfold NonUnit
+    split
+    · apply h
+      assumption
+    · constructor
+
+variable [DecidableEq g.eliminate_empty.eliminate_unitRules.restrict_terminals.NT] -- FIXME again
 
 theorem toCNF_correct : g.language \ {[]} = g.toCNF.language := by
   unfold toCNF

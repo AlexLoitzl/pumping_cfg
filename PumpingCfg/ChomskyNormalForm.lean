@@ -9,6 +9,7 @@ import Mathlib.Computability.ContextFreeGrammar
 inductive CNFRule (T N : Type)
   | leaf (n : N) (t : T) : CNFRule T N
   | node (n l r : N) : CNFRule T N
+deriving DecidableEq
 
 structure CNF (T : Type) where
   /-- Type of nonterminals. -/
@@ -16,7 +17,7 @@ structure CNF (T : Type) where
   /-- Initial nonterminal. -/
   initial : NT
   /-- Rewrite rules. -/
-  rules : List (CNFRule T NT)
+  rules : Finset (CNFRule T NT)
 
 -- Type of terminals.
 variable {T : Type}

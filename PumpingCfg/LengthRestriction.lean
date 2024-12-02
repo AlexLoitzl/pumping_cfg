@@ -20,7 +20,8 @@ def wellformed  (r : ContextFreeRule T NT) : Prop :=
   | [] => False -- Epsilon Elimination
   | _ => ∀ s ∈ r.output, match s with | Symbol.nonterminal _ => True | _ => False
 
-lemma wellformed_nonterminal {r : ContextFreeRule T NT} (i : Fin r.output.length) (h : r.wellformed) (h' : 2 ≤ r.output.length):
+lemma wellformed_nonterminal {r : ContextFreeRule T NT} (i : Fin r.output.length) (h : r.wellformed)
+  (h' : 2 ≤ r.output.length):
   ∃ nt, r.output[i] = Symbol.nonterminal nt := by
   revert h
   unfold wellformed
@@ -28,7 +29,7 @@ lemma wellformed_nonterminal {r : ContextFreeRule T NT} (i : Fin r.output.length
   · rename_i heq
     rw [heq] at h'
     contradiction
-  · specialize h (r.output[i]'i.2) (r.output.get_mem i.1 i.2)
+  · specialize h (r.output[i]'i.2) (r.output.get_mem i)
     cases h' : r.output[i] with
     | nonterminal nt => use nt
     | terminal _ =>
@@ -76,13 +77,13 @@ def compute_rules (r : ContextFreeRule T g.NT) : List (CNFRule T (g.NT')) :=
                                             :: compute_rules_rec r ⟨r.output.length - 3, by rw [h]; simp⟩
   | _ => []
 
-def restrict_length_rules (rs : List (ContextFreeRule T g.NT)) : List (CNFRule T (g.NT')) :=
-  (rs.map compute_rules).join
+def restrict_length_rules [DecidableEq T] [DecidableEq g.NT] (rs : List (ContextFreeRule T g.NT)) :=
+  (rs.map compute_rules).flatten.toFinset
 
 end RestrictLength
 
-def restrict_length (g : ContextFreeGrammar.{0,0} T) : (CNF T) :=
-  CNF.mk g.NT' (Sum.inl g.initial) (restrict_length_rules g.rules)
+noncomputable def restrict_length (g : ContextFreeGrammar.{0,0} T) [DecidableEq T] [DecidableEq g.NT] :=
+  CNF.mk g.NT' (Sum.inl g.initial) (restrict_length_rules g.rules.toList)
 
 def wellformed (g : ContextFreeGrammar T) : Prop :=
   ∀ r ∈ g.rules, r.wellformed
@@ -125,12 +126,12 @@ def unlift_symbol (s : Symbol T g.NT') : List (Symbol T g.NT) :=
   | Symbol.nonterminal (Sum.inl nt) => [Symbol.nonterminal nt]
   | Symbol.nonterminal (Sum.inr ⟨r, ⟨i, _⟩⟩) => List.drop (r.output.length - 2 - i) r.output
 
-abbrev unlift_string (w : List (Symbol T g.NT')) : List (Symbol T g.NT) := (w.map unlift_symbol).join
+abbrev unlift_string (w : List (Symbol T g.NT')) : List (Symbol T g.NT) := (w.map unlift_symbol).flatten
 
 def unlift_string_append {u v : List (Symbol T g.NT')} :
   unlift_string (u ++ v) = unlift_string u ++ unlift_string v := by
   unfold unlift_string
-  rw [List.map_append, List.join_append]
+  rw [List.map_append, List.flatten_append]
 
 lemma unlift_lift_eq {w : List (Symbol T g.NT)} : unlift_string (lift_string w) = w := by
   unfold unlift_string lift_string
@@ -302,7 +303,7 @@ lemma compute_rules_inl {nt : g.NT} {r : ContextFreeRule T g.NT} {r' : CNFRule T
       exact compute_rules_rec_inl h' h
   · contradiction
 
-lemma restrict_length_produces_implies {u' v' : List (Symbol T g.NT')}
+lemma restrict_length_produces_implies {u' v' : List (Symbol T g.NT')} [DecidableEq T] [DecidableEq g.NT]
   (h : (restrict_length g).Produces u' v') : g.Derives (unlift_string u') (unlift_string v') := by
   obtain ⟨r', hrin', hr'⟩ := h
   obtain ⟨p, q, hu', hv'⟩ := hr'.exists_parts
@@ -329,7 +330,7 @@ lemma restrict_length_produces_implies {u' v' : List (Symbol T g.NT')}
     apply compute_rules_inr_length hrin' h
     exact Nat.lt_add_one 2
 
-lemma restrict_length_implies {u' v' : List (Symbol T g.NT')}
+lemma restrict_length_implies {u' v' : List (Symbol T g.NT')} [DecidableEq T] [DecidableEq g.NT]
   (h : (restrict_length g).Derives u' v') : g.Derives (unlift_string u') (unlift_string v') := by
   induction h using Relation.ReflTransGen.head_induction_on with
   | refl => rfl
@@ -339,9 +340,10 @@ lemma restrict_length_implies {u' v' : List (Symbol T g.NT')}
 -- If direction of the main correctness theorem of restrict_length --
 -- *************************************************************** --
 
-lemma compute_rules_rec_derives {r : ContextFreeRule T g.NT} {i : Fin (r.output.length - 2)}
-  {initial : g.NT'} {rules} (h: compute_rules_rec r i ⊆ rules) (h' : r.wellformed) :
-  (CNF.mk g.NT' initial rules).Derives [Symbol.nonterminal (Sum.inr ⟨r, i⟩)]
+lemma compute_rules_rec_derives [DecidableEq T] [DecidableEq g.NT] {r : ContextFreeRule T g.NT}
+  {i : Fin (r.output.length - 2)} {initial : g.NT'} {rules} (h: compute_rules_rec r i ⊆ rules)
+  (h' : r.wellformed) :
+  (CNF.mk g.NT' initial rules.toFinset).Derives [Symbol.nonterminal (Sum.inr ⟨r, i⟩)]
     (lift_string (List.drop (r.output.length - 2 - i) r.output)) := by
   obtain ⟨n, p⟩ := i
   induction n with
@@ -353,7 +355,7 @@ lemma compute_rules_rec_derives {r : ContextFreeRule T g.NT} {i : Fin (r.output.
     · rename_i nt1 nt2 heq1 heq2
       have heq : (List.drop (r.output.length - 2) (List.map lift_symbol r.output)) = lift_string [Symbol.nonterminal nt1, Symbol.nonterminal nt2] := by
         have h1 : r.output.length - 2 + 1 + 1 = r.output.length := by omega
-        rw [← List.map_drop, ← List.get_drop_eq_drop, ← List.get_drop_eq_drop]
+        rw [← List.map_drop, ← List.getElem_cons_drop_succ_eq_drop, ← List.getElem_cons_drop_succ_eq_drop]
         rw [h1, List.drop_length, heq1]
         simp
         congr
@@ -367,7 +369,7 @@ lemma compute_rules_rec_derives {r : ContextFreeRule T g.NT} {i : Fin (r.output.
       apply CNF.Produces.single
       constructor
       · constructor
-        · simp at h
+        · simp at h ⊢
           exact h
         · exact CNF.rewrites_rule
     · rename_i hn
@@ -384,11 +386,12 @@ lemma compute_rules_rec_derives {r : ContextFreeRule T g.NT} {i : Fin (r.output.
     · rename_i nt heq
       simp at h heq
       obtain ⟨h1, h2⟩ := h
-      rw [← List.get_drop_eq_drop, heq]
+      rw [← List.getElem_cons_drop_succ_eq_drop, heq]
       apply CNF.Produces.trans_derives
       · constructor
         · constructor
-          · exact h1
+          · simp
+            exact h1
           · exact CNF.rewrites_rule
       · simp
         rw [← List.singleton_append, ← List.singleton_append, lift_symbol_nonterminal, ← List.map_drop]
@@ -404,8 +407,8 @@ lemma compute_rules_rec_derives {r : ContextFreeRule T g.NT} {i : Fin (r.output.
       apply hn
       exact h1
 
-lemma compute_rules_stuff {r : ContextFreeRule T g.NT} {initial : g.NT'} {rules}
-  (h: compute_rules r ⊆ rules) (h' : r.wellformed) : (CNF.mk g.NT' initial rules).Derives [Symbol.nonterminal (Sum.inl r.input)]
+lemma compute_rules_stuff [DecidableEq T] [DecidableEq g.NT] {r : ContextFreeRule T g.NT} {initial : g.NT'} {rules}
+  (h: compute_rules r ⊆ rules) (h' : r.wellformed) : (CNF.mk g.NT' initial rules.toFinset).Derives [Symbol.nonterminal (Sum.inl r.input)]
     (lift_string r.output) := by
   unfold compute_rules at h
   revert h
@@ -440,7 +443,8 @@ lemma compute_rules_stuff {r : ContextFreeRule T g.NT} {initial : g.NT'} {rules}
     apply CNF.Produces.trans_derives
     · constructor
       · constructor
-        · exact h1
+        · simp
+          exact h1
         · exact CNF.rewrites_rule
     · nth_rewrite 4 [heq]
       simp
@@ -467,7 +471,7 @@ lemma compute_rules_stuff {r : ContextFreeRule T g.NT} {initial : g.NT'} {rules}
       apply heq
       exact h
 
-lemma restrict_length_produces_derives {u v : List (Symbol T g.NT)} (h : g.Produces u v) (h' : g.wellformed):
+lemma restrict_length_produces_derives [DecidableEq T] [DecidableEq g.NT] {u v : List (Symbol T g.NT)} (h : g.Produces u v) (h' : g.wellformed):
   (restrict_length g).Derives (lift_string u) (lift_string v) := by
   obtain ⟨r, hrin, hr⟩ := h
   obtain ⟨p,q, hu, hv⟩ := hr.exists_parts
@@ -477,21 +481,20 @@ lemma restrict_length_produces_derives {u v : List (Symbol T g.NT)} (h : g.Produ
   apply CNF.Derives.append_left
   rw [lift_string_nonterminal]
   apply compute_rules_stuff
-  unfold restrict_length_rules
   intro r' hrin'
   simp
   use r
   apply h'
   exact hrin
 
-lemma implies_restrict_length {u v : List (Symbol T g.NT)} (h : g.Derives u v) (h' : g.wellformed):
-  (restrict_length g).Derives (lift_string u) (lift_string v) := by
+lemma implies_restrict_length [DecidableEq T] [DecidableEq g.NT] {u v : List (Symbol T g.NT)}
+  (h : g.Derives u v) (h' : g.wellformed): (restrict_length g).Derives (lift_string u) (lift_string v) := by
   induction h using Derives.head_induction_on with
   | refl => rfl
   | step hp _ ih =>
     exact CNF.Derives.trans (restrict_length_produces_derives hp h') ih
 
-theorem restrict_length_correct (h : g.wellformed) :
+theorem restrict_length_correct [DecidableEq T] [DecidableEq g.NT] (h : g.wellformed) :
   g.language = (restrict_length g).language := by
   unfold language CNF.language
   apply Set.eq_of_subset_of_subset

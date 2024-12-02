@@ -156,11 +156,12 @@ def restrict_terminal_rule {NT : Type} (r : ContextFreeRule T NT) : List (Contex
   | [Symbol.terminal t] => ContextFreeRule.mk (Sum.inl r.input) ([Symbol.terminal t])
   | _ => (ContextFreeRule.mk (Sum.inl r.input) (right_lift_string r.output))) :: new_terminal_rules r
 
-def restrict_terminal_rules {NT : Type} (rs : List (ContextFreeRule T NT)) : List (ContextFreeRule T (NT ⊕ T)) :=
-  (rs.map restrict_terminal_rule).join
+noncomputable def restrict_terminal_rules {NT : Type} [DecidableEq T] [DecidableEq NT]
+  (rs : List (ContextFreeRule T NT)) : Finset (ContextFreeRule T (NT ⊕ T)) :=
+  (rs.map restrict_terminal_rule).flatten.toFinset
 
-def restrict_terminals (g : ContextFreeGrammar.{0,0} T) : (ContextFreeGrammar T) :=
-  ContextFreeGrammar.mk (g.NT ⊕ T) (Sum.inl g.initial) (restrict_terminal_rules g.rules)
+noncomputable def restrict_terminals (g : ContextFreeGrammar.{0,0} T) [DecidableEq T] [DecidableEq g.NT] :=
+  ContextFreeGrammar.mk (g.NT ⊕ T) (Sum.inl g.initial) (restrict_terminal_rules g.rules.toList)
 
 end RestrictTerminals
 
@@ -188,8 +189,9 @@ lemma restrict_terminal_rule_right {t : T} {r : ContextFreeRule T g.NT}
     simp at h' ⊢
     exact h'
 
-lemma restrict_terminals_rule_right {t : T} {r' : ContextFreeRule T (g.NT ⊕ T)}
-  (h : r' ∈ restrict_terminal_rules g.rules) (h' : r'.input = Sum.inr t) : r'.output = [Symbol.terminal t] := by
+lemma restrict_terminals_rule_right [DecidableEq T] [DecidableEq g.NT] {t : T}
+  {r' : ContextFreeRule T (g.NT ⊕ T)} (h : r' ∈ restrict_terminal_rules g.rules.toList)
+  (h' : r'.input = Sum.inr t) : r'.output = [Symbol.terminal t] := by
   unfold restrict_terminal_rules at h
   simp at h
   obtain ⟨r, _, h⟩ := h
@@ -219,8 +221,8 @@ lemma restrict_terminal_rule_left {nt : g.NT} {r : ContextFreeRule T g.NT}
     rw [← h] at h'
     simp at h'
 
-lemma restrict_terminals_rules_left {nt : g.NT} {r' : ContextFreeRule T (g.NT ⊕ T)}
-  (h : r' ∈ restrict_terminal_rules g.rules) (h' : r'.input = Sum.inl nt) :
+lemma restrict_terminals_rules_left [DecidableEq T] [DecidableEq g.NT] {nt : g.NT} {r' : ContextFreeRule T (g.NT ⊕ T)}
+  (h : r' ∈ restrict_terminal_rules g.rules.toList) (h' : r'.input = Sum.inl nt) :
   ∃ r ∈ g.rules, r.input = nt ∧ r.output = unlift_string r'.output := by
   unfold restrict_terminal_rules at h
   simp at h
@@ -231,8 +233,9 @@ lemma restrict_terminals_rules_left {nt : g.NT} {r' : ContextFreeRule T (g.NT �
   exact hrin
   exact hr h'
 
-lemma restrict_terminals_produces_derives {u' v' : List (Symbol T (g.NT ⊕ T))}
-  (h : (restrict_terminals g).Produces u' v') : g.Derives (unlift_string u') (unlift_string v') := by
+lemma restrict_terminals_produces_derives [DecidableEq T] [DecidableEq g.NT]
+  {u' v' : List (Symbol T (g.NT ⊕ T))} (h : (restrict_terminals g).Produces u' v') :
+  g.Derives (unlift_string u') (unlift_string v') := by
   obtain ⟨r', hrin', hr'⟩ := h
   obtain ⟨p, q, hu', hv'⟩ := hr'.exists_parts
   cases h : r'.input with
@@ -259,7 +262,7 @@ lemma restrict_terminals_produces_derives {u' v' : List (Symbol T (g.NT ⊕ T))}
     simp
     rfl
 
-lemma restrict_terminals_implies {u' v' : List (Symbol T (g.NT ⊕ T))}
+lemma restrict_terminals_implies [DecidableEq T] [DecidableEq g.NT] {u' v' : List (Symbol T (g.NT ⊕ T))}
   (h : (restrict_terminals g).Derives u' v') : g.Derives (unlift_string u') (unlift_string v') := by
   induction h using Derives.head_induction_on with
   | refl => rfl
@@ -276,7 +279,7 @@ lemma new_terminal_rules_in {t : T} {r : ContextFreeRule T g.NT} (h : (Symbol.te
   simp
   use (Symbol.terminal t)
 
-lemma restrict_terminals_right_lift_derives {v : List (Symbol T g.NT)} (h : ∀ t, (Symbol.terminal t) ∈ v → ∃ r ∈ g.rules, (Symbol.terminal t) ∈ r.output) :
+lemma restrict_terminals_right_lift_derives [DecidableEq T] [DecidableEq g.NT] {v : List (Symbol T g.NT)} (h : ∀ t, (Symbol.terminal t) ∈ v → ∃ r ∈ g.rules, (Symbol.terminal t) ∈ r.output) :
   (restrict_terminals g).Derives (right_lift_string v) (lift_string v) := by
   induction v with
   | nil => rfl
@@ -316,7 +319,7 @@ lemma restrict_terminals_right_lift_derives {v : List (Symbol T g.NT)} (h : ∀ 
           simp
           exact rewrites_rule
 
-lemma implies_restrict_terminals {u v : List (Symbol T g.NT)} (h : g.Derives u v) :
+lemma implies_restrict_terminals [DecidableEq T] [DecidableEq g.NT] {u v : List (Symbol T g.NT)} (h : g.Derives u v) :
   (restrict_terminals g).Derives (lift_string u) (lift_string v) := by
   induction h using Derives.head_induction_on with
   | refl => rfl
@@ -365,8 +368,8 @@ lemma implies_restrict_terminals {u v : List (Symbol T g.NT)} (h : g.Derives u v
         intros t ht
         use r
 
-theorem restrict_terminals_correct:
-  g.language = (restrict_terminals g).language := by
+theorem restrict_terminals_correct [DecidableEq T] [DecidableEq g.NT] :
+  g.language = g.restrict_terminals.language := by
   unfold language
   apply Set.eq_of_subset_of_subset
   · intro w h
