@@ -9,6 +9,7 @@ import Mathlib.Computability.ContextFreeGrammar
 inductive CNFRule (T N : Type)
   | leaf (n : N) (t : T) : CNFRule T N
   | node (n l r : N) : CNFRule T N
+deriving DecidableEq
 
 structure CNF (T : Type) where
   /-- Type of nonterminals. -/
@@ -16,7 +17,7 @@ structure CNF (T : Type) where
   /-- Initial nonterminal. -/
   initial : NT
   /-- Rewrite rules. -/
-  rules : List (CNFRule T NT)
+  rules : Finset (CNFRule T NT)
 
 -- Type of terminals.
 variable {T : Type}
@@ -37,11 +38,6 @@ def output (r : CNFRule T N) :=
   match r with
   | leaf _ t => [Symbol.terminal t]
   | node _ l r => [Symbol.nonterminal l, Symbol.nonterminal r]
-
-def toCFGRule (r : CNFRule T N) : ContextFreeRule T N :=
-  match r with
-  | leaf n t => { input := n, output := [Symbol.terminal t] }
-  | node n l r => { input := n, output := [Symbol.nonterminal l, Symbol.nonterminal r] }
 
 inductive Rewrites : (CNFRule T N) → List (Symbol T N) → List (Symbol T N) → Prop
   | head_leaf (n : N) (t : T) (s : List (Symbol T N)) :
@@ -89,16 +85,6 @@ lemma Rewrites.append_right {r : CNFRule T N} {v w : List (Symbol T N)}
     (hvw : r.Rewrites v w) (p : List (Symbol T N)) : r.Rewrites (v ++ p) (w ++ p) := by
   induction hvw <;> tauto
 
-lemma Rewrites.toCFGRule_match {v w : List (Symbol T N)} {r : CNFRule T N} (hwv : r.Rewrites v w) :
-    r.toCFGRule.Rewrites v w := by
-  induction hwv <;> tauto
-
-lemma Rewrites.match_toCFGRule {v w : List (Symbol T N)} {r : CNFRule T N} (hwv : r.toCFGRule.Rewrites v w) :
-    r.Rewrites v w := by
-  induction hwv with
-  | head => cases r <;> tauto
-  | cons x _ ih => exact Rewrites.cons r x ih
-
 end CNFRule
 
 namespace CNF
@@ -119,11 +105,6 @@ def language (g : CNF T) : Language T :=
 lemma mem_language_iff (g : CNF T) (w : List T) :
     w ∈ g.language ↔ g.Generates (List.map Symbol.terminal w) := by
   rfl
-
-def toCFG (g : CNF T) : ContextFreeGrammar T where
-  NT := g.NT
-  initial := g.initial
-  rules := g.rules.map CNFRule.toCFGRule
 
 variable {g : CNF T}
 
@@ -180,38 +161,5 @@ lemma Derives.append_right {v w : List (Symbol T g.NT)}
   induction hvw with
   | refl => rfl
   | tail _ last ih => exact ih.trans_produces <| last.append_right p
-
-lemma Produces.toCFG_match {v w : List (Symbol T g.NT)} (hvw : g.Produces v w) : g.toCFG.Produces v w := by
-  rcases hvw with ⟨r, rin, hrw⟩
-  exact ⟨r.toCFGRule, List.mem_map_of_mem _ rin, CNFRule.Rewrites.toCFGRule_match hrw⟩
-
-lemma Derives.toCFG_match {v w : List (Symbol T g.NT)} (hvw : g.Derives v w) : g.toCFG.Derives v w := by
-  induction hvw with
-  | refl => rfl
-  | tail _ last ih =>
-    apply ih.trans_produces
-    exact Produces.toCFG_match last
-
-lemma Generates.toCFG_match {s : List (Symbol T g.NT)} (hg : g.Generates s) : g.toCFG.Generates s :=
-  Derives.toCFG_match hg
-
-lemma Produces.match_toCFG {v w : List (Symbol T g.NT)} (hvw : g.toCFG.Produces v w) : g.Produces v w := by
-  rcases hvw with ⟨r, rin, hrw⟩
-  simp only [toCFG, List.mem_map] at rin
-  rcases rin with ⟨r', rin', rfl⟩
-  exact ⟨r', rin', CNFRule.Rewrites.match_toCFGRule hrw⟩
-
-lemma Derives.match_toCFG {v w : List (Symbol T g.NT)} (hvw : g.toCFG.Derives v w) : g.Derives v w := by
-  induction hvw with
-  | refl => rfl
-  | tail _ last ih =>
-    apply ih.trans_produces
-    exact Produces.match_toCFG last
-
-lemma Generates.match_toCFG {s : List (Symbol T g.NT)} (hg : g.toCFG.Generates s) : g.Generates s :=
-  Derives.match_toCFG hg
-
-theorem toCFG_correct {s : List (Symbol T g.NT)} : g.Generates s ↔ g.toCFG.Generates s :=
-  ⟨Generates.toCFG_match, Generates.match_toCFG⟩
 
 end CNF
