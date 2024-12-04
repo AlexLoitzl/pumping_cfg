@@ -14,53 +14,28 @@ variable {T : Type}
 section Stuff
 variable {NT : Type}
 
-lemma lists {p q x y : List (Symbol T NT)} {v : Symbol T NT} (h: p ++ q = x ++ [v] ++ y) :
-  ∃ w z, (y = w ++ z ∧ p = x ++ [v] ++ w ∧ q = z) ∨ (x = w ++ z ∧ p = w ∧ q = z ++ [v] ++ y) := by
-  induction p generalizing q x y with
-  | nil =>
-    use [], x
+lemma lists' {p q x y : List (Symbol T NT)} {v : Symbol T NT} (h: p ++ q = x ++ v :: y) :
+  (∃ w, y = w ++ q ∧ p = x ++ v :: w) ∨ (∃ w, x = p ++ w ∧ q = w ++ v :: y) := by
+  have h1 := List.append_eq_append_iff.1 h
+  cases h1 <;> rename_i h1
+  · obtain ⟨a, heq, hq⟩ := h1
     right
-    simp at h ⊢
-    exact h
-  | cons hd tl ih =>
-    cases x with
+    use a
+  · obtain ⟨a, heq, hq⟩ := h1
+    cases a with
     | nil =>
-      simp at h ⊢
-      use tl, q
-      left
+      right
+      use []
+      rw [heq, hq]
       constructor
-      rw [h.2]
-      exact ⟨⟨h.1, rfl⟩, rfl⟩
-    | cons x1 xs =>
-      simp at h ⊢
-      obtain ⟨h1, h2⟩ := h
-      change (tl ++ q = xs ++ ([v] ++ y)) at h2
-      rw [← List.append_assoc] at h2
-      obtain ⟨m, n, h⟩ := ih h2
-      cases h with
-      | inl h =>
-        obtain ⟨he1, he2, he3⟩ := h
-        use m, n
-        left
-        constructor
-        exact he1
-        constructor
-        constructor
-        exact h1
-        simp at he2
-        exact he2
-        exact he3
-      | inr h =>
-        obtain ⟨he1, he2, he3⟩ := h
-        rw[he2, h1, he1]
-        use (x1 :: m), n
-        right
-        constructor
-        simp
-        constructor
-        rfl
-        rw [he3]
-        simp
+      repeat rw [List.append_nil]
+      rfl
+    | cons hd tl =>
+      left
+      use tl
+      simp at hq
+      rw [hq.1]
+      exact ⟨hq.2, heq⟩
 
 variable {g : ContextFreeGrammar.{0,0} T}
 
@@ -70,52 +45,44 @@ lemma DerivesIn.append_split {p q w : List (Symbol T g.NT)} {n : ℕ} (h : g.Der
   | zero =>
     use p, q, 0, 0
     constructor
-    · cases h
-      rfl
+    · cases h; rfl
     · exact ⟨DerivesIn.refl p, DerivesIn.refl q, rfl⟩
   | succ n =>
     obtain ⟨v, hp, hd⟩ := h.head_of_succ
     obtain ⟨r, hrin, hr⟩ := hp
     obtain ⟨p', q', heq, hv⟩ := hr.exists_parts
-    obtain ⟨a, b, hc⟩ := lists heq
-    cases hc with
-    | inl hc =>
-      obtain ⟨heq1, heq2, heq3⟩ := hc
-      rw[hv, heq1, ← List.append_assoc] at hd
+    simp at heq
+    rcases lists' heq with ⟨a, hq', hp⟩ | ⟨a, hp', hq⟩
+    · rw[hv, hq', ← List.append_assoc] at hd
       obtain ⟨x, y, m1, m2, hw, hd1, hd2, hn⟩ := hd.append_split
       use x, y, (m1 + 1), m2
       constructor
-      exact hw
-      constructor
-      apply Produces.trans_derivesIn
-      use r
-      constructor
-      exact hrin
-      rw [heq2]
-      apply r.rewrites_of_exists_parts
-      exact hd1
-      constructor
-      rwa [heq3]
-      rw [hn]
-      omega
-    | inr hc =>
-      obtain ⟨heq1, heq2, heq3⟩ := hc
-      rw[hv, heq1, List.append_assoc, List.append_assoc] at hd
+      · exact hw
+      · constructor
+        · apply Produces.trans_derivesIn
+          use r
+          constructor
+          · exact hrin
+          · rw [hp, ← List.singleton_append, ← List.append_assoc]
+            apply r.rewrites_of_exists_parts
+          · exact hd1
+        · exact ⟨hd2, by omega⟩
+    · rw[hv, hp', List.append_assoc, List.append_assoc] at hd
       obtain ⟨x, y, m1, m2, hw, hd1, hd2, hn⟩ := hd.append_split
       use x, y, m1, m2 + 1
       constructor
-      exact hw
-      constructor
-      rwa [heq2]
-      constructor
-      apply Produces.trans_derivesIn
-      use r
-      constructor
-      exact hrin
-      rw [heq3]
-      apply r.rewrites_of_exists_parts
-      rwa [List.append_assoc]
-      omega
+      · exact hw
+      · constructor
+        · exact hd1
+        · constructor
+          · apply Produces.trans_derivesIn
+            use r
+            constructor
+            · exact hrin
+            · rw [hq, ← List.singleton_append, ← List.append_assoc]
+              apply r.rewrites_of_exists_parts
+            · rwa [List.append_assoc]
+          · omega
 
 lemma DerivesIn.three_split {p q r w : List (Symbol T g.NT)} {n : ℕ} (h : g.DerivesIn (p ++ q ++ r) w n) :
   ∃ x y z m1 m2 m3, w = x ++ y ++ z ∧ g.DerivesIn p x m1 ∧ g.DerivesIn q y m2
@@ -156,7 +123,7 @@ inductive UnitPair : g.NT → g.NT → Prop where
          (hu : UnitPair v2 v3): UnitPair v1 v3
 
 @[refl]
-lemma UnitPair.rfl {v1 : g.NT} {h : v1 ∈ generators} : UnitPair v1 v1 := UnitPair.refl v1 h
+lemma UnitPair.rfl {v1 : g.NT} {h : v1 ∈ g.generators} : UnitPair v1 v1 := UnitPair.refl v1 h
 
 lemma UnitPair.derives {v1 v2 : g.NT} (h : UnitPair v1 v2) :
   g.Derives [Symbol.nonterminal v1] [Symbol.nonterminal v2] := by
@@ -193,7 +160,7 @@ lemma DerivesIn.unitPair_prefix {w : List T} {w' : List (Symbol T g.NT)} {v : g.
     · unfold NonUnit at h'
       match v' with
       | [Symbol.nonterminal v'] =>
-        have h' : v' ∈ generators := by
+        have h' : v' ∈ g.generators := by
           cases n with
           | zero => cases w <;> cases hd
           | succ n =>
@@ -496,7 +463,7 @@ lemma add_unitPair_iter_only_unitPairs (pairs : Finset (g.NT × g.NT))
 -- If direction of the main correctness theorem of compute_unitPairs --
 -- ***************************************************************** --
 
-lemma add_unitPairs_add_unitPairs_iter (pairs: Finset (g.NT × g.NT)) (p : pairs ⊆ generators ×ˢ generators) :
+lemma add_unitPairs_add_unitPairs_iter (pairs: Finset (g.NT × g.NT)) (p : pairs ⊆ g.generators ×ˢ g.generators) :
   add_unitPairs_iter pairs p = add_unitPairs (add_unitPairs_iter pairs p) := by
   unfold add_unitPairs_iter
   simp
