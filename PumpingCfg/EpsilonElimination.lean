@@ -11,21 +11,141 @@ namespace ContextFreeGrammar
 
 variable {T : Type} {g : ContextFreeGrammar T}
 
+/-! Properties of context-free transformations to the empty string -/
+section NullableDerivations
+
 abbrev NullableNonTerminal (v : g.NT) : Prop := g.Derives [Symbol.nonterminal v] []
 
 abbrev NullableWord (w : List (Symbol T g.NT)) : Prop := g.Derives w []
 
--- Properties of `NullableNonTerminal`, `NullableWord` and `Derives`/`Produces`/`Rewrites` to empty
-lemma NullableWord.empty_of_append {u v w : List (Symbol T g.NT)}
-    (huvw : NullableWord (u ++ v ++ w)) : NullableWord v := by
+private lemma DerivesIn.empty_of_append_left_aux {u v w: List (Symbol T g.NT)} {n : ℕ}
+  (hwe : g.DerivesIn w [] n) (hw : w = u ++ v) : ∃ m ≤ n, g.DerivesIn u [] m := by
+  revert u v
+  induction hwe using DerivesIn.induction_refl_head with
+  | refl => simp [DerivesIn.zero_steps]
+  | @head m  u v huv _ ih =>
+    intro x y heq
+    obtain ⟨r, rin, huv⟩ := huv
+    obtain ⟨p, q, h1, h2⟩ := ContextFreeRule.Rewrites.exists_parts huv
+    rw [heq, List.append_assoc, List.append_eq_append_iff] at h1
+    cases h1 with
+    | inl h =>
+      obtain ⟨x', hx, _⟩ := h
+      have hveq : v = x ++ (x' ++ r.output ++ q) := by simp [h2, hx]
+      obtain ⟨m', _, _⟩ := ih hveq
+      use m'
+      constructor <;> tauto
+    | inr h =>
+      obtain ⟨x', hx, hr⟩ := h
+      cases x' with
+      | nil =>
+        have hveq : v = x ++ (r.output ++ q) := by simp [hx, h2]
+        obtain ⟨m', _, _⟩ := ih hveq
+        use m'
+        constructor <;> tauto
+      | cons h t =>
+        obtain ⟨_, _⟩ := hr
+        simp [←List.append_assoc] at h2
+        obtain ⟨m', hm, hd⟩ := ih h2
+        use m'.succ
+        constructor
+        · exact Nat.succ_le_succ hm
+        · apply Produces.trans_derivesIn
+          use r
+          constructor
+          exact rin
+          rw [ContextFreeRule.rewrites_iff]
+          use p, t
+          constructor
+          · simp [hx]
+          · rfl
+          exact hd
+
+lemma DerivesIn.empty_of_append_left {n : ℕ} {u v : List (Symbol T g.NT)}
+    (huv : g.DerivesIn (u ++ v) [] n) :
+    ∃ m ≤ n, g.DerivesIn u [] m := by
+  apply empty_of_append_left_aux <;> tauto
+
+lemma DerivesIn.empty_of_append_right_aux {u v w : List (Symbol T g.NT)} {n : ℕ}
+  (hwe : g.DerivesIn w [] n) (hw : w = u ++ v) : ∃ m ≤ n, g.DerivesIn v [] m := by
+  revert u v
+  induction hwe using DerivesIn.induction_refl_head with
+  | refl => simp [DerivesIn.zero_steps]
+  | @head m u v huv _ ih =>
+    intro x y heq
+    obtain ⟨r, rin, huv⟩ := huv
+    obtain ⟨p, q, h1, h2⟩ := huv.exists_parts
+    rw [heq, List.append_assoc, List.append_eq_append_iff] at h1
+    cases h1 with
+    | inl h =>
+      obtain ⟨y', h1 , hy⟩ := h
+      rw [h1, List.append_assoc, List.append_assoc] at h2
+      obtain ⟨m', hm, hd⟩ := ih h2
+      use m'.succ
+      constructor
+      · exact Nat.succ_le_succ hm
+      · apply Produces.trans_derivesIn
+        use r
+        constructor
+        exact rin
+        rw [ContextFreeRule.rewrites_iff]
+        use y', q
+        constructor
+        · simp
+          exact hy
+        · rfl
+        simp [hd]
+    | inr h =>
+      obtain ⟨q', hx, hq⟩ := h
+      cases q' with
+      | nil =>
+        simp at hq h2
+        obtain ⟨m', hm, hd⟩ := ih h2
+        use m'.succ
+        constructor
+        · exact Nat.succ_le_succ hm
+        · apply Produces.trans_derivesIn
+          use r
+          constructor
+          exact rin
+          rw [ContextFreeRule.rewrites_iff]
+          use [], q
+          constructor
+          · simp
+            tauto
+          · rfl
+          exact hd
+      | cons h t =>
+        obtain ⟨_,_⟩ := hq
+        simp at h2
+        repeat rw [←List.append_assoc] at h2
+        obtain ⟨m', hm, hd⟩ := ih h2
+        use m'
+        constructor
+        · exact Nat.le_succ_of_le hm
+        · exact hd
+
+lemma DerivesIn.empty_of_append_right {n : ℕ} {u v : List (Symbol T g.NT)}
+    (huv : g.DerivesIn (u ++ v) [] n) :
+    ∃ m ≤ n, g.DerivesIn v [] m := by
+  apply empty_of_append_right_aux <;> tauto
+
+lemma DerivesIn.empty_of_append {u v w : List (Symbol T g.NT)} {n : ℕ}
+  (hwe : g.DerivesIn (w ++ u ++ v) [] n) : ∃ m ≤ n, g.DerivesIn u [] m := by
+  obtain ⟨m1, hm1n, hm1e⟩ := hwe.empty_of_append_left
+  obtain ⟨m2, hm2n, hm2e⟩ := hm1e.empty_of_append_right
+  exact ⟨m2, Nat.le_trans hm2n hm1n, hm2e⟩
+
+lemma NullableWord.empty_of_append {u v w : List (Symbol T g.NT)} (huvw : NullableWord (u ++ v ++ w)) :
+    NullableWord v := by
   unfold NullableWord at *
   rw [derives_iff_derivesIn] at huvw ⊢
   obtain ⟨n, hn⟩ := huvw
   obtain ⟨m, _, _⟩ := hn.empty_of_append
   use m
 
-lemma NullableWord.empty_of_append_left {u v : List (Symbol T g.NT)}
-    (huv : NullableWord (u ++ v)) : NullableWord u :=
+lemma NullableWord.empty_of_append_left {u v : List (Symbol T g.NT)} (huv : NullableWord (u ++ v)) :
+    NullableWord u :=
   @NullableWord.empty_of_append _ _ [] _ _ huv
 
 lemma NullableWord.empty_of_append_right {u v : List (Symbol T g.NT)}
@@ -52,22 +172,20 @@ lemma DerivesIn.mem_nullable {w : List (Symbol T g.NT)} {s : Symbol T g.NT} {n :
       obtain ⟨m', hmm, hse⟩ := ih hs hte
       exact ⟨m', hmm.trans hmn, hse⟩
 
-lemma rewrites_empty_output {v : List (Symbol T g.NT)} {r : ContextFreeRule T g.NT} (hr : r.Rewrites v []) :
+lemma rewrites_empty_output {v : List (Symbol T g.NT)} {r : ContextFreeRule T g.NT}
+    (hr : r.Rewrites v []) :
     r.output = [] := by
   obtain ⟨_, _, -, _⟩ := hr.exists_parts
   simp_all
 
-lemma Derives.append_left_trans {v w x y: List (Symbol T g.NT)}
-    (hvw : g.Derives v w) (hxy : g.Derives x y) :
+lemma Derives.append_left_trans {v w x y: List (Symbol T g.NT)} (hvw : g.Derives v w)
+    (hxy : g.Derives x y) :
     g.Derives (x ++ v) (y ++ w) :=
   (hvw.append_left _).trans (hxy.append_right _)
 
 lemma rewrites_produces {r : ContextFreeRule T g.NT} (hr : r ∈ g.rules) :
-    g.Produces [Symbol.nonterminal r.input] r.output := by
-  refine ⟨r, hr, ?_⟩
-  rw [r.rewrites_iff] -- TODO after bumping Mathlib, apply `Rewrites.input_output`
-  use [], []
-  simp
+    g.Produces [.nonterminal r.input] r.output :=
+  ⟨r, hr, ContextFreeRule.Rewrites.input_output⟩
 
 lemma nullable_not_terminal {t : T} {w : List (Symbol T g.NT)} :
     ¬ NullableWord (Symbol.terminal t :: w) := by
@@ -105,8 +223,8 @@ lemma symbols_nullable_nullableWord (w : List (Symbol T g.NT)) (hw : ∀ a ∈ w
       exact hv
 
 lemma DerivesIn.nullable_mem_nonterminal {w : List (Symbol T g.NT)} {s : Symbol T g.NT} {n : ℕ}
-    (hwn : g.DerivesIn w [] n) (hin : s ∈ w) : ∃ v, s = Symbol.nonterminal v := by
-  have ⟨m, _, hsm⟩ := hwn.mem_nullable hin
+    (hw : g.DerivesIn w [] n) (hin : s ∈ w) : ∃ v, s = Symbol.nonterminal v := by
+  have ⟨m, _, hsm⟩ := hw.mem_nullable hin
   cases m with
   | zero =>
     contradiction
@@ -119,7 +237,7 @@ lemma DerivesIn.nullable_mem_nonterminal {w : List (Symbol T g.NT)} {s : Symbol 
     use r.input
 
 lemma NullableWord.nullableNonTerminal {w : List (Symbol T g.NT)} {v : Symbol T g.NT}
-    (hw : NullableWord w) (hin : v ∈ w) :
+    (hw : NullableWord w) (hvin : v ∈ w) :
     ∃ x, v = Symbol.nonterminal x ∧ NullableNonTerminal x := by
   revert v
   induction w with
@@ -137,18 +255,26 @@ lemma NullableWord.nullableNonTerminal {w : List (Symbol T g.NT)} {v : Symbol T 
       change NullableWord ([d] ++ l) at hw
       exact hw
 
+end NullableDerivations
+
 
 section NullableRelated
 
--- nullable_related xs ys holds if ys is xs with nullable variables interspersed
+/-- `NullableRelated u v` means that `v` and `u` are equal up to interspersed nonterminals, each of
+ which can be transformed to the empty string (i.e. for each additional nonterminal `nt`,
+ `NullableNonterminal nt` holds) -/
 inductive NullableRelated : List (Symbol T g.NT) → List (Symbol T g.NT) → Prop where
+  /- The empty string is `NullableRelated` to any `w`, s.t., `NullableWord w`-/
   | empty_left (ys : List (Symbol T g.NT)) (h: NullableWord ys) : NullableRelated [] ys
-  | cons_term (xs ys: List (Symbol T g.NT)) (h: NullableRelated xs ys) (z : T) :
-                      NullableRelated (Symbol.terminal z :: xs) (Symbol.terminal z :: ys)
-  | cons_nterm_match (xs ys: List (Symbol T g.NT)) (h: NullableRelated xs ys) (z : g.NT) :
-                     NullableRelated (Symbol.nonterminal z :: xs) (Symbol.nonterminal z :: ys)
-  | cons_nterm_nullable (xs ys: List (Symbol T g.NT)) (h: NullableRelated xs ys) (y : g.NT)
-                        (hn : NullableNonTerminal y) : NullableRelated xs (Symbol.nonterminal y :: ys)
+  /- A terminal symbol `t` needs to be matched exactly -/
+  | cons_term (xs ys: List (Symbol T g.NT)) (h: NullableRelated xs ys) (t : T) :
+                      NullableRelated (Symbol.terminal t :: xs) (Symbol.terminal t :: ys)
+  /- A nonterminal symbol `nt` can be matched exactly -/
+  | cons_nterm_match (xs ys: List (Symbol T g.NT)) (h: NullableRelated xs ys) (nt : g.NT) :
+                     NullableRelated (Symbol.nonterminal nt :: xs) (Symbol.nonterminal nt :: ys)
+  /- A nonterminal symbol `nt`, s.t., `NullableNonterminal nt` on the right, need not be matched -/
+  | cons_nterm_nullable (xs ys: List (Symbol T g.NT)) (h: NullableRelated xs ys) (nt : g.NT)
+                        (hn : NullableNonTerminal nt) : NullableRelated xs (Symbol.nonterminal nt :: ys)
 
 @[refl]
 lemma NullableRelated.refl (w : List (Symbol T g.NT)) : NullableRelated w w := by
@@ -159,42 +285,37 @@ lemma NullableRelated.refl (w : List (Symbol T g.NT)) : NullableRelated w w := b
   | cons hd tl ih =>
     cases hd <;> constructor <;> exact ih
 
-lemma NullableRelated.derives {xs ys : List (Symbol T g.NT)} (h: NullableRelated xs ys) :
-  g.Derives ys xs := by
+lemma NullableRelated.derives {v w : List (Symbol T g.NT)} (h: NullableRelated v w) :
+  g.Derives w v := by
   induction h with
   | empty_left _ h =>
     exact h
-  | cons_term xs ys _ z ih =>
-    change g.Derives ([Symbol.terminal z] ++ ys) ([Symbol.terminal z] ++ xs)
+  | cons_term v w _ t ih =>
+    change g.Derives ([Symbol.terminal t] ++ w) ([Symbol.terminal t] ++ v)
     exact ih.append_left _
-  | cons_nterm_match xs ys _ z ih =>
-    change g.Derives ([Symbol.nonterminal z] ++ ys) ([Symbol.nonterminal z] ++ xs)
+  | cons_nterm_match v w _ nt ih =>
+    change g.Derives ([Symbol.nonterminal nt] ++ w) ([Symbol.nonterminal nt] ++ v)
     exact ih.append_left _
-  | cons_nterm_nullable xs ys _ y hn ih =>
-    change g.Derives ([Symbol.nonterminal y] ++ ys) ([] ++ xs)
-    apply Derives.append_left_trans
-    exact ih
-    exact hn
+  | cons_nterm_nullable v w _ nt hnt ih =>
+    change g.Derives ([Symbol.nonterminal nt] ++ w) ([] ++ v)
+    exact Derives.append_left_trans ih hnt
 
 lemma NullableRelated.empty_nullable {w : List (Symbol T g.NT)} (h : NullableRelated [] w) :
   NullableWord w := by
   induction w with
   | nil => rfl
-  | cons hd tl ih =>
+  | cons s w ih =>
     cases h with
-    | empty_left _ h => exact h
-    | cons_nterm_nullable _ _ h nt hn =>
-      change g.Derives ([Symbol.nonterminal nt] ++ tl) ([] ++ [])
-      apply Derives.trans
-      apply Derives.append_right
-      exact hn
-      exact ih h
+    | empty_left _ hsw => exact hsw
+    | cons_nterm_nullable _ _ hw nt hnt =>
+      change g.Derives ([Symbol.nonterminal nt] ++ w) ([] ++ [])
+      exact Derives.trans (Derives.append_right hnt w) (ih hw)
 
 lemma NullableRelated.empty_empty {w : List (Symbol T g.NT)} (h : NullableRelated w []) : w = [] := by
-  cases h with
-  | empty_left => rfl
+  cases h
+  rfl
 
-lemma NullableRelated.append_nullable {w w' v : List (Symbol T g.NT)} (h1 : NullableRelated w' w)
+lemma NullableRelated.append_nullable' {w w' v : List (Symbol T g.NT)} (h1 : NullableRelated w' w)
   (h2 : NullableWord v) : NullableRelated w' (v ++ w) := by
   revert w w'
   induction v with
@@ -213,109 +334,123 @@ lemma NullableRelated.append_nullable {w w' v : List (Symbol T g.NT)} (h1 : Null
     exact h1
     exact h4
 
-lemma NullableRelated.append {w1' w2' w1 w2 : List (Symbol T g.NT)} (h1 : NullableRelated w1' w1)
-  (h2 : NullableRelated w2' w2) : NullableRelated (w1' ++ w2') (w1 ++ w2) := by
-  revert w2' w2
-  induction h1 with
-  | empty_left w1' h =>
-    intro w2' w2 h2
-    simp
-    exact h2.append_nullable h
-  | cons_term w2' w2 _ t ih=>
-    intro w2' w2 h2
-    constructor
-    exact ih h2
-  | cons_nterm_match w2' w2 _ nt ih=>
-    intro w2' w2 h2
-    constructor
-    exact ih h2
-  | cons_nterm_nullable w2' w2 _ nt hn ih =>
-    intro w2' w2 h2
-    constructor
-    exact ih h2
-    exact hn
-
--- maybe easier to do (h : u = w1 ++ w2) and then induction on h. This is quite tedious
-lemma NullableRelated.append_split {w' w1 w2 : List (Symbol T g.NT)} (h : NullableRelated w' (w1 ++ w2)) :
-  ∃ w1' w2', w' = w1' ++ w2' ∧ NullableRelated w1' w1 ∧ NullableRelated w2' w2 := by
-  revert w2 w'
-  induction w1 with
+lemma NullableRelated.append_nullable_left {u v w: List (Symbol T g.NT)} (huv : NullableRelated u v)
+  (hw : NullableWord w) : NullableRelated u (w ++ v) := by
+  revert u v
+  induction w with
   | nil =>
-    intro w' w2 h
-    use [], w'
+    intro v u huv
+    exact huv
+  | cons s w ih =>
+    intro u v huv
+    obtain ⟨nt, hs, hnt⟩ := hw.nullableNonTerminal (List.mem_cons_self s w)
+    rw [hs]
+    constructor
+    · apply ih
+      apply NullableWord.empty_of_append_right
+      change NullableWord ([s] ++ w) at hw
+      exact hw
+      exact huv
+    · exact hnt
+
+lemma NullableRelated.append {u₁ u₂ v₁ v₂ : List (Symbol T g.NT)} (hv : NullableRelated v₁ v₂)
+  (hu : NullableRelated u₁ u₂) : NullableRelated (v₁ ++ u₁) (v₂ ++ u₂) := by
+  induction hv with
+  | empty_left v₂ hv =>
+    simp
+    exact hu.append_nullable_left hv
+  | cons_term u₁ u₂ _ t ih =>
+    constructor
+    exact ih
+  | cons_nterm_match u₁ u₂ _ nt ih =>
+    constructor
+    exact ih
+  | cons_nterm_nullable u₁ u₂ _ nt hnt ih =>
+    constructor
+    exact ih
+    exact hnt
+
+-- TODO ? maybe easier to do (h : u = w1 ++ w2) and then induction on h. This is quite tedious
+lemma NullableRelated.append_split {u v w : List (Symbol T g.NT)}
+    (huvw : NullableRelated u (v ++ w)) :
+    ∃ v' w', u = v' ++ w' ∧ NullableRelated v' v ∧ NullableRelated w' w := by
+  revert u w
+  induction v with
+  | nil =>
+    intro u w huvw
+    use [], u
     simp
     constructor
     rfl
-    exact h
-  | cons hd tl ih =>
-    intro w' w2 h
-    cases w' with
+    exact huvw
+  | cons s v ih =>
+    intro u w huvw
+    cases u with
     | nil =>
       use [], []
       simp
-      have h' : NullableRelated [] (tl ++ w2) := by
+      have hvw : NullableRelated [] (v ++ w) := by
         constructor
         apply NullableWord.empty_of_append_right
-        change NullableRelated [] ([hd] ++ (tl ++ w2)) at h
-        exact h.empty_nullable
-      specialize @ih [] w2 h'
-      obtain ⟨w1', w2', heq, _, h2⟩ := ih
-      simp at heq
+        change NullableRelated [] ([s] ++ (v ++ w)) at huvw
+        exact huvw.empty_nullable
+      obtain ⟨v', w', hv'w', _, hnw'w⟩ := ih hvw
+      simp at hv'w'
       constructor
       · constructor
-        cases h
+        cases huvw
         · apply NullableWord.empty_of_append_left
           assumption
-        · change NullableWord ([Symbol.nonterminal _] ++ tl)
+        · change NullableWord ([Symbol.nonterminal _] ++ v)
           apply Derives.trans
           apply Derives.append_right
           assumption
           simp
-          exact h'.empty_nullable.empty_of_append_left
-      · rw [←heq.2]
-        exact h2
-    | cons hd' tl' =>
-      cases h with
-      | cons_term _ _ h t =>
-        obtain ⟨w1', w2', heq, h1, h2⟩ := ih h
-        use (Symbol.terminal t :: w1'), w2'
+          exact hvw.empty_nullable.empty_of_append_left
+      · rw [←hv'w'.2]
+        exact hnw'w
+    | cons sᵤ u =>
+      cases huvw with
+      | cons_term _ _ huvw t =>
+        obtain ⟨v', w', huv'w', hv'v, hw'w⟩ := ih huvw
+        use (Symbol.terminal t :: v'), w'
         simp
         constructor
-        · exact heq
+        · exact huv'w'
         · constructor
           · constructor
-            exact h1
-          · exact h2
-      | cons_nterm_match _ _ h nt =>
-        obtain ⟨w1', w2', heq, h1, h2⟩ := ih h
-        use (Symbol.nonterminal nt :: w1'), w2'
+            exact hv'v
+          · exact hw'w
+      | cons_nterm_match _ _ huvw nt =>
+        obtain ⟨v', w', huv'w', hv'v, hw'w⟩ := ih huvw
+        use (Symbol.nonterminal nt :: v'), w'
         simp
         constructor
-        · exact heq
+        · exact huv'w'
         · constructor
           · constructor
-            exact h1
-          · exact h2
-      | cons_nterm_nullable _ _ h nt hn =>
-        obtain ⟨w1', w2', heq, h1, h2⟩ := ih h
-        use w1', w2'
+            exact hv'v
+          · exact hw'w
+      | cons_nterm_nullable _ _ huvw nt hnt =>
+        obtain ⟨v', w', huv'w', hv'v, hw'w⟩ := ih huvw
+        use v', w'
         constructor
-        · exact heq
+        · exact huv'w'
         · constructor
           · constructor
-            exact h1
-            exact hn
-          · exact h2
+            exact hv'v
+            exact hnt
+          · exact hw'w
 
-lemma NullableRelated.append_split_three {w' w1 w2 w3 : List (Symbol T g.NT)}
-  (h : NullableRelated w' (w1 ++ w2 ++ w3)) :
-  ∃ w1' w2' w3', w' = w1' ++ w2' ++ w3' ∧ NullableRelated w1' w1
-    ∧ NullableRelated w2' w2 ∧ NullableRelated w3' w3 := by
-  obtain ⟨wx', w3', heq, hx, h3⟩ := h.append_split
-  obtain ⟨w1', w2', heq2, h1, h2⟩ := hx.append_split
-  use w1',w2',w3'
-  constructor ; rw [heq, heq2]
-  exact ⟨h1, h2, h3⟩
+lemma NullableRelated.append_split_three {u v w x : List (Symbol T g.NT)}
+  (huvwx : NullableRelated u (v ++ w ++ x)) :
+    ∃ u₁ u₂ u₃, u = u₁ ++ u₂ ++ u₃ ∧ NullableRelated u₁ v
+      ∧ NullableRelated u₂ w ∧ NullableRelated u₃ x := by
+  obtain ⟨u', u₃, huu'u₃, hu'vw, hu₃x⟩ := huvwx.append_split
+  obtain ⟨u₁, u₂, hu'u₁u₂, hu₁v, hu₂w⟩ := hu'vw.append_split
+  use u₁, u₂, u₃
+  constructor ; rw [huu'u₃, hu'u₁u₂]
+  exact ⟨hu₁v, hu₂w, hu₃x⟩
 
 end NullableRelated
 
