@@ -56,7 +56,6 @@ section RestrictLength
 
 variable {g : ContextFreeGrammar T}
 
-abbrev NT'2 : Type := g.NT ⊕ Σ r : {x | x ∈ g.rules}, Fin (r.1.output.length - 2)
 abbrev NT' : Type := g.NT ⊕ Σ r : ContextFreeRule T g.NT, Fin (r.output.length - 2)
 
 def compute_rules_rec (r : ContextFreeRule T g.NT) (i : Fin (r.output.length - 2)) : List (CNFRule T (g.NT')) :=
