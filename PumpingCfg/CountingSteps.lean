@@ -103,6 +103,90 @@ lemma DerivesIn.append_right {v w : List (Symbol T g.NT)}
   | refl => left
   | tail _ _ _ _ last ih => exact ih.trans_produces <| last.append_right p
 
+
+lemma DerivesIn.append_split {p q w : List (Symbol T g.NT)} {n : ℕ} (hpqw : g.DerivesIn (p ++ q) w n) :
+  ∃ x y m1 m2, w = x ++ y ∧ g.DerivesIn p x m1 ∧ g.DerivesIn q y m2 ∧ n = m1 + m2 := by
+  cases n with
+  | zero =>
+    use p, q, 0, 0
+    constructor
+    · cases hpqw; rfl
+    · exact ⟨DerivesIn.refl p, DerivesIn.refl q, rfl⟩
+  | succ n =>
+    obtain ⟨v, hp, hd⟩ := hpqw.head_of_succ
+    obtain ⟨r, hrin, hr⟩ := hp
+    obtain ⟨p', q', heq, hv⟩ := hr.exists_parts
+    simp at heq
+    have h {p q x y : List (Symbol T g.NT)} {v : Symbol T g.NT} (h: p ++ q = x ++ v :: y) :
+         (∃ w, y = w ++ q ∧ p = x ++ v :: w) ∨ (∃ w, x = p ++ w ∧ q = w ++ v :: y) := by
+      have h1 := List.append_eq_append_iff.1 h
+      cases h1 <;> rename_i h1
+      · obtain ⟨a, heq, hq⟩ := h1
+        right
+        use a
+      · obtain ⟨a, heq, hq⟩ := h1
+        cases a with
+        | nil =>
+          right
+          use []
+          rw [heq, hq]
+          constructor
+          repeat rw [List.append_nil]
+          rfl
+        | cons hd tl =>
+          left
+          use tl
+          simp at hq
+          rw [hq.1]
+          exact ⟨hq.2, heq⟩
+    rcases h heq with ⟨a, hq', hp⟩ | ⟨a, hp', hq⟩
+    · rw[hv, hq', ← List.append_assoc] at hd
+      obtain ⟨x, y, m1, m2, hw, hd1, hd2, hn⟩ := hd.append_split
+      use x, y, (m1 + 1), m2
+      constructor
+      · exact hw
+      · constructor
+        · apply Produces.trans_derivesIn
+          use r
+          constructor
+          · exact hrin
+          · rw [hp, ← List.singleton_append, ← List.append_assoc]
+            apply r.rewrites_of_exists_parts
+          · exact hd1
+        · exact ⟨hd2, by omega⟩
+    · rw[hv, hp', List.append_assoc, List.append_assoc] at hd
+      obtain ⟨x, y, m1, m2, hw, hd1, hd2, hn⟩ := hd.append_split
+      use x, y, m1, m2 + 1
+      constructor
+      · exact hw
+      · constructor
+        · exact hd1
+        · constructor
+          · apply Produces.trans_derivesIn
+            use r
+            constructor
+            · exact hrin
+            · rw [hq, ← List.singleton_append, ← List.append_assoc]
+              apply r.rewrites_of_exists_parts
+            · rwa [List.append_assoc]
+          · omega
+
+lemma DerivesIn.three_split {p q r w : List (Symbol T g.NT)} {n : ℕ} (h : g.DerivesIn (p ++ q ++ r) w n) :
+  ∃ x y z m1 m2 m3, w = x ++ y ++ z ∧ g.DerivesIn p x m1 ∧ g.DerivesIn q y m2
+    ∧ g.DerivesIn r z m3 ∧ n = m1 + m2 + m3 := by
+  obtain ⟨x', z, m1', m3, hw2, hd1', hd3, hn2⟩ := h.append_split
+  obtain ⟨x, y, m1, m2, hw1, hd1, hd2, hn1⟩ := hd1'.append_split
+  use x, y, z, m1, m2, m3
+  constructor
+  rw [hw2, hw1]
+  constructor
+  exact hd1
+  constructor
+  exact hd2
+  constructor
+  exact hd3
+  rw [hn2, hn1]
+
 @[elab_as_elim]
 lemma DerivesIn.induction_refl_head {b : List (Symbol T g.NT)}
     {P : ∀ n : ℕ, ∀ a : List (Symbol T g.NT), g.DerivesIn a b n → Prop}
