@@ -119,7 +119,7 @@ lemma terminal_restriction_nonUnit (h : ∀ r ∈ g.rules, NonUnit r.output) :
       constructor
     · rw [h']
       simp
-      apply lift_string_nonUnit
+      apply right_embed_string_nonUnit
       apply h
       exact hrin
       assumption
