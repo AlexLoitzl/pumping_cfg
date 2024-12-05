@@ -23,7 +23,7 @@ structure CNF.{uN, uT} (T : Type uT) where
   rules : Finset (CNFRule T NT)
 
 universe uT uN
-variable {T : Type}
+variable {T : Type uT}
 
 namespace CNFRule
 variable {N : Type uN} {r : CNFRule T N} {u v : List (Symbol T N)}
