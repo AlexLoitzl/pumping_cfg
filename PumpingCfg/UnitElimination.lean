@@ -34,8 +34,12 @@ variable [DecidableEq g.NT]
 
 abbrev unitRule (nt1 nt2 : g.NT) := @ContextFreeRule.mk T g.NT nt1 [Symbol.nonterminal nt2]
 
+/-- `UnitPair nt1 nt2`, (w.r.t. a ContextFreeGrammar `g`) means that `g` can derive `nt2` from
+ `nt1` only using unitRules -/
 inductive UnitPair : g.NT → g.NT → Prop where
+  /- UnitPair is reflexive due to the empty derivation -/
   | refl (nt : g.NT) (hmem : nt ∈ g.generators): UnitPair nt nt
+  /- UnitPair is transitive -/
   | trans {nt1 nt2 nt3 : g.NT} (hmem : unitRule nt1 nt2 ∈ g.rules)
          (hp : UnitPair nt2 nt3): UnitPair nt1 nt3
 
@@ -55,6 +59,7 @@ lemma UnitPair.derives {nt1 nt2 : g.NT} (h : UnitPair nt1 nt2) :
     constructor
     exact ih
 
+/- We use this to concisely state a rule is not a `unitRule` if it's output is NonUnit -/
 abbrev NonUnit {N : Type*} (w : List (Symbol T N)) :=
   match w with
   | [Symbol.nonterminal _] => False
@@ -105,6 +110,7 @@ end UnitPairs
 -- ****************************************** Unit Pairs ***************************************** --
 -- *********************************************************************************************** --
 
+/-! Fixpoint iteration to compute all UnitPairs. -/
 section ComputeUnitPairs
 
 variable {g : ContextFreeGrammar.{uN,uT} T}
@@ -246,8 +252,6 @@ lemma collect_unitPairs_unitPair {r : ContextFreeRule T g.NT} (pairs : List (g.N
     rw[heq] at h'
     simp at h'
 
---  Single round of fixpoint iteration
---  Add all rules' lefthand variable if all output symbols are in the set of nullable symbols
 noncomputable def add_unitPairs (pairs : Finset (g.NT × g.NT)) : Finset (g.NT × g.NT) :=
   g.rules.toList.attach.foldr (fun r p => collect_unitPairs r pairs.toList ∪ p) pairs
 
@@ -333,7 +337,7 @@ noncomputable def add_unitPairs_iter (pairs : Finset (g.NT × g.NT))
     rename_i h
     exact generators_prod_limits_unitPairs pairs hsub h
 
--- Compute all nullable variables of a grammar
+-- Compute all unit pairs of a grammar
 noncomputable def compute_unitPairs : Finset (g.NT × g.NT) :=
   add_unitPairs_iter g.generators_prod_diag generators_prod_diag_subset
 
@@ -513,6 +517,10 @@ noncomputable def nonUnit_rules (p : g.NT × g.NT) : List (ContextFreeRule T g.N
 noncomputable def remove_unitRules [DecidableEq T] (pairs : Finset (g.NT × g.NT)) :=
   ((pairs.toList).map nonUnit_rules).flatten.toFinset
 
+
+/- Given `g`, computes a new grammar g' in which all unit rules are removed and for each unit pair
+ (`X`, `Y`), i.e., there is a derivation only using unit rules from `X` to `Y`, we add rules
+ r : X -> W, if the rule r' : Y -> W is in the grammar (and non unit) -/
 noncomputable def eliminate_unitRules [DecidableEq T] (g : ContextFreeGrammar T) [DecidableEq g.NT] :=
   ContextFreeGrammar.mk g.NT g.initial (remove_unitRules compute_unitPairs)
 
@@ -520,7 +528,6 @@ noncomputable def eliminate_unitRules [DecidableEq T] (g : ContextFreeGrammar T)
 -- Only If direction of the main correctness theorem of eliminate_unitRules --
 -- ************************************************************************ --
 
--- -- First we prove that the grammar cannot derive empty (Given the input non-empty)
 lemma nonUnit_rules_mem {p : g.NT × g.NT} {r : ContextFreeRule T g.NT} (hmem : r ∈ nonUnit_rules p) :
     r.input = p.1 ∧ ∃ r' ∈ g.rules, r.output = r'.output ∧ r'.input = p.2 := by
   revert hmem
