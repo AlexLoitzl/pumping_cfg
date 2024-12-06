@@ -11,26 +11,29 @@ import PumpingCfg.UnitElimination
 import PumpingCfg.TerminalRestriction
 import PumpingCfg.LengthRestriction
 
--- Type of terminals.
-variable {T : Type}
+
+universe uN uT
+
+variable {T : Type uT}
 
 namespace CNFRule
 
 -- Type of nonterminals.
-variable {N : Type}
+variable {N : Type uN}
 
 def toCFGRule (r : CNFRule T N) : ContextFreeRule T N :=
   match r with
   | leaf n t => { input := n, output := [Symbol.terminal t] }
   | node n l r => { input := n, output := [Symbol.nonterminal l, Symbol.nonterminal r] }
 
-lemma Rewrites.toCFGRule_match {v w : List (Symbol T N)} {r : CNFRule T N} (hwv : r.Rewrites v w) :
-    r.toCFGRule.Rewrites v w := by
-  induction hwv <;> tauto
+lemma Rewrites.toCFGRule_match {u v : List (Symbol T N)} {r : CNFRule T N} (huv : r.Rewrites u v) :
+    r.toCFGRule.Rewrites u v := by
+  induction huv <;> tauto
 
-lemma Rewrites.match_toCFGRule {v w : List (Symbol T N)} {r : CNFRule T N} (hwv : r.toCFGRule.Rewrites v w) :
-    r.Rewrites v w := by
-  induction hwv with
+lemma Rewrites.match_toCFGRule {u v : List (Symbol T N)} {r : CNFRule T N}
+    (huv : r.toCFGRule.Rewrites u v) :
+    r.Rewrites u v := by
+  induction huv with
   | head => cases r <;> tauto
   | cons x _ ih => exact Rewrites.cons r x ih
 
@@ -40,15 +43,16 @@ namespace CNF
 
 variable [DecidableEq T]
 
-noncomputable def toCFG [DecidableEq T] (g : CNF T) [DecidableEq g.NT] : ContextFreeGrammar T where
+noncomputable def toCFG (g : CNF T) [DecidableEq g.NT] : ContextFreeGrammar T where
   NT := g.NT
   initial := g.initial
   rules := (g.rules.toList.map CNFRule.toCFGRule).toFinset
 
 variable {g : CNF T} [DecidableEq g.NT]
 
-lemma Produces.toCFG_match {v w : List (Symbol T g.NT)} (hvw : g.Produces v w) : g.toCFG.Produces v w := by
-  rcases hvw with ⟨r, rin, hrw⟩
+lemma Produces.toCFG_match {u v : List (Symbol T g.NT)} (huv : g.Produces u v) :
+    g.toCFG.Produces u v := by
+  rcases huv with ⟨r, rin, hrw⟩
   use r.toCFGRule
   constructor
   · unfold toCFG
@@ -56,48 +60,52 @@ lemma Produces.toCFG_match {v w : List (Symbol T g.NT)} (hvw : g.Produces v w) :
     use r
   · exact CNFRule.Rewrites.toCFGRule_match hrw
 
-lemma Derives.toCFG_match {v w : List (Symbol T g.NT)} (hvw : g.Derives v w) : g.toCFG.Derives v w := by
-  induction hvw with
+lemma Derives.toCFG_match {u v : List (Symbol T g.NT)} (huv : g.Derives u v) :
+    g.toCFG.Derives u v := by
+  induction huv with
   | refl => rfl
   | tail _ last ih =>
     apply ih.trans_produces
     exact Produces.toCFG_match last
 
-lemma Generates.toCFG_match {s : List (Symbol T g.NT)} (hg : g.Generates s) : g.toCFG.Generates s :=
-  Derives.toCFG_match hg
+lemma Generates.toCFG_match {u : List (Symbol T g.NT)} (hs : g.Generates u) : g.toCFG.Generates u :=
+  Derives.toCFG_match hs
 
-lemma Produces.match_toCFG {v w : List (Symbol T g.NT)} (hvw : g.toCFG.Produces v w) : g.Produces v w := by
-  rcases hvw with ⟨r, rin, hrw⟩
+lemma Produces.match_toCFG {u v : List (Symbol T g.NT)} (huv : g.toCFG.Produces u v) :
+    g.Produces u v := by
+  rcases huv with ⟨r, rin, hrw⟩
   simp only [toCFG, List.mem_map] at rin
   rw [List.mem_toFinset] at rin
   obtain ⟨r', rin', rfl⟩ := List.mem_map.1 rin
   exact ⟨r', Finset.mem_toList.1 rin', CNFRule.Rewrites.match_toCFGRule hrw⟩
 
-lemma Derives.match_toCFG {v w : List (Symbol T g.NT)} (hvw : g.toCFG.Derives v w) : g.Derives v w := by
-  induction hvw with
+lemma Derives.match_toCFG {u v : List (Symbol T g.NT)} (huv : g.toCFG.Derives u v) :
+    g.Derives u v := by
+  induction huv with
   | refl => rfl
   | tail _ last ih =>
     apply ih.trans_produces
     exact Produces.match_toCFG last
 
-lemma Generates.match_toCFG {s : List (Symbol T g.NT)} (hg : g.toCFG.Generates s) : g.Generates s :=
-  Derives.match_toCFG hg
+lemma Generates.match_toCFG {u : List (Symbol T g.NT)} (hu : g.toCFG.Generates u) : g.Generates u :=
+  Derives.match_toCFG hu
 
-theorem toCFG_correct {s : List (Symbol T g.NT)} : g.Generates s ↔ g.toCFG.Generates s :=
+theorem toCFG_correct {u : List (Symbol T g.NT)} : g.Generates u ↔ g.toCFG.Generates u :=
   ⟨Generates.toCFG_match, Generates.match_toCFG⟩
 
 end CNF
 
 namespace ContextFreeGrammar
 
-noncomputable def toCNF [DecidableEq T] (g : ContextFreeGrammar.{0,0} T) [DecidableEq g.NT]
-  [DecidableEq g.eliminate_empty.eliminate_unitRules.restrict_terminals.NT] -- FIXME How can I provide it
-  : CNF T :=
+noncomputable def toCNF [DecidableEq T] (g : ContextFreeGrammar T) [DecidableEq g.NT]
+    [DecidableEq g.eliminate_empty.eliminate_unitRules.restrict_terminals.NT] -- FIXME How can I provide it
+    : CNF T :=
   g.eliminate_empty.eliminate_unitRules.restrict_terminals.restrict_length
 
 variable {g : ContextFreeGrammar T}
 
-lemma new_terminal_rules_terminals {r : ContextFreeRule T g.NT} : ∀ r' ∈ new_terminal_rules r, ∃ t, r'.output = [Symbol.terminal t] := by
+lemma new_terminal_rules_terminals {r : ContextFreeRule T g.NT} :
+    ∀ r' ∈ new_terminal_rules r, ∃ t, r'.output = [Symbol.terminal t] := by
   unfold new_terminal_rules
   simp
   intro r' s hs
@@ -107,8 +115,8 @@ lemma new_terminal_rules_terminals {r : ContextFreeRule T g.NT} : ∀ r' ∈ new
 
 variable [DecidableEq g.NT] [DecidableEq T]
 
-lemma terminal_restriction_nonUnit (h : ∀ r ∈ g.rules, NonUnit r.output) :
-  ∀ r' ∈ g.restrict_terminals.rules, NonUnit r'.output := by
+lemma terminal_restriction_nonUnit (hn : ∀ r ∈ g.rules, NonUnit r.output) :
+    ∀ r' ∈ g.restrict_terminals.rules, NonUnit r'.output := by
   unfold restrict_terminals restrict_terminal_rules restrict_terminal_rule new_terminal_rules
   simp
   intro r' r hrin h'
@@ -120,7 +128,7 @@ lemma terminal_restriction_nonUnit (h : ∀ r ∈ g.rules, NonUnit r.output) :
     · rw [h']
       simp
       apply right_embed_string_nonUnit
-      apply h
+      apply hn
       exact hrin
       assumption
   · obtain ⟨s, ⟨hsin, h'⟩⟩ := h'
@@ -128,8 +136,8 @@ lemma terminal_restriction_nonUnit (h : ∀ r ∈ g.rules, NonUnit r.output) :
     rw [←h']
     constructor
 
-lemma terminal_restriction_nonempty (h : ∀ r ∈ g.rules, r.output ≠ []) :
-  ∀ r' ∈ g.restrict_terminals.rules, r'.output ≠ [] := by
+lemma terminal_restriction_nonempty (hne : ∀ r ∈ g.rules, r.output ≠ []) :
+    ∀ r' ∈ g.restrict_terminals.rules, r'.output ≠ [] := by
   unfold restrict_terminals restrict_terminal_rules restrict_terminal_rule new_terminal_rules
   simp
   intro r' r hrin h'
@@ -140,15 +148,16 @@ lemma terminal_restriction_nonempty (h : ∀ r ∈ g.rules, r.output ≠ []) :
       simp
     · rw [h']
       simp
-      apply h
+      apply hne
       exact hrin
   · obtain ⟨s, ⟨hsin, h'⟩⟩ := h'
     cases s <;> simp at h'
     rw [←h']
     simp
 
-
-lemma restrict_terminals_no_terminals : ∀ r ∈ g.restrict_terminals.rules, (∃ t, r.output = [Symbol.terminal t]) ∨ (∀ s ∈ r.output, ∃ nt, s = Symbol.nonterminal nt) := by
+lemma restrict_terminals_no_terminals :
+    ∀ r ∈ g.restrict_terminals.rules, (∃ t, r.output = [Symbol.terminal t])
+      ∨ (∀ s ∈ r.output, ∃ nt, s = Symbol.nonterminal nt) := by
   unfold restrict_terminals restrict_terminal_rules restrict_terminal_rule
   simp
   intro r' r _
@@ -176,7 +185,8 @@ lemma restrict_terminals_no_terminals : ∀ r ∈ g.restrict_terminals.rules, (�
     · left
       exact new_terminal_rules_terminals r' h
 
-lemma eliminate_unitRules_nonempty (h : ∀ r ∈ g.rules, r.output ≠ []) : ∀ r' ∈ g.eliminate_unitRules.rules, r'.output ≠ [] := by
+lemma eliminate_unitRules_nonempty (hne : ∀ r ∈ g.rules, r.output ≠ []) :
+    ∀ r' ∈ g.eliminate_unitRules.rules, r'.output ≠ [] := by
   unfold eliminate_unitRules remove_unitRules nonUnit_rules
   simp
   intro r _ _ _ _ h'
@@ -189,7 +199,7 @@ lemma eliminate_unitRules_nonempty (h : ∀ r ∈ g.rules, r.output ≠ []) : �
     intro heq
     rw [←heq]
     simp
-    apply h
+    apply hne
     exact hrin'
 
 lemma eliminate_empty_nonempty : ∀ r ∈ g.eliminate_empty.rules, r.output ≠ [] := by
@@ -223,10 +233,11 @@ variable [DecidableEq g.eliminate_empty.eliminate_unitRules.restrict_terminals.N
 
 theorem toCNF_correct : g.language \ {[]} = g.toCNF.language := by
   unfold toCNF
-  rw [eliminate_empty_correct, eliminate_unitRules_correct, restrict_terminals_correct, restrict_length_correct]
-  unfold wellformed
+  rw [eliminate_empty_correct, eliminate_unitRules_correct,
+    restrict_terminals_correct, restrict_length_correct]
+  unfold Wellformed
   intro r hrin
-  unfold ContextFreeRule.wellformed
+  unfold ContextFreeRule.Wellformed
   match h : r.output with
   | [] =>
     simp
