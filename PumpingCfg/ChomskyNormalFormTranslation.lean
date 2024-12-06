@@ -237,22 +237,23 @@ theorem toCNF_correct : g.language \ {[]} = g.toCNF.language := by
     restrict_terminals_correct, restrict_length_correct]
   unfold Wellformed
   intro r hrin
-  unfold ContextFreeRule.Wellformed
   match h : r.output with
   | [] =>
-    simp
+    exfalso
     apply terminal_restriction_nonempty at hrin
     exact hrin h
     exact eliminate_unitRules_nonempty eliminate_empty_nonempty
-  | [Symbol.terminal _] => constructor
+  | [Symbol.terminal _] =>
+    cases r; simp at h; rw [h]
+    constructor
   | [Symbol.nonterminal _] =>
-    simp
+    exfalso
     apply terminal_restriction_nonUnit at hrin
     · rw [h] at hrin
       contradiction
     · exact eliminate_unitRules_nonUnit
   | _ :: _ :: _ =>
-    simp
+    cases r
     apply restrict_terminals_no_terminals at hrin
     cases hrin <;> rename_i hrin
     · obtain ⟨t, hr⟩ := hrin
@@ -262,11 +263,19 @@ theorem toCNF_correct : g.language \ {[]} = g.toCNF.language := by
       simp at hrin
       obtain ⟨nt1, hnt1⟩ := hrin.1
       obtain ⟨nt2, hnt2⟩ := hrin.2.1
-      rw [hnt1, hnt2]
+      simp at h
+      rw [h, hnt1, hnt2]
+      constructor
       simp
       intro s hsin
-      obtain ⟨nt3, hs⟩ := hrin.2.2 s hsin
-      rw [hs]
-      constructor
+      cases hsin with
+      | head => constructor
+      | tail _ hsin =>
+        cases hsin with
+        | head => constructor
+        | tail _ hsin =>
+          obtain ⟨nt3, hs⟩ := hrin.2.2 s hsin
+          rw [hs]
+          constructor
 
 end ContextFreeGrammar

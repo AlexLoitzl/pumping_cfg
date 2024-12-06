@@ -17,41 +17,72 @@ variable {NT : Type*}
 
 /- `Wellformed r` holds if the rule's output is not a single nonterminal (`UnitRule`), not empty,
  or if the output is more than one symbol, it is only nonterminals -/
-def Wellformed  (r : ContextFreeRule T NT) : Prop :=
-  match r.output with
-  | [Symbol.terminal _] => True
-  | [Symbol.nonterminal _] => False -- Unit Elimination
-  | [] => False -- Epsilon Elimination
-  | _ => ∀ s ∈ r.output, match s with | Symbol.nonterminal _ => True | _ => False
+inductive Wellformed : (ContextFreeRule T NT) → Prop where
+  /- Rule rewriting to a single terminal is wellformed -/
+  | terminal {nt : NT} {t : T} : Wellformed (ContextFreeRule.mk nt [Symbol.terminal t])
+  /- Rule rewriting to mulitple nonterminals is wellformed -/
+  | nonterminals {nt: NT} (u : List (Symbol T NT)) (h1 : 2 ≤ u.length)
+      (h2 : ∀ s ∈ u, match s with | Symbol.nonterminal _ => True | _ => False) :
+      Wellformed (ContextFreeRule.mk nt u)
 
-lemma wellformed_nonterminal {r : ContextFreeRule T NT} (i : Fin r.output.length) (h : r.Wellformed)
-    (h' : 2 ≤ r.output.length) :
+-- def Wellformed  (r : ContextFreeRule T NT) : Prop :=
+--   match r.output with
+--   | [Symbol.terminal _] => True
+--   | [Symbol.nonterminal _] => False -- Unit Elimination
+--   | [] => False -- Epsilon Elimination
+--   | _ => ∀ s ∈ r.output, match s with | Symbol.nonterminal _ => True | _ => False
+
+lemma only_nonterminals {w : List (Symbol T NT)}
+    (h : ∀ s ∈ w, match s with | Symbol.nonterminal _ => True | _ => False) :
+    ∃ u : List NT, u.map Symbol.nonterminal = w := by
+  induction w with
+  | nil => use []; rfl
+  | cons u1 u ih =>
+    simp at h
+    obtain ⟨u', heq1⟩ := ih h.2
+    cases u1
+    · simp at h
+    · rename_i n
+      use n :: u'
+      simp
+      exact heq1
+
+lemma Wellformed.mem_nonterminal {r : ContextFreeRule T NT} (h : r.Wellformed)
+    (i : Fin r.output.length) (h' : 2 ≤ r.output.length) :
     ∃ nt, r.output[i] = Symbol.nonterminal nt := by
-  revert h
-  unfold Wellformed
-  split <;> intro h <;> try contradiction
-  · rename_i heq
-    rw [heq] at h'
-    contradiction
-  · specialize h (r.output[i]'i.2) (r.output.get_mem i)
-    cases h' : r.output[i] with
-    | nonterminal nt => use nt
-    | terminal _ =>
-      rw [h'] at h
-      simp at h
+  induction h with
+  | terminal => simp at h'
+  | nonterminals u h1 h2 =>
+    simp at i ⊢
+    specialize h2 (u[i]'i.2) (u.get_mem i)
+    revert h2; split <;> rename_i n he <;> intro
+    · use n
+      exact he
+    · contradiction
+
+lemma Wellformed.cases {r : ContextFreeRule T NT} (h : r.Wellformed) :
+    (∃ t : T, r.output = [Symbol.terminal t])
+    ∨ (∃ (nt1 nt2 : NT) (nts : List NT), r.output = Symbol.nonterminal nt1 :: Symbol.nonterminal nt2
+      :: nts.map Symbol.nonterminal) := by
+  induction h with
+  | @terminal _ t => left; use t
+  | nonterminals u h1 h2 =>
+    match u with
+    | [] => contradiction
+    | [x] => contradiction
+    | .terminal t :: _ :: _ => specialize h2 (Symbol.terminal t); simp at h2
+    | _ :: .terminal t :: _ => specialize h2 (Symbol.terminal t); simp at h2
+    | .nonterminal nt1 :: .nonterminal nt2 :: u =>
+      right
+      simp at h2
+      obtain ⟨u', heq⟩ := only_nonterminals h2
+      use nt1, nt2, u'
+      simp
+      exact heq.symm
 
 end ContextFreeRule
 
 namespace ContextFreeGrammar
-
--- namespace CNF
--- variable {NT : Type}
-
--- lemma rewrites_rule {r : CNFRule T NT} : r.Rewrites [Symbol.nonterminal r.input] r.output := by
---   rw [← r.output.append_nil, ← r.output.nil_append]
---   rw [← [Symbol.nonterminal r.input].append_nil, ← [Symbol.nonterminal r.input].nil_append]
---   exact r.rewrites_of_exists_parts [] []
--- end CNF
 
 -- **************************************************************************************** --
 -- ********************************** Length Restriction ********************************** --
@@ -393,8 +424,8 @@ lemma compute_rules_rec_derives [DecidableEq T] [DecidableEq g.NT] {r : ContextF
         · exact CNFRule.Rewrites.input_output
     · rename_i hn
       exfalso
-      obtain ⟨nt1, h1⟩ := r.wellformed_nonterminal ⟨r.output.length - 2, by omega⟩ hr (by omega)
-      obtain ⟨nt2, h2⟩ := r.wellformed_nonterminal ⟨r.output.length - 1, by omega⟩ hr (by omega)
+      obtain ⟨nt1, h1⟩ := hr.mem_nonterminal ⟨r.output.length - 2, by omega⟩ (by omega)
+      obtain ⟨nt2, h2⟩ := hr.mem_nonterminal ⟨r.output.length - 1, by omega⟩ (by omega)
       apply hn
       exact h1
       exact h2
@@ -420,7 +451,7 @@ lemma compute_rules_rec_derives [DecidableEq T] [DecidableEq g.NT] {r : ContextF
         apply ih
         exact h2
     · rename_i hn
-      obtain ⟨nt1, h1⟩ := r.wellformed_nonterminal ⟨r.output.length - 2 - (n + 1), by omega⟩ hr (by omega)
+      obtain ⟨nt1, h1⟩ := hr.mem_nonterminal ⟨r.output.length - 2 - (n + 1), by omega⟩ (by omega)
       simp at h1 ⊢
       exfalso
       apply hn
@@ -481,18 +512,14 @@ lemma compute_rules_stuff [DecidableEq T] [DecidableEq g.NT] {r : ContextFreeRul
       rw [heq']
       apply compute_rules_rec_derives h2 hr
   · rename_i h1 h2
-    unfold ContextFreeRule.Wellformed at hr
-    match h : r.output with
-    | [] => rw [h] at hr; simp at hr
-    | [Symbol.terminal _ ] => exfalso; apply h2; exact h
-    | [Symbol.nonterminal _ ] => rw [h] at hr; simp at hr
-    | [Symbol.nonterminal _ , Symbol.nonterminal _] => exfalso; apply h1; exact h
-    | [Symbol.nonterminal _ , Symbol.terminal _] => rw [h] at hr; simp at hr
-    | Symbol.terminal _ :: x1 :: xs  => rw [h] at hr; simp at hr
-    | Symbol.nonterminal _ :: x1 :: x2 :: xs  =>
-      exfalso
-      apply heq
-      exact h
+    obtain (⟨t, heq⟩ | ⟨nt1, nt2, nts, h⟩) := hr.cases
+    · exfalso; exact h2 t heq
+    · exfalso
+      cases nts
+      · exfalso; exact h1 nt1 nt2 h
+      · exfalso
+        apply heq
+        exact h
 
 lemma restrict_length_produces_derives [DecidableEq T] [DecidableEq g.NT]
     {u v : List (Symbol T g.NT)} (huv : g.Produces u v) (hg : g.Wellformed) :
