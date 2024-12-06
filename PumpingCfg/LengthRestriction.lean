@@ -124,7 +124,7 @@ def restrict_length_rules [DecidableEq T] [DecidableEq g.NT] (rs : List (Context
 end RestrictLength
 
 noncomputable def restrict_length (g : ContextFreeGrammar.{uN,uT} T) [DecidableEq T]
-    [DecidableEq g.NT] :=
+    [eq : DecidableEq g.NT] :=
   CNF.mk g.NT' (Sum.inl g.initial) (restrict_length_rules g.rules.toList)
 
 def Wellformed (g : ContextFreeGrammar T) : Prop := ∀ r ∈ g.rules, r.Wellformed
@@ -549,7 +549,7 @@ lemma implies_restrict_length [DecidableEq T] [DecidableEq g.NT] {u v : List (Sy
   | step hp _ ih =>
     exact CNF.Derives.trans (restrict_length_produces_derives hp hg) ih
 
-theorem restrict_length_correct [DecidableEq T] [DecidableEq g.NT] (hg : g.Wellformed) :
+theorem restrict_length_correct [DecidableEq T] [eq : DecidableEq g.NT] (hg : g.Wellformed) :
     g.language = (restrict_length g).language := by
   unfold language CNF.language
   apply Set.eq_of_subset_of_subset

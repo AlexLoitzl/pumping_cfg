@@ -201,7 +201,7 @@ lemma restrict_terminal_rule_left {nt : g.NT} {r : ContextFreeRule T g.NT}
     rw [← h] at heq
     simp at heq
 
-variable [DecidableEq T] [DecidableEq g.NT]
+variable [DecidableEq T] [eq : DecidableEq g.NT]
 
 lemma restrict_terminals_rules_left {nt : g.NT}
     {r' : ContextFreeRule T (g.NT ⊕ T)} (hmem : r' ∈ restrict_terminal_rules g.rules.toList)

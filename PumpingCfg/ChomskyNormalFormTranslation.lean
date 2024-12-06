@@ -98,9 +98,12 @@ end CNF
 namespace ContextFreeGrammar
 
 noncomputable def toCNF [DecidableEq T] (g : ContextFreeGrammar T) [DecidableEq g.NT]
-    [DecidableEq g.eliminate_empty.eliminate_unitRules.restrict_terminals.NT] -- FIXME How can I provide it
     : CNF T :=
-  g.eliminate_empty.eliminate_unitRules.restrict_terminals.restrict_length
+  g.eliminate_empty.eliminate_unitRules.restrict_terminals.restrict_length (eq := by
+    unfold restrict_terminals eliminate_unitRules eliminate_empty
+    simp
+    exact instDecidableEqSum
+    )
 
 variable {g : ContextFreeGrammar T}
 
@@ -229,12 +232,11 @@ lemma eliminate_unitRules_nonUnit : ∀ r ∈ g.eliminate_unitRules.rules, NonUn
       assumption
     · constructor
 
-variable [DecidableEq g.eliminate_empty.eliminate_unitRules.restrict_terminals.NT] -- FIXME again
-
 theorem toCNF_correct : g.language \ {[]} = g.toCNF.language := by
   unfold toCNF
   rw [eliminate_empty_correct, eliminate_unitRules_correct,
-    restrict_terminals_correct, restrict_length_correct]
+    restrict_terminals_correct]
+  rw [restrict_length_correct (eq := (id (id (id (id instDecidableEqSum)))))]
   unfold Wellformed
   intro r hrin
   match h : r.output with
