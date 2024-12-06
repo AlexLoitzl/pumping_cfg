@@ -13,15 +13,15 @@ universe uN uT
 variable {T : Type uT}
 
 namespace ContextFreeRule
-variable {NT : Type*}
+variable {N : Type*}
 
 /- `Wellformed r` holds if the rule's output is not a single nonterminal (`UnitRule`), not empty,
  or if the output is more than one symbol, it is only nonterminals -/
-inductive Wellformed : (ContextFreeRule T NT) → Prop where
+inductive Wellformed : (ContextFreeRule T N) → Prop where
   /- Rule rewriting to a single terminal is wellformed -/
-  | terminal {nt : NT} {t : T} : Wellformed (ContextFreeRule.mk nt [Symbol.terminal t])
+  | terminal {nt : N} {t : T} : Wellformed (ContextFreeRule.mk nt [Symbol.terminal t])
   /- Rule rewriting to mulitple nonterminals is wellformed -/
-  | nonterminals {nt: NT} (u : List (Symbol T NT)) (h1 : 2 ≤ u.length)
+  | nonterminals {nt: N} (u : List (Symbol T N)) (h1 : 2 ≤ u.length)
       (h2 : ∀ s ∈ u, match s with | Symbol.nonterminal _ => True | _ => False) :
       Wellformed (ContextFreeRule.mk nt u)
 
@@ -32,9 +32,9 @@ inductive Wellformed : (ContextFreeRule T NT) → Prop where
 --   | [] => False -- Epsilon Elimination
 --   | _ => ∀ s ∈ r.output, match s with | Symbol.nonterminal _ => True | _ => False
 
-lemma only_nonterminals {u : List (Symbol T NT)}
+lemma only_nonterminals {u : List (Symbol T N)}
     (h : ∀ s ∈ u, match s with | Symbol.nonterminal _ => True | _ => False) :
-    ∃ v : List NT, v.map Symbol.nonterminal = u := by
+    ∃ v : List N, v.map Symbol.nonterminal = u := by
   induction u with
   | nil => use []; rfl
   | cons u1 u ih =>
@@ -47,7 +47,7 @@ lemma only_nonterminals {u : List (Symbol T NT)}
       simp
       exact heq1
 
-lemma Wellformed.mem_nonterminal {r : ContextFreeRule T NT} (hr : r.Wellformed)
+lemma Wellformed.mem_nonterminal {r : ContextFreeRule T N} (hr : r.Wellformed)
     (i : Fin r.output.length) (h : 2 ≤ r.output.length) :
     ∃ nt, r.output[i] = Symbol.nonterminal nt := by
   induction hr with
@@ -60,9 +60,9 @@ lemma Wellformed.mem_nonterminal {r : ContextFreeRule T NT} (hr : r.Wellformed)
       exact he
     · contradiction
 
-lemma Wellformed.cases {r : ContextFreeRule T NT} (h : r.Wellformed) :
+lemma Wellformed.cases {r : ContextFreeRule T N} (h : r.Wellformed) :
     (∃ t : T, r.output = [Symbol.terminal t])
-    ∨ (∃ (nt1 nt2 : NT) (nts : List NT), r.output = Symbol.nonterminal nt1 :: Symbol.nonterminal nt2
+    ∨ (∃ (nt1 nt2 : N) (nts : List N), r.output = Symbol.nonterminal nt1 :: Symbol.nonterminal nt2
       :: nts.map Symbol.nonterminal) := by
   induction h with
   | @terminal _ t => left; use t

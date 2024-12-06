@@ -118,7 +118,7 @@ variable {g : ContextFreeGrammar.{uN,uT} T}
 variable [DecidableEq g.NT]
 
 noncomputable def generators_prod_diag : Finset (g.NT × g.NT) :=
-  (g.rules.toList.map (fun r => (r.input, r.input))).toFinset
+  (g.rules.toList.map (fun r ↦ (r.input, r.input))).toFinset
 
 lemma generators_prod_diag_subset : g.generators_prod_diag ⊆ g.generators ×ˢ g.generators := by
   unfold generators_prod_diag generators
@@ -254,7 +254,7 @@ lemma collect_unitPairs_unitPair {r : ContextFreeRule T g.NT} (pairs : List (g.N
     simp at h'
 
 noncomputable def add_unitPairs (pairs : Finset (g.NT × g.NT)) : Finset (g.NT × g.NT) :=
-  g.rules.toList.attach.foldr (fun r p => collect_unitPairs r pairs.toList ∪ p) pairs
+  g.rules.toList.attach.foldr (fun r p ↦ collect_unitPairs r pairs.toList ∪ p) pairs
 
 lemma collect_unitPairs_subset_generators_prod {r : ContextFreeRule T g.NT}
     (pairs : Finset (g.NT × g.NT)) (hsub : pairs ⊆ g.generators ×ˢ g.generators)

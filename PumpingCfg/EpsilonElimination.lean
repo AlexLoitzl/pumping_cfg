@@ -471,20 +471,20 @@ end NullableRelated
 -- *********************************************************************************************** --
 section ComputeNullables
 
-variable {NT : Type uN} [DecidableEq NT]
+variable {N : Type uN} [DecidableEq N]
 
-def symbol_is_nullable (nullable : Finset NT) (s : Symbol T NT) : Bool :=
+def symbol_is_nullable (nullable : Finset N) (s : Symbol T N) : Bool :=
   match s with
   | Symbol.terminal _ => False
   | Symbol.nonterminal nt => nt ∈ nullable
 
-def rule_is_nullable (nullable : Finset NT) (r : ContextFreeRule T NT) : Bool :=
+def rule_is_nullable (nullable : Finset N) (r : ContextFreeRule T N) : Bool :=
   ∀ s ∈ r.output, symbol_is_nullable nullable s
 
-def add_if_nullable (r : ContextFreeRule T NT) (nullable : Finset NT) : Finset NT :=
+def add_if_nullable (r : ContextFreeRule T N) (nullable : Finset N) : Finset N :=
   if rule_is_nullable nullable r then insert r.input nullable else nullable
 
-lemma add_if_nullable_subset (r : ContextFreeRule T NT) (nullable : Finset NT) :
+lemma add_if_nullable_subset (r : ContextFreeRule T N) (nullable : Finset N) :
   nullable ⊆ (add_if_nullable r nullable) := by
   unfold add_if_nullable
   split <;> simp
@@ -785,10 +785,10 @@ end ComputeNullables
 
 section EliminateEmpty
 
-variable {NT : Type uN} [DecidableEq NT]
+variable {N : Type uN} [DecidableEq N]
 
 /- Compute all possible combinations of leaving out nullable nonterminals from output -/
-def remove_nullable (nullable : Finset NT) (output : List (Symbol T NT)) :=
+def remove_nullable (nullable : Finset N) (output : List (Symbol T N)) :=
   match output with
   | [] => [[]]
   | x :: xs => match x with
@@ -796,8 +796,8 @@ def remove_nullable (nullable : Finset NT) (output : List (Symbol T NT)) :=
                                          ++ List.map (fun y ↦ x :: y) (remove_nullable nullable xs)
                | Symbol.terminal _ => List.map (fun y ↦ x :: y) (remove_nullable nullable xs)
 
-def remove_nullable_rule (nullable : Finset NT) (r: ContextFreeRule T NT) :=
-  let fltrmap : List (Symbol T NT) → Option (ContextFreeRule T NT)
+def remove_nullable_rule (nullable : Finset N) (r: ContextFreeRule T N) :=
+  let fltrmap : List (Symbol T N) → Option (ContextFreeRule T N)
     | [] => Option.none
     | h :: t => ContextFreeRule.mk r.input (h :: t)
   (remove_nullable nullable r.output).filterMap fltrmap

@@ -22,36 +22,36 @@ end ContextFreeGrammar
 
 section EmbedProject
 
-variable {NT : Type uN}
+variable {N : Type uN}
 
-def embed_symbol (s : Symbol T NT) : Symbol T (NT ⊕ T) :=
+def embed_symbol (s : Symbol T N) : Symbol T (N ⊕ T) :=
   match s with
   | Symbol.terminal t => Symbol.terminal t
   | Symbol.nonterminal n => Symbol.nonterminal (Sum.inl n)
 
-abbrev embed_string (u : List (Symbol T NT)) : List (Symbol T (NT ⊕ T)) := u.map embed_symbol
+abbrev embed_string (u : List (Symbol T N)) : List (Symbol T (N ⊕ T)) := u.map embed_symbol
 
-def right_embed_symbol (s : Symbol T NT) : Symbol T (NT ⊕ T) :=
+def right_embed_symbol (s : Symbol T N) : Symbol T (N ⊕ T) :=
   match s with
   | Symbol.terminal t => Symbol.nonterminal (Sum.inr t)
   | Symbol.nonterminal n => Symbol.nonterminal (Sum.inl n)
 
-abbrev right_embed_string (w : List (Symbol T NT)) := w.map right_embed_symbol
+abbrev right_embed_string (w : List (Symbol T N)) := w.map right_embed_symbol
 
-def project_symbol (s : Symbol T (NT ⊕ T)) : Symbol T NT :=
+def project_symbol (s : Symbol T (N ⊕ T)) : Symbol T N :=
   match s with
   | Symbol.terminal t => Symbol.terminal t
   | Symbol.nonterminal (Sum.inl nt) => Symbol.nonterminal nt
   | Symbol.nonterminal (Sum.inr t) => Symbol.terminal t
 
-def project_string (u : List (Symbol T (NT ⊕ T))) : List (Symbol T NT) := u.map project_symbol
+def project_string (u : List (Symbol T (N ⊕ T))) : List (Symbol T N) := u.map project_symbol
 
-lemma embed_nonterminal_eq {nt : NT} :
-    embed_symbol (Symbol.nonterminal nt) = (@Symbol.nonterminal T (NT ⊕ T)) (Sum.inl nt) := by
+lemma embed_nonterminal_eq {nt : N} :
+    embed_symbol (Symbol.nonterminal nt) = (@Symbol.nonterminal T (N ⊕ T)) (Sum.inl nt) := by
   unfold embed_symbol
   rfl
 
-lemma project_right_project_eq {u : List (Symbol T NT)} :
+lemma project_right_project_eq {u : List (Symbol T N)} :
     project_string (right_embed_string u) = u := by
   induction u with
   | nil => rfl
@@ -65,7 +65,7 @@ lemma project_right_project_eq {u : List (Symbol T NT)} :
       exact ih
 
 lemma project_string_terminals {u : List T} :
-    project_string (List.map (@Symbol.terminal T (NT ⊕ T)) u) = (List.map Symbol.terminal u) := by
+    project_string (List.map (@Symbol.terminal T (N ⊕ T)) u) = (List.map Symbol.terminal u) := by
   induction u with
   | nil => rfl
   | cons hd tl ih =>
@@ -76,29 +76,29 @@ lemma project_string_terminals {u : List T} :
       rfl
     · exact ih
 
-lemma project_symbol_nonterminal {nt : NT} :
-    project_symbol (@Symbol.nonterminal T (NT ⊕ T) (Sum.inl nt)) = Symbol.nonterminal nt := by
+lemma project_symbol_nonterminal {nt : N} :
+    project_symbol (@Symbol.nonterminal T (N ⊕ T) (Sum.inl nt)) = Symbol.nonterminal nt := by
   unfold project_symbol
   rfl
 
-lemma embed_string_nonempty {u : List (Symbol T NT)} (h: u ≠ []): embed_string u ≠ [] := by
+lemma embed_string_nonempty {u : List (Symbol T N)} (h: u ≠ []): embed_string u ≠ [] := by
   cases u
   contradiction
   intro
   contradiction
 
 lemma embed_string_terminals {w : List T} :
-    embed_string (List.map (@Symbol.terminal T NT) w) = List.map Symbol.terminal w := by
+    embed_string (List.map (@Symbol.terminal T N) w) = List.map Symbol.terminal w := by
   induction w with
   | nil => rfl
   | cons =>
     unfold embed_string embed_symbol
     simp
 
-lemma embed_string_append {u v : List (Symbol T NT)} :
+lemma embed_string_append {u v : List (Symbol T N)} :
   embed_string (u ++ v) = embed_string u ++ embed_string v := List.map_append embed_symbol u v
 
-lemma right_embed_string_nonUnit {u : List (Symbol T NT)} (h : ContextFreeGrammar.NonUnit u)
+lemma right_embed_string_nonUnit {u : List (Symbol T N)} (h : ContextFreeGrammar.NonUnit u)
     (h' : ∀ t, u ≠ [Symbol.terminal t]) :
     ContextFreeGrammar.NonUnit (right_embed_string u) := by
   match u with
@@ -121,20 +121,20 @@ namespace ContextFreeGrammar
 
 section RestrictTerminals
 
-def new_terminal_rules {NT : Type*} (r : ContextFreeRule T NT) : List (ContextFreeRule T (NT ⊕ T)) :=
-  let terminal_rule (s : Symbol T NT) : Option (ContextFreeRule T (NT ⊕ T)) :=
+def new_terminal_rules {N : Type*} (r : ContextFreeRule T N) : List (ContextFreeRule T (N ⊕ T)) :=
+  let terminal_rule (s : Symbol T N) : Option (ContextFreeRule T (N ⊕ T)) :=
     match s with
     | Symbol.terminal t => some (ContextFreeRule.mk (Sum.inr t) [Symbol.terminal t])
     | Symbol.nonterminal _ => none
   r.output.filterMap terminal_rule
 
-def restrict_terminal_rule {NT : Type*} (r : ContextFreeRule T NT) : List (ContextFreeRule T (NT ⊕ T)) :=
+def restrict_terminal_rule {N : Type*} (r : ContextFreeRule T N) : List (ContextFreeRule T (N ⊕ T)) :=
   (match r.output with
   | [Symbol.terminal t] => ContextFreeRule.mk (Sum.inl r.input) ([Symbol.terminal t])
   | _ => (ContextFreeRule.mk (Sum.inl r.input) (right_embed_string r.output))) :: new_terminal_rules r
 
-noncomputable def restrict_terminal_rules {NT : Type*} [DecidableEq T] [DecidableEq NT]
-  (rs : List (ContextFreeRule T NT)) : Finset (ContextFreeRule T (NT ⊕ T)) :=
+noncomputable def restrict_terminal_rules {N : Type*} [DecidableEq T] [DecidableEq N]
+  (rs : List (ContextFreeRule T N)) : Finset (ContextFreeRule T (N ⊕ T)) :=
   (rs.map restrict_terminal_rule).flatten.toFinset
 
 noncomputable def restrict_terminals (g : ContextFreeGrammar.{uN, uT} T) [DecidableEq T] [DecidableEq g.NT] :=
