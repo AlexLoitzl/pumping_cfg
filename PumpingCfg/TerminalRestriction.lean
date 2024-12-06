@@ -44,16 +44,16 @@ def project_symbol (s : Symbol T (NT ⊕ T)) : Symbol T NT :=
   | Symbol.nonterminal (Sum.inl nt) => Symbol.nonterminal nt
   | Symbol.nonterminal (Sum.inr t) => Symbol.terminal t
 
-def project_string (w : List (Symbol T (NT ⊕ T))) : List (Symbol T NT) := w.map project_symbol
+def project_string (u : List (Symbol T (NT ⊕ T))) : List (Symbol T NT) := u.map project_symbol
 
 lemma embed_nonterminal_eq {nt : NT} :
     embed_symbol (Symbol.nonterminal nt) = (@Symbol.nonterminal T (NT ⊕ T)) (Sum.inl nt) := by
   unfold embed_symbol
   rfl
 
-lemma project_right_project_eq {w : List (Symbol T NT)} :
-    project_string (right_embed_string w) = w := by
-  induction w with
+lemma project_right_project_eq {u : List (Symbol T NT)} :
+    project_string (right_embed_string u) = u := by
+  induction u with
   | nil => rfl
   | cons hd tl ih =>
     unfold right_embed_string project_string at *
@@ -64,9 +64,9 @@ lemma project_right_project_eq {w : List (Symbol T NT)} :
     · simp at ih
       exact ih
 
-lemma project_string_terminals {w : List T} :
-    project_string (List.map (@Symbol.terminal T (NT ⊕ T)) w) = (List.map Symbol.terminal w) := by
-  induction w with
+lemma project_string_terminals {u : List T} :
+    project_string (List.map (@Symbol.terminal T (NT ⊕ T)) u) = (List.map Symbol.terminal u) := by
+  induction u with
   | nil => rfl
   | cons hd tl ih =>
     unfold project_string at ih ⊢
@@ -81,8 +81,8 @@ lemma project_symbol_nonterminal {nt : NT} :
   unfold project_symbol
   rfl
 
-lemma embed_string_nonempty {w : List (Symbol T NT)} (h: w ≠ []): embed_string w ≠ [] := by
-  cases w
+lemma embed_string_nonempty {u : List (Symbol T NT)} (h: u ≠ []): embed_string u ≠ [] := by
+  cases u
   contradiction
   intro
   contradiction

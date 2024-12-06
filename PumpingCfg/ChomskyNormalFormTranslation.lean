@@ -68,8 +68,8 @@ lemma Derives.toCFG_match {u v : List (Symbol T g.NT)} (huv : g.Derives u v) :
     apply ih.trans_produces
     exact Produces.toCFG_match last
 
-lemma Generates.toCFG_match {u : List (Symbol T g.NT)} (hs : g.Generates u) : g.toCFG.Generates u :=
-  Derives.toCFG_match hs
+lemma Generates.toCFG_match {u : List (Symbol T g.NT)} (hu : g.Generates u) : g.toCFG.Generates u :=
+  Derives.toCFG_match hu
 
 lemma Produces.match_toCFG {u v : List (Symbol T g.NT)} (huv : g.toCFG.Produces u v) :
     g.Produces u v := by

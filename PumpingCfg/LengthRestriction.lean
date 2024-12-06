@@ -32,10 +32,10 @@ inductive Wellformed : (ContextFreeRule T NT) → Prop where
 --   | [] => False -- Epsilon Elimination
 --   | _ => ∀ s ∈ r.output, match s with | Symbol.nonterminal _ => True | _ => False
 
-lemma only_nonterminals {w : List (Symbol T NT)}
-    (h : ∀ s ∈ w, match s with | Symbol.nonterminal _ => True | _ => False) :
-    ∃ u : List NT, u.map Symbol.nonterminal = w := by
-  induction w with
+lemma only_nonterminals {u : List (Symbol T NT)}
+    (h : ∀ s ∈ u, match s with | Symbol.nonterminal _ => True | _ => False) :
+    ∃ v : List NT, v.map Symbol.nonterminal = u := by
+  induction u with
   | nil => use []; rfl
   | cons u1 u ih =>
     simp at h
@@ -47,11 +47,11 @@ lemma only_nonterminals {w : List (Symbol T NT)}
       simp
       exact heq1
 
-lemma Wellformed.mem_nonterminal {r : ContextFreeRule T NT} (h : r.Wellformed)
-    (i : Fin r.output.length) (h' : 2 ≤ r.output.length) :
+lemma Wellformed.mem_nonterminal {r : ContextFreeRule T NT} (hr : r.Wellformed)
+    (i : Fin r.output.length) (h : 2 ≤ r.output.length) :
     ∃ nt, r.output[i] = Symbol.nonterminal nt := by
-  induction h with
-  | terminal => simp at h'
+  induction hr with
+  | terminal => simp at h
   | nonterminals u h1 h2 =>
     simp at i ⊢
     specialize h2 (u[i]'i.2) (u.get_mem i)
@@ -144,14 +144,14 @@ lemma embed_symbol_nonterminal {nt : g.NT} :
 lemma embed_symbol_terminal {t : T} :
     embed_symbol (Symbol.terminal t) = (@Symbol.terminal T g.NT') t := by rfl
 
-abbrev embed_string (w : List (Symbol T g.NT)) : List (Symbol T g.NT') := w.map embed_symbol
+abbrev embed_string (u : List (Symbol T g.NT)) : List (Symbol T g.NT') := u.map embed_symbol
 
 lemma embed_string_nonterminal {nt : g.NT} :
     embed_string [Symbol.nonterminal nt] = [Symbol.nonterminal (Sum.inl nt)] := by rfl
 
-lemma embed_string_terminals {w : List T} :
-    embed_string (List.map Symbol.terminal w) = List.map (@Symbol.terminal T g.NT') w := by
-  induction w with
+lemma embed_string_terminals {u : List T} :
+    embed_string (List.map Symbol.terminal u) = List.map (@Symbol.terminal T g.NT') u := by
+  induction u with
   | nil => rfl
   | cons hd tl ih =>
     simp at ih ⊢
@@ -169,17 +169,17 @@ def project_symbol (s : Symbol T g.NT') : List (Symbol T g.NT) :=
   | Symbol.nonterminal (Sum.inl nt) => [Symbol.nonterminal nt]
   | Symbol.nonterminal (Sum.inr ⟨r, ⟨i, _⟩⟩) => List.drop (r.output.length - 2 - i) r.output
 
-abbrev project_string (w : List (Symbol T g.NT')) : List (Symbol T g.NT) :=
-  (w.map project_symbol).flatten
+abbrev project_string (u : List (Symbol T g.NT')) : List (Symbol T g.NT) :=
+  (u.map project_symbol).flatten
 
 lemma project_string_append {u v : List (Symbol T g.NT')} :
     project_string (u ++ v) = project_string u ++ project_string v := by
   unfold project_string
   rw [List.map_append, List.flatten_append]
 
-lemma project_embed_eq {w : List (Symbol T g.NT)} : project_string (embed_string w) = w := by
+lemma project_embed_eq {u : List (Symbol T g.NT)} : project_string (embed_string u) = u := by
   unfold project_string embed_string
-  induction w with
+  induction u with
   | nil => rfl
   | cons hd tl ih =>
     simp at ih ⊢
@@ -403,9 +403,11 @@ lemma compute_rules_rec_derives [DecidableEq T] [DecidableEq g.NT] {r : ContextF
     revert hsub
     split <;> intro hsub
     · rename_i nt1 nt2 heq1 heq2
-      have heq : (List.drop (r.output.length - 2) (List.map embed_symbol r.output)) = embed_string [Symbol.nonterminal nt1, Symbol.nonterminal nt2] := by
+      have heq : (List.drop (r.output.length - 2) (List.map embed_symbol r.output))
+          = embed_string [Symbol.nonterminal nt1, Symbol.nonterminal nt2] := by
         have h1 : r.output.length - 2 + 1 + 1 = r.output.length := by omega
-        rw [← List.map_drop, ← List.getElem_cons_drop_succ_eq_drop, ← List.getElem_cons_drop_succ_eq_drop]
+        rw [← List.map_drop, ← List.getElem_cons_drop_succ_eq_drop,
+          ← List.getElem_cons_drop_succ_eq_drop]
         rw [h1, List.drop_length, heq1]
         simp
         congr
@@ -457,8 +459,9 @@ lemma compute_rules_rec_derives [DecidableEq T] [DecidableEq g.NT] {r : ContextF
       apply hn
       exact h1
 
-lemma compute_rules_stuff [DecidableEq T] [DecidableEq g.NT] {r : ContextFreeRule T g.NT}
-    {initial : g.NT'} {rules} (hsub : compute_rules r ⊆ rules) (hr : r.Wellformed) :
+lemma compute_rules_derives_embed_output [DecidableEq T] [DecidableEq g.NT]
+    {r : ContextFreeRule T g.NT} {initial : g.NT'} {rules} (hsub : compute_rules r ⊆ rules)
+    (hr : r.Wellformed) :
     (CNF.mk g.NT' initial rules.toFinset).Derives [Symbol.nonterminal (Sum.inl r.input)]
       (embed_string r.output) := by
   unfold compute_rules at hsub
@@ -531,7 +534,7 @@ lemma restrict_length_produces_derives [DecidableEq T] [DecidableEq g.NT]
   apply CNF.Derives.append_right
   apply CNF.Derives.append_left
   rw [embed_string_nonterminal]
-  apply compute_rules_stuff
+  apply compute_rules_derives_embed_output
   intro r' hrin'
   simp
   use r
