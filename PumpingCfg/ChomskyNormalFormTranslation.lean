@@ -26,7 +26,8 @@ def toCFGRule (r : ChomskyNormalFormRule T N) : ContextFreeRule T N :=
   | leaf n t => { input := n, output := [Symbol.terminal t] }
   | node n l r => { input := n, output := [Symbol.nonterminal l, Symbol.nonterminal r] }
 
-lemma Rewrites.toCFGRule_match {u v : List (Symbol T N)} {r : ChomskyNormalFormRule T N} (huv : r.Rewrites u v) :
+lemma Rewrites.toCFGRule_match {u v : List (Symbol T N)} {r : ChomskyNormalFormRule T N}
+    (huv : r.Rewrites u v) :
     r.toCFGRule.Rewrites u v := by
   induction huv <;> tauto
 
@@ -55,8 +56,7 @@ lemma Produces.toCFG_match {u v : List (Symbol T g.NT)} (huv : g.Produces u v) :
   rcases huv with ⟨r, rin, hrw⟩
   use r.toCFGRule
   constructor
-  · unfold toCFG
-    simp
+  · simp only [toCFG, List.mem_toFinset, List.mem_map, Finset.mem_toList]
     use r
   · exact ChomskyNormalFormRule.Rewrites.toCFGRule_match hrw
 
@@ -83,9 +83,7 @@ lemma Derives.match_toCFG {u v : List (Symbol T g.NT)} (huv : g.toCFG.Derives u 
     g.Derives u v := by
   induction huv with
   | refl => rfl
-  | tail _ last ih =>
-    apply ih.trans_produces
-    exact Produces.match_toCFG last
+  | tail _ last ih => exact ih.trans_produces (Produces.match_toCFG last)
 
 lemma Generates.match_toCFG {u : List (Symbol T g.NT)} (hu : g.toCFG.Generates u) : g.Generates u :=
   Derives.match_toCFG hu
@@ -101,18 +99,16 @@ noncomputable def toChomskyNormalForm [DecidableEq T] (g : ContextFreeGrammar T)
     : ChomskyNormalForm T :=
   g.eliminate_empty.eliminate_unitRules.restrict_terminals.restrict_length (eq := by
     unfold restrict_terminals eliminate_unitRules eliminate_empty
-    simp
-    exact instDecidableEqSum
-    )
+    exact instDecidableEqSum)
 
 variable {g : ContextFreeGrammar T}
 
 lemma new_terminal_rules_terminals {r : ContextFreeRule T g.NT} :
     ∀ r' ∈ new_terminal_rules r, ∃ t, r'.output = [Symbol.terminal t] := by
   unfold new_terminal_rules
-  simp
+  simp only [List.mem_filterMap, forall_exists_index, and_imp]
   intro r' s hs
-  split <;> intro h <;> simp at h
+  split <;> intro h <;> simp only [reduceCtorEq, Option.some.injEq] at h
   · rw [← h]
     simp
 
@@ -120,8 +116,9 @@ variable [DecidableEq g.NT] [DecidableEq T]
 
 lemma terminal_restriction_nonUnit (hn : ∀ r ∈ g.rules, NonUnit r.output) :
     ∀ r' ∈ g.restrict_terminals.rules, NonUnit r'.output := by
-  unfold restrict_terminals restrict_terminal_rules restrict_terminal_rule new_terminal_rules
-  simp
+  simp only [restrict_terminals, restrict_terminal_rules, restrict_terminal_rule, new_terminal_rules,
+    List.mem_toFinset, List.mem_flatten, List.mem_map, Finset.mem_toList, exists_exists_and_eq_and,
+    List.mem_cons, List.mem_filterMap, forall_exists_index, and_imp]
   intro r' r hrin h'
   cases h' <;> rename_i h'
   · revert h'
@@ -129,20 +126,19 @@ lemma terminal_restriction_nonUnit (hn : ∀ r ∈ g.rules, NonUnit r.output) :
     · rw [h']
       constructor
     · rw [h']
-      simp
-      apply right_embed_string_nonUnit
-      apply hn
-      exact hrin
+      simp only
+      apply right_embed_string_nonUnit (hn _ hrin)
       assumption
   · obtain ⟨s, ⟨hsin, h'⟩⟩ := h'
-    cases s <;> simp at h'
+    cases s <;> simp [reduceCtorEq, Option.some.injEq] at h'
     rw [←h']
     constructor
 
 lemma terminal_restriction_nonempty (hne : ∀ r ∈ g.rules, r.output ≠ []) :
     ∀ r' ∈ g.restrict_terminals.rules, r'.output ≠ [] := by
-  unfold restrict_terminals restrict_terminal_rules restrict_terminal_rule new_terminal_rules
-  simp
+  simp only [restrict_terminals, restrict_terminal_rules, restrict_terminal_rule, new_terminal_rules,
+    List.mem_toFinset, List.mem_flatten, List.mem_map, Finset.mem_toList, exists_exists_and_eq_and,
+    List.mem_cons, List.mem_filterMap, ne_eq, forall_exists_index, and_imp]
   intro r' r hrin h'
   cases h' <;> rename_i h'
   · revert h'
@@ -150,11 +146,10 @@ lemma terminal_restriction_nonempty (hne : ∀ r ∈ g.rules, r.output ≠ []) :
     · rw [h']
       simp
     · rw [h']
-      simp
-      apply hne
-      exact hrin
+      simp only [List.map_eq_nil_iff, ne_eq]
+      exact hne _ hrin
   · obtain ⟨s, ⟨hsin, h'⟩⟩ := h'
-    cases s <;> simp at h'
+    cases s <;> simp [reduceCtorEq, Option.some.injEq] at h'
     rw [←h']
     simp
 
@@ -162,19 +157,20 @@ lemma restrict_terminals_no_terminals :
     ∀ r ∈ g.restrict_terminals.rules, (∃ t, r.output = [Symbol.terminal t])
       ∨ (∀ s ∈ r.output, ∃ nt, s = Symbol.nonterminal nt) := by
   unfold restrict_terminals restrict_terminal_rules restrict_terminal_rule
-  simp
+  simp only [restrict_terminals, restrict_terminal_rules, restrict_terminal_rule, List.mem_toFinset,
+    List.mem_flatten, List.mem_map, Finset.mem_toList, exists_exists_and_eq_and, List.mem_cons,
+    Sum.exists, forall_exists_index, and_imp]
   intro r' r _
   split <;> intro h
   · cases h <;> rename_i h
-    · left
-      rw [h]
+    · rw [h]
       simp
     · left
       exact new_terminal_rules_terminals r' h
   · cases h <;> rename_i h
     · right
       rw [h]
-      simp
+      simp only [List.mem_map, forall_exists_index, and_imp, forall_apply_eq_imp_iff₂]
       intro s hs
       cases s
       · right
@@ -190,42 +186,42 @@ lemma restrict_terminals_no_terminals :
 
 lemma eliminate_unitRules_nonempty (hne : ∀ r ∈ g.rules, r.output ≠ []) :
     ∀ r' ∈ g.eliminate_unitRules.rules, r'.output ≠ [] := by
-  unfold eliminate_unitRules remove_unitRules nonUnit_rules
-  simp
+  simp only [eliminate_unitRules, remove_unitRules, nonUnit_rules, List.mem_toFinset,
+    List.mem_flatten, List.mem_map, Finset.mem_toList, Prod.exists, ne_eq,
+    forall_exists_index, and_imp]
   intro r _ _ _ _ h'
   rw [←h']
-  simp
+  simp only [List.mem_filterMap, Finset.mem_toList, Option.ite_none_right_eq_some, forall_exists_index, and_imp]
   intro r' hrin' hr'
   split
   · intro; contradiction
-  · simp
+  · simp only [Option.some.injEq]
     intro heq
     rw [←heq]
-    simp
-    apply hne
-    exact hrin'
+    simp only
+    apply hne _ hrin'
 
 lemma eliminate_empty_nonempty : ∀ r ∈ g.eliminate_empty.rules, r.output ≠ [] := by
-  unfold eliminate_empty
-  simp
+  simp only [ne_eq, eliminate_empty]
   intro r hrin
   exact in_remove_not_epsilon hrin
 
 lemma eliminate_unitRules_nonUnit : ∀ r ∈ g.eliminate_unitRules.rules, NonUnit r.output := by
   unfold eliminate_unitRules remove_unitRules nonUnit_rules
-  simp
+  simp only [eliminate_unitRules, remove_unitRules, nonUnit_rules, List.mem_toFinset,
+    List.mem_flatten, List.mem_map, Finset.mem_toList, Prod.exists, forall_exists_index, and_imp]
   intro r l nt1 nt2 _ h hrin
-  rw [← h] at hrin
-  simp at hrin
+  rw [←h] at hrin
+  simp only [List.mem_filterMap, Finset.mem_toList, Option.ite_none_right_eq_some] at hrin
   obtain ⟨r', _, heq, hr'⟩ := hrin
   revert hr'
   split
   · simp
-  · simp
+  · simp only [Option.some.injEq]
     intro heq
     rw [←heq]
     rename_i h
-    simp
+    simp only
     unfold NonUnit
     split
     · apply h
@@ -234,19 +230,16 @@ lemma eliminate_unitRules_nonUnit : ∀ r ∈ g.eliminate_unitRules.rules, NonUn
 
 theorem toChomskyNormalForm_correct : g.language \ {[]} = g.toChomskyNormalForm.language := by
   unfold toChomskyNormalForm
-  rw [eliminate_empty_correct, eliminate_unitRules_correct,
-    restrict_terminals_correct]
+  rw [eliminate_empty_correct, eliminate_unitRules_correct, restrict_terminals_correct]
   rw [restrict_length_correct (eq := (id (id (id (id instDecidableEqSum)))))]
-  unfold Wellformed
   intro r hrin
   match h : r.output with
   | [] =>
     exfalso
-    apply terminal_restriction_nonempty at hrin
-    exact hrin h
-    exact eliminate_unitRules_nonempty eliminate_empty_nonempty
+    exact terminal_restriction_nonempty (eliminate_unitRules_nonempty eliminate_empty_nonempty) _
+      hrin h
   | [Symbol.terminal _] =>
-    cases r; simp at h; rw [h]
+    cases r; simp only at h; rw [h]
     constructor
   | [Symbol.nonterminal _] =>
     exfalso
@@ -262,13 +255,13 @@ theorem toChomskyNormalForm_correct : g.language \ {[]} = g.toChomskyNormalForm.
       rw [hr] at h
       simp at h
     · rw [h] at hrin
-      simp at hrin
+      simp only [List.mem_cons, forall_eq_or_imp] at hrin
       obtain ⟨nt1, hnt1⟩ := hrin.1
       obtain ⟨nt2, hnt2⟩ := hrin.2.1
-      simp at h
+      simp only at h
       rw [h, hnt1, hnt2]
       constructor
-      simp
+      simp only [List.length_cons, Nat.le_add_left]
       intro s hsin
       cases hsin with
       | head => constructor
