@@ -5,6 +5,7 @@ Authors: Alexander Loitzl
 -/
 
 import Mathlib.Computability.ContextFreeGrammar
+import PumpingCfg.Utils
 import PumpingCfg.EpsilonElimination
 import PumpingCfg.UnitElimination
 

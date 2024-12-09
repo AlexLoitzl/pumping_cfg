@@ -14,7 +14,6 @@ variable {T : Type uT}
 
 section Stuff
 
--- TODO I am using this three times. Is this reason to upstream?
 variable {g : ContextFreeGrammar.{uN, uT} T}
 
 lemma Produces.rule {nt : g.NT} {u : List (Symbol T g.NT)}
@@ -45,19 +44,16 @@ inductive UnitPair : g.NT → g.NT → Prop where
          (hp : UnitPair nt2 nt3): UnitPair nt1 nt3
 
 @[refl]
-lemma UnitPair.rfl {nt : g.NT} {hmem : nt ∈ g.generators} : UnitPair nt nt := UnitPair.refl nt hmem
+lemma UnitPair.rfl {nt : g.NT} (hmem : nt ∈ g.generators) : UnitPair nt nt := UnitPair.refl nt hmem
 
 lemma UnitPair.derives {nt1 nt2 : g.NT} (h : UnitPair nt1 nt2) :
   g.Derives [Symbol.nonterminal nt1] [Symbol.nonterminal nt2] := by
   induction h with
   | refl => rfl
-  | trans hr _ ih =>
-    apply Produces.trans_derives _ ih
-    constructor
-    exact ⟨hr, by constructor⟩
+  | trans hr _ ih => exact Produces.trans_derives ⟨_, hr, ContextFreeRule.Rewrites.head []⟩ ih
 
 /- We use this to concisely state a rule is not a `unitRule` if it's output is NonUnit -/
-abbrev NonUnit {N : Type*} (u : List (Symbol T N)) :=
+abbrev NonUnit {N : Type*} (u : List (Symbol T N)) : Prop :=
   match u with
   | [Symbol.nonterminal _] => False
   | _ => True
@@ -73,7 +69,7 @@ lemma DerivesIn.unitPair_prefix {u : List T} {v : List (Symbol T g.NT)} {nt : g.
     by_cases h' : NonUnit w
     · use nt, w, n
       constructor
-      exact @UnitPair.rfl _ _ _ nt hmem
+      exact UnitPair.rfl hmem
       rw [hv]
       repeat first | assumption | omega | constructor
     · unfold NonUnit at h'
@@ -550,8 +546,8 @@ lemma remove_unitRules_stuff [DecidableEq T] {pairs : Finset (g.NT × g.NT)}
 
 lemma eliminate_unitRules_implies [DecidableEq T] {u v : List (Symbol T g.NT)}
     (huv : g.eliminate_unitRules.Derives u v) : g.Derives u v := by
-  change List (Symbol T g.eliminate_unitRules.NT) at u v
-  induction huv using Derives.head_induction_on with
+  -- change List (Symbol T g.eliminate_unitRules.NT) at u v
+  induction huv using Relation.ReflTransGen.head_induction_on with
   | refl => rfl
   | @head v u hp _ ih =>
     obtain ⟨r, hrin, hr⟩ := hp

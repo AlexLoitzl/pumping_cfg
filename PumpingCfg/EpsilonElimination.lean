@@ -5,6 +5,7 @@ Authors: Alexander Loitzl
 -/
 
 import Mathlib.Computability.ContextFreeGrammar
+import PumpingCfg.Utils
 import PumpingCfg.CountingSteps
 
 namespace ContextFreeGrammar
@@ -21,7 +22,7 @@ abbrev NullableNonTerminal (v : g.NT) : Prop := g.Derives [Symbol.nonterminal v]
 
 abbrev NullableWord (w : List (Symbol T g.NT)) : Prop := g.Derives w []
 
-private lemma DerivesIn.empty_of_append_left_aux {u v w: List (Symbol T g.NT)} {n : ℕ}
+private lemma DerivesIn.empty_of_append_left_aux {u v w : List (Symbol T g.NT)} {n : ℕ}
     (hwe : g.DerivesIn w [] n) (hw : w = u ++ v) :
     ∃ m ≤ n, g.DerivesIn u [] m := by
   induction hwe using DerivesIn.head_induction_on generalizing u v with
