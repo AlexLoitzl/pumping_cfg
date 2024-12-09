@@ -16,39 +16,39 @@ universe uN uT
 
 variable {T : Type uT}
 
-namespace CNFRule
+namespace ChomskyNormalFormRule
 
 -- Type of nonterminals.
 variable {N : Type uN}
 
-def toCFGRule (r : CNFRule T N) : ContextFreeRule T N :=
+def toCFGRule (r : ChomskyNormalFormRule T N) : ContextFreeRule T N :=
   match r with
   | leaf n t => { input := n, output := [Symbol.terminal t] }
   | node n l r => { input := n, output := [Symbol.nonterminal l, Symbol.nonterminal r] }
 
-lemma Rewrites.toCFGRule_match {u v : List (Symbol T N)} {r : CNFRule T N} (huv : r.Rewrites u v) :
+lemma Rewrites.toCFGRule_match {u v : List (Symbol T N)} {r : ChomskyNormalFormRule T N} (huv : r.Rewrites u v) :
     r.toCFGRule.Rewrites u v := by
   induction huv <;> tauto
 
-lemma Rewrites.match_toCFGRule {u v : List (Symbol T N)} {r : CNFRule T N}
+lemma Rewrites.match_toCFGRule {u v : List (Symbol T N)} {r : ChomskyNormalFormRule T N}
     (huv : r.toCFGRule.Rewrites u v) :
     r.Rewrites u v := by
   induction huv with
   | head => cases r <;> tauto
   | cons x _ ih => exact Rewrites.cons r x ih
 
-end CNFRule
+end ChomskyNormalFormRule
 
-namespace CNF
+namespace ChomskyNormalForm
 
 variable [DecidableEq T]
 
-noncomputable def toCFG (g : CNF T) [DecidableEq g.NT] : ContextFreeGrammar T where
+noncomputable def toCFG (g : ChomskyNormalForm T) [DecidableEq g.NT] : ContextFreeGrammar T where
   NT := g.NT
   initial := g.initial
-  rules := (g.rules.toList.map CNFRule.toCFGRule).toFinset
+  rules := (g.rules.toList.map ChomskyNormalFormRule.toCFGRule).toFinset
 
-variable {g : CNF T} [DecidableEq g.NT]
+variable {g : ChomskyNormalForm T} [DecidableEq g.NT]
 
 lemma Produces.toCFG_match {u v : List (Symbol T g.NT)} (huv : g.Produces u v) :
     g.toCFG.Produces u v := by
@@ -58,7 +58,7 @@ lemma Produces.toCFG_match {u v : List (Symbol T g.NT)} (huv : g.Produces u v) :
   · unfold toCFG
     simp
     use r
-  · exact CNFRule.Rewrites.toCFGRule_match hrw
+  · exact ChomskyNormalFormRule.Rewrites.toCFGRule_match hrw
 
 lemma Derives.toCFG_match {u v : List (Symbol T g.NT)} (huv : g.Derives u v) :
     g.toCFG.Derives u v := by
@@ -77,7 +77,7 @@ lemma Produces.match_toCFG {u v : List (Symbol T g.NT)} (huv : g.toCFG.Produces 
   simp only [toCFG, List.mem_map] at rin
   rw [List.mem_toFinset] at rin
   obtain ⟨r', rin', rfl⟩ := List.mem_map.1 rin
-  exact ⟨r', Finset.mem_toList.1 rin', CNFRule.Rewrites.match_toCFGRule hrw⟩
+  exact ⟨r', Finset.mem_toList.1 rin', ChomskyNormalFormRule.Rewrites.match_toCFGRule hrw⟩
 
 lemma Derives.match_toCFG {u v : List (Symbol T g.NT)} (huv : g.toCFG.Derives u v) :
     g.Derives u v := by
@@ -93,12 +93,12 @@ lemma Generates.match_toCFG {u : List (Symbol T g.NT)} (hu : g.toCFG.Generates u
 theorem toCFG_correct {u : List (Symbol T g.NT)} : g.Generates u ↔ g.toCFG.Generates u :=
   ⟨Generates.toCFG_match, Generates.match_toCFG⟩
 
-end CNF
+end ChomskyNormalForm
 
 namespace ContextFreeGrammar
 
-noncomputable def toCNF [DecidableEq T] (g : ContextFreeGrammar T) [DecidableEq g.NT]
-    : CNF T :=
+noncomputable def toChomskyNormalForm [DecidableEq T] (g : ContextFreeGrammar T) [DecidableEq g.NT]
+    : ChomskyNormalForm T :=
   g.eliminate_empty.eliminate_unitRules.restrict_terminals.restrict_length (eq := by
     unfold restrict_terminals eliminate_unitRules eliminate_empty
     simp
@@ -232,8 +232,8 @@ lemma eliminate_unitRules_nonUnit : ∀ r ∈ g.eliminate_unitRules.rules, NonUn
       assumption
     · constructor
 
-theorem toCNF_correct : g.language \ {[]} = g.toCNF.language := by
-  unfold toCNF
+theorem toChomskyNormalForm_correct : g.language \ {[]} = g.toChomskyNormalForm.language := by
+  unfold toChomskyNormalForm
   rw [eliminate_empty_correct, eliminate_unitRules_correct,
     restrict_terminals_correct]
   rw [restrict_length_correct (eq := (id (id (id (id instDecidableEqSum)))))]

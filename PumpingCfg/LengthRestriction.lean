@@ -25,13 +25,6 @@ inductive Wellformed : (ContextFreeRule T N) → Prop where
       (h2 : ∀ s ∈ u, match s with | Symbol.nonterminal _ => True | _ => False) :
       Wellformed (ContextFreeRule.mk nt u)
 
--- def Wellformed  (r : ContextFreeRule T NT) : Prop :=
---   match r.output with
---   | [Symbol.terminal _] => True
---   | [Symbol.nonterminal _] => False -- Unit Elimination
---   | [] => False -- Epsilon Elimination
---   | _ => ∀ s ∈ r.output, match s with | Symbol.nonterminal _ => True | _ => False
-
 lemma only_nonterminals {u : List (Symbol T N)}
     (h : ∀ s ∈ u, match s with | Symbol.nonterminal _ => True | _ => False) :
     ∃ v : List N, v.map Symbol.nonterminal = u := by
@@ -94,27 +87,27 @@ variable {g : ContextFreeGrammar.{uN, uT} T}
 abbrev NT' := g.NT ⊕ Σ r : ContextFreeRule T g.NT, Fin (r.output.length - 2)
 
 def compute_rules_rec (r : ContextFreeRule T g.NT) (i : Fin (r.output.length - 2)) :
-    List (CNFRule T g.NT') :=
+    List (ChomskyNormalFormRule T g.NT') :=
   match i with
   | ⟨0, p⟩ => match r.output.get ⟨r.output.length - 2, by omega⟩,
                r.output.get ⟨r.output.length - 1, by omega⟩ with
              | Symbol.nonterminal nt1, Symbol.nonterminal nt2 =>
-               [(CNFRule.node (Sum.inr ⟨r, ⟨0, p⟩⟩) (Sum.inl nt1) (Sum.inl nt2))]
+               [(ChomskyNormalFormRule.node (Sum.inr ⟨r, ⟨0, p⟩⟩) (Sum.inl nt1) (Sum.inl nt2))]
              | _, _ => []
   | ⟨n + 1, p⟩ => match r.output.get ⟨r.output.length - 2 - i.val, by omega⟩ with
                  | Symbol.nonterminal nt =>
-                   (CNFRule.node (Sum.inr ⟨r, ⟨i.val,by omega⟩⟩) (Sum.inl nt)
+                   (ChomskyNormalFormRule.node (Sum.inr ⟨r, ⟨i.val,by omega⟩⟩) (Sum.inl nt)
                      (Sum.inr ⟨r, ⟨n,by omega⟩⟩))
                    :: compute_rules_rec r ⟨n, by omega⟩
                  | _ => []
 
-def compute_rules (r : ContextFreeRule T g.NT) : List (CNFRule T g.NT') :=
+def compute_rules (r : ContextFreeRule T g.NT) : List (ChomskyNormalFormRule T g.NT') :=
   match h : r.output with
   | [Symbol.nonterminal nt1, Symbol.nonterminal nt2] =>
-      [CNFRule.node (Sum.inl r.input) (Sum.inl nt1) (Sum.inl nt2)]
-  | [Symbol.terminal t] => [CNFRule.leaf (Sum.inl r.input) t]
+      [ChomskyNormalFormRule.node (Sum.inl r.input) (Sum.inl nt1) (Sum.inl nt2)]
+  | [Symbol.terminal t] => [ChomskyNormalFormRule.leaf (Sum.inl r.input) t]
   | Symbol.nonterminal nt :: _ :: _ :: _ =>
-    (CNFRule.node (Sum.inl r.input) (Sum.inl nt) (Sum.inr ⟨r, ⟨r.output.length - 3, by rw [h]; simp⟩⟩))
+    (ChomskyNormalFormRule.node (Sum.inl r.input) (Sum.inl nt) (Sum.inr ⟨r, ⟨r.output.length - 3, by rw [h]; simp⟩⟩))
       :: compute_rules_rec r ⟨r.output.length - 3, by rw [h]; simp⟩
   | _ => []
 
@@ -125,7 +118,7 @@ end RestrictLength
 
 noncomputable def restrict_length (g : ContextFreeGrammar.{uN,uT} T) [DecidableEq T]
     [eq : DecidableEq g.NT] :=
-  CNF.mk g.NT' (Sum.inl g.initial) (restrict_length_rules g.rules.toList)
+  ChomskyNormalForm.mk g.NT' (Sum.inl g.initial) (restrict_length_rules g.rules.toList)
 
 def Wellformed (g : ContextFreeGrammar T) : Prop := ∀ r ∈ g.rules, r.Wellformed
 
@@ -217,7 +210,7 @@ section CorrectnessProof
 variable {g : ContextFreeGrammar.{uN, uT} T}
 
 lemma compute_rules_rec_project {r : ContextFreeRule T g.NT} {i : Fin (r.output.length - 2)}
-    {r' : CNFRule T g.NT'} (h : r' ∈ compute_rules_rec r i) :
+    {r' : ChomskyNormalFormRule T g.NT'} (h : r' ∈ compute_rules_rec r i) :
     project_string r'.output = project_string [Symbol.nonterminal r'.input] := by
   obtain ⟨val, p⟩ := i
   induction val with
@@ -260,7 +253,7 @@ lemma compute_rules_rec_project {r : ContextFreeRule T g.NT} {i : Fin (r.output.
     · apply ih
       exact h
 
-lemma compute_rules_rec_inl {nt : g.NT} {r : ContextFreeRule T g.NT} {r' : CNFRule T g.NT'}
+lemma compute_rules_rec_inl {nt : g.NT} {r : ContextFreeRule T g.NT} {r' : ChomskyNormalFormRule T g.NT'}
     {i : Fin (r.output.length - 2)} (heq : r'.input = Sum.inl nt) :
     r' ∉ compute_rules_rec r i := by
   obtain ⟨val, p⟩ := i
@@ -285,7 +278,7 @@ lemma compute_rules_rec_inl {nt : g.NT} {r : ContextFreeRule T g.NT} {r' : CNFRu
     · exact List.not_mem_nil r'
 
 lemma compute_rules_inr_length {nt : Σ r : ContextFreeRule T g.NT, Fin (r.output.length - 2)}
-    {r : ContextFreeRule T g.NT} {r' : CNFRule T g.NT'} (hmem : r' ∈ compute_rules r)
+    {r : ContextFreeRule T g.NT} {r' : ChomskyNormalFormRule T g.NT'} (hmem : r' ∈ compute_rules r)
     (heq : r'.input = Sum.inr nt) :
     3 ≤ r.output.length := by
   unfold compute_rules at hmem
@@ -299,7 +292,7 @@ lemma compute_rules_inr_length {nt : Σ r : ContextFreeRule T g.NT, Fin (r.outpu
       simp
 
 lemma compute_rules_inr_in_rec {nt : Σ r : ContextFreeRule T g.NT, Fin (r.output.length - 2)}
-    {r : ContextFreeRule T g.NT} {r' : CNFRule T g.NT'}
+    {r : ContextFreeRule T g.NT} {r' : ChomskyNormalFormRule T g.NT'}
     {p : r.output.length - 3 < r.output.length - 2} (hmem : r' ∈ compute_rules r)
     (heq : r'.input = Sum.inr nt) :
     r' ∈ compute_rules_rec r ⟨r.output.length - 3, p⟩ := by
@@ -312,7 +305,7 @@ lemma compute_rules_inr_in_rec {nt : Σ r : ContextFreeRule T g.NT, Fin (r.outpu
     · rw [hmem] at heq; simp at heq
     · exact hmem
 
-lemma compute_rules_inl {nt : g.NT} {r : ContextFreeRule T g.NT} {r' : CNFRule T g.NT'}
+lemma compute_rules_inl {nt : g.NT} {r : ContextFreeRule T g.NT} {r' : ChomskyNormalFormRule T g.NT'}
     (hmem : r' ∈ compute_rules r) (heq : r'.input = Sum.inl nt) :
     project_string r'.output = r.output ∧ nt = r.input := by
   unfold compute_rules at hmem
@@ -382,7 +375,7 @@ lemma restrict_length_produces_implies {u v : List (Symbol T g.NT')} [DecidableE
 lemma restrict_length_implies {u v : List (Symbol T g.NT')} [DecidableEq T] [DecidableEq g.NT]
     (huv : (restrict_length g).Derives u v) :
     g.Derives (project_string u) (project_string v) := by
-  induction huv using CNF.Derives.head_induction_on with
+  induction huv using ChomskyNormalForm.Derives.head_induction_on with
   | refl => rfl
   | head hp _ ih => exact Derives.trans (restrict_length_produces_implies hp) ih
 
@@ -393,7 +386,7 @@ lemma restrict_length_implies {u v : List (Symbol T g.NT')} [DecidableEq T] [Dec
 lemma compute_rules_rec_derives [DecidableEq T] [DecidableEq g.NT] {r : ContextFreeRule T g.NT}
     {i : Fin (r.output.length - 2)} {initial : g.NT'} {rules} (hsub : compute_rules_rec r i ⊆ rules)
     (hr : r.Wellformed) :
-    (CNF.mk g.NT' initial rules.toFinset).Derives [Symbol.nonterminal (Sum.inr ⟨r, i⟩)]
+    (ChomskyNormalForm.mk g.NT' initial rules.toFinset).Derives [Symbol.nonterminal (Sum.inr ⟨r, i⟩)]
       (embed_string (List.drop (r.output.length - 2 - i) r.output)) := by
   obtain ⟨n, p⟩ := i
   induction n with
@@ -418,12 +411,12 @@ lemma compute_rules_rec_derives [DecidableEq T] [DecidableEq g.NT] {r : ContextF
       rw [heq]
       simp
       rw [embed_symbol_nonterminal, embed_symbol_nonterminal]
-      apply CNF.Produces.single
+      apply ChomskyNormalForm.Produces.single
       constructor
       · constructor
         · simp at hsub ⊢
           exact hsub
-        · exact CNFRule.Rewrites.input_output
+        · exact ChomskyNormalFormRule.Rewrites.input_output
     · rename_i hn
       exfalso
       obtain ⟨nt1, h1⟩ := hr.mem_nonterminal ⟨r.output.length - 2, by omega⟩ (by omega)
@@ -439,15 +432,15 @@ lemma compute_rules_rec_derives [DecidableEq T] [DecidableEq g.NT] {r : ContextF
       simp at hsub heq
       obtain ⟨h1, h2⟩ := hsub
       rw [← List.getElem_cons_drop_succ_eq_drop, heq]
-      apply CNF.Produces.trans_derives
+      apply ChomskyNormalForm.Produces.trans_derives
       · constructor
         · constructor
           · simp
             exact h1
-          · exact CNFRule.Rewrites.input_output
+          · exact ChomskyNormalFormRule.Rewrites.input_output
       · simp
         rw [← List.singleton_append, ← List.singleton_append, embed_symbol_nonterminal, ← List.map_drop]
-        apply CNF.Derives.append_left
+        apply ChomskyNormalForm.Derives.append_left
         have h : r.output.length - 2 - (n + 1) +1 = r.output.length - 2 - n := by omega
         rw [h]
         apply ih
@@ -462,14 +455,14 @@ lemma compute_rules_rec_derives [DecidableEq T] [DecidableEq g.NT] {r : ContextF
 lemma compute_rules_derives_embed_output [DecidableEq T] [DecidableEq g.NT]
     {r : ContextFreeRule T g.NT} {initial : g.NT'} {rules} (hsub : compute_rules r ⊆ rules)
     (hr : r.Wellformed) :
-    (CNF.mk g.NT' initial rules.toFinset).Derives [Symbol.nonterminal (Sum.inl r.input)]
+    (ChomskyNormalForm.mk g.NT' initial rules.toFinset).Derives [Symbol.nonterminal (Sum.inl r.input)]
       (embed_string r.output) := by
   unfold compute_rules at hsub
   revert hsub
   split <;> intro hsub <;> rename_i heq
   · rename_i nt1 nt2
     simp at hsub
-    apply CNF.Produces.single
+    apply ChomskyNormalForm.Produces.single
     constructor
     · constructor
       · simp
@@ -478,10 +471,10 @@ lemma compute_rules_derives_embed_output [DecidableEq T] [DecidableEq g.NT]
         unfold embed_string
         simp
         rw [embed_symbol_nonterminal, embed_symbol_nonterminal]
-        exact CNFRule.Rewrites.input_output
+        exact ChomskyNormalFormRule.Rewrites.input_output
   · rename_i t
     simp at hsub
-    apply CNF.Produces.single
+    apply ChomskyNormalForm.Produces.single
     constructor
     · constructor
       · simp
@@ -490,21 +483,21 @@ lemma compute_rules_derives_embed_output [DecidableEq T] [DecidableEq g.NT]
         unfold embed_string
         simp
         rw [embed_symbol_terminal]
-        exact CNFRule.Rewrites.input_output
+        exact ChomskyNormalFormRule.Rewrites.input_output
   · rename_i nt x1 x2 xs
     simp at hsub
     obtain ⟨h1, h2⟩ := hsub
-    apply CNF.Produces.trans_derives
+    apply ChomskyNormalForm.Produces.trans_derives
     · constructor
       · constructor
         · simp
           exact h1
-        · exact CNFRule.Rewrites.input_output
+        · exact ChomskyNormalFormRule.Rewrites.input_output
     · nth_rewrite 4 [heq]
       simp
       rw [← List.singleton_append, ← (@List.singleton_append _ (embed_symbol _)),
            embed_symbol_nonterminal]
-      apply CNF.Derives.append_left
+      apply ChomskyNormalForm.Derives.append_left
       have heq' :
         (embed_symbol x1 :: embed_symbol x2 :: List.map embed_symbol xs =
           embed_string (List.drop (r.output.length - 2 - (r.output.length - 3)) r.output)) := by
@@ -531,8 +524,8 @@ lemma restrict_length_produces_derives [DecidableEq T] [DecidableEq g.NT]
   obtain ⟨p,q, hu, hv⟩ := hr.exists_parts
   rw[hu, hv]
   repeat rw [embed_string_append]
-  apply CNF.Derives.append_right
-  apply CNF.Derives.append_left
+  apply ChomskyNormalForm.Derives.append_right
+  apply ChomskyNormalForm.Derives.append_left
   rw [embed_string_nonterminal]
   apply compute_rules_derives_embed_output
   intro r' hrin'
@@ -547,21 +540,21 @@ lemma implies_restrict_length [DecidableEq T] [DecidableEq g.NT] {u v : List (Sy
   induction huv using Derives.head_induction_on with
   | refl => rfl
   | head hp _ ih =>
-    exact CNF.Derives.trans (restrict_length_produces_derives hp hg) ih
+    exact ChomskyNormalForm.Derives.trans (restrict_length_produces_derives hp hg) ih
 
 theorem restrict_length_correct [DecidableEq T] [eq : DecidableEq g.NT] (hg : g.Wellformed) :
     g.language = (restrict_length g).language := by
-  unfold language CNF.language
+  unfold language ChomskyNormalForm.language
   apply Set.eq_of_subset_of_subset
   · intro w h'
     unfold Generates at h'
-    unfold CNF.Generates
+    unfold ChomskyNormalForm.Generates
     apply implies_restrict_length at h'
     rw [embed_string_nonterminal, embed_string_terminals] at h'
     exact h' hg
   · intro w h
     unfold Generates
-    unfold CNF.Generates at h
+    unfold ChomskyNormalForm.Generates at h
     simp at h ⊢
     apply restrict_length_implies at h
     unfold restrict_length at h

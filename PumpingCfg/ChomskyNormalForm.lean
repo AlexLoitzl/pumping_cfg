@@ -7,44 +7,44 @@ Authors: Alexander Loitzl, Martin Dvorak
 import Mathlib.Computability.ContextFreeGrammar
 
 /-- Rule that rewrites a single nonterminal to a single terminal or a pair of nonterminals. -/
-inductive CNFRule.{uN, uT} (T : Type uT) (N : Type uN)
+inductive ChomskyNormalFormRule.{uT,uN} (T : Type uT) (N : Type uN)
   /-- First kind of rule, rewriting a nonterminal `n` to a single terminal `t`. -/
-  | leaf (n : N) (t : T) : CNFRule T N
+  | leaf (n : N) (t : T) : ChomskyNormalFormRule T N
   /-- Second kind of rule,  rewriting a nonterminal `n` to a pair of nonterminal `lr`. -/
-  | node (n l r : N) : CNFRule T N
+  | node (n l r : N) : ChomskyNormalFormRule T N
 deriving DecidableEq
 
-structure CNF.{uN, uT} (T : Type uT) where
+structure ChomskyNormalForm.{uN,uT} (T : Type uT) where
   /-- Type of nonterminals. -/
   NT : Type uN
   /-- Initial nonterminal. -/
   initial : NT
   /-- Rewrite rules. -/
-  rules : Finset (CNFRule T NT)
+  rules : Finset (ChomskyNormalFormRule T NT)
 
 universe uT uN
 variable {T : Type uT}
 
-namespace CNFRule
-variable {N : Type uN} {r : CNFRule T N} {u v : List (Symbol T N)}
+namespace ChomskyNormalFormRule
+variable {N : Type uN} {r : ChomskyNormalFormRule T N} {u v : List (Symbol T N)}
 
 /-- The input of a CNF rule, similar to `ContextFreeRule.input` -/
 @[simp]
-def input (r : CNFRule T N) :=
+def input (r : ChomskyNormalFormRule T N) :=
   match r with
   | leaf n _ => n
   | node n _ _ => n
 
 /-- The output of a CNF rule, similar to `ContextFreeRule.output` -/
 @[simp]
-def output (r : CNFRule T N) :=
+def output (r : ChomskyNormalFormRule T N) :=
   match r with
   | leaf _ t => [Symbol.terminal t]
   | node _ l r => [Symbol.nonterminal l, Symbol.nonterminal r]
 
 /-- Inductive definition of a single application of a given cnf rule `r` to a string `u`;
 `r.Rewrites u v` means that the `r` sends `u` to `v` (there may be multiple such strings `v`). -/
-inductive Rewrites : (CNFRule T N) → List (Symbol T N) → List (Symbol T N) → Prop
+inductive Rewrites : (ChomskyNormalFormRule T N) → List (Symbol T N) → List (Symbol T N) → Prop
   /-- The replacement is at the start of the remaining string and the rule is a leaf rule. -/
   | head_leaf (n : N) (t : T) (s : List (Symbol T N)) :
       Rewrites (leaf n t) (Symbol.nonterminal n :: s) (Symbol.terminal t :: s)
@@ -52,7 +52,7 @@ inductive Rewrites : (CNFRule T N) → List (Symbol T N) → List (Symbol T N) �
   | head_node (n l r : N) (s : List (Symbol T N)) :
       Rewrites (node n l r) (Symbol.nonterminal n :: s) (Symbol.nonterminal l :: Symbol.nonterminal r :: s)
   /-- The replacement is at the start of the remaining string. -/
-  | cons (r : CNFRule T N) (x : Symbol T N) {s₁ s₂ : List (Symbol T N)} (hrs : Rewrites r s₁ s₂) :
+  | cons (r : ChomskyNormalFormRule T N) (x : Symbol T N) {s₁ s₂ : List (Symbol T N)} (hrs : Rewrites r s₁ s₂) :
       Rewrites r (x :: s₁) (x :: s₂)
 
 lemma Rewrites.exists_parts (hr : r.Rewrites u v) :
@@ -72,7 +72,7 @@ lemma Rewrites.input_output : r.Rewrites [.nonterminal r.input] r.output := by
   · simpa using head_leaf _ _ []
   · simpa using head_node _ _ _ []
 
-lemma rewrites_of_exists_parts (r : CNFRule T N) (p q : List (Symbol T N)) :
+lemma rewrites_of_exists_parts (r : ChomskyNormalFormRule T N) (p q : List (Symbol T N)) :
     r.Rewrites (p ++ [Symbol.nonterminal r.input] ++ q) (p ++ r.output ++ q) := by
     induction p with
     | nil =>
@@ -85,7 +85,7 @@ lemma rewrites_of_exists_parts (r : CNFRule T N) (p q : List (Symbol T N)) :
 /-- Rule `r` rewrites string `u` to string `v` iff they share both a prefix `p` and postfix `q`
 such that the remaining middle part of `u` is the input of `r` and the remaining middle part
 of `v` is the output of `r`. -/
-theorem rewrites_iff {r : CNFRule T N} (u v : List (Symbol T N)) :
+theorem rewrites_iff {r : ChomskyNormalFormRule T N} (u v : List (Symbol T N)) :
     r.Rewrites u v ↔ ∃ p q : List (Symbol T N),
       u = p ++ [Symbol.nonterminal r.input] ++ q ∧ v = p ++ r.output ++ q := by
   constructor
@@ -94,49 +94,49 @@ theorem rewrites_iff {r : CNFRule T N} (u v : List (Symbol T N)) :
     apply rewrites_of_exists_parts
 
 /-- Add extra prefix to cnf rewriting. -/
-lemma Rewrites.append_left {r : CNFRule T N} {v w : List (Symbol T N)}
+lemma Rewrites.append_left {r : ChomskyNormalFormRule T N} {v w : List (Symbol T N)}
     (hvw : r.Rewrites v w) (p : List (Symbol T N)) : r.Rewrites (p ++ v) (p ++ w) := by
   induction p <;> tauto
 
 /-- Add extra postfix to cnf rewriting. -/
-lemma Rewrites.append_right {r : CNFRule T N} {v w : List (Symbol T N)}
+lemma Rewrites.append_right {r : ChomskyNormalFormRule T N} {v w : List (Symbol T N)}
     (hvw : r.Rewrites v w) (p : List (Symbol T N)) : r.Rewrites (v ++ p) (w ++ p) := by
   induction hvw <;> tauto
 
-end CNFRule
+end ChomskyNormalFormRule
 
-namespace CNF
+namespace ChomskyNormalForm
 
 /-- Given a cnf grammar `g` and strings `u` and `v`
 `g.Produces u v` means that one step of a cnf transformation by a rule from `g` sends
 `u` to `v`. -/
-def Produces (g : CNF T) (u v : List (Symbol T g.NT)) : Prop :=
+def Produces (g : ChomskyNormalForm T) (u v : List (Symbol T g.NT)) : Prop :=
   ∃ r ∈ g.rules, r.Rewrites u v
 
 /-- Given a cnf grammar `g` and strings `u` and `v`
 `g.Derives u v` means that `g` can transform `u` to `v` in some number of rewriting steps. -/
-abbrev Derives (g : CNF T) : List (Symbol T g.NT) → List (Symbol T g.NT) → Prop :=
+abbrev Derives (g : ChomskyNormalForm T) : List (Symbol T g.NT) → List (Symbol T g.NT) → Prop :=
   Relation.ReflTransGen g.Produces
 
 /-- Given a cnf grammar `g` and a string `s`
 `g.Generates s` means that `g` can transform its initial nonterminal to `s` in some number of
 rewriting steps. -/
-def Generates (g : CNF T) (s : List (Symbol T g.NT)) : Prop :=
+def Generates (g : ChomskyNormalForm T) (s : List (Symbol T g.NT)) : Prop :=
   g.Derives [Symbol.nonterminal g.initial] s
 
 /-- The language (set of words) that can be generated by a given cnf grammar `g`. -/
-def language (g : CNF T) : Language T :=
+def language (g : ChomskyNormalForm T) : Language T :=
   { w | g.Generates (w.map Symbol.terminal) }
 
 /-- A given word `w` belongs to the language generated by a given cnf grammar `g` iff
 `g` can derive the word `w` (wrapped as a string) from the initial nonterminal of `g` in some
 number of steps. -/
 @[simp]
-lemma mem_language_iff (g : CNF T) (w : List T) :
+lemma mem_language_iff (g : ChomskyNormalForm T) (w : List T) :
     w ∈ g.language ↔ g.Generates (List.map Symbol.terminal w) := by
   rfl
 
-variable {g : CNF T}
+variable {g : ChomskyNormalForm T}
 
 @[refl]
 lemma Derives.refl (w : List (Symbol T g.NT)) : g.Derives w w :=
@@ -202,4 +202,4 @@ theorem Derives.head_induction_on {v : List (Symbol T g.NT)} {P : ∀ u, g.Deriv
   (head : ∀ {u w} (h' : g.Produces u w) (h : g.Derives w v), P w h → P u (h.head h')) : P u h :=
   Relation.ReflTransGen.head_induction_on h refl head
 
-end CNF
+end ChomskyNormalForm
