@@ -118,7 +118,7 @@ end RestrictLength
 
 noncomputable def restrict_length (g : ContextFreeGrammar.{uN,uT} T) [DecidableEq T]
     [eq : DecidableEq g.NT] :=
-  ChomskyNormalForm.mk g.NT' (Sum.inl g.initial) (restrict_length_rules g.rules.toList)
+  ChomskyNormalFormGrammar.mk g.NT' (Sum.inl g.initial) (restrict_length_rules g.rules.toList)
 
 def Wellformed (g : ContextFreeGrammar T) : Prop := ∀ r ∈ g.rules, r.Wellformed
 
@@ -361,7 +361,7 @@ lemma restrict_length_produces_implies {u v : List (Symbol T g.NT')} [DecidableE
 lemma restrict_length_implies {u v : List (Symbol T g.NT')} [DecidableEq T] [DecidableEq g.NT]
     (huv : (restrict_length g).Derives u v) :
     g.Derives (project_string u) (project_string v) := by
-  induction huv using ChomskyNormalForm.Derives.head_induction_on with
+  induction huv using ChomskyNormalFormGrammar.Derives.head_induction_on with
   | refl => rfl
   | head hp _ ih => exact Derives.trans (restrict_length_produces_implies hp) ih
 
@@ -372,7 +372,7 @@ lemma restrict_length_implies {u v : List (Symbol T g.NT')} [DecidableEq T] [Dec
 lemma compute_rules_rec_derives [DecidableEq T] [DecidableEq g.NT] {r : ContextFreeRule T g.NT}
     {i : Fin (r.output.length - 2)} {initial : g.NT'} {rules} (hsub : compute_rules_rec r i ⊆ rules)
     (hr : r.Wellformed) :
-    (ChomskyNormalForm.mk g.NT' initial rules.toFinset).Derives [Symbol.nonterminal (Sum.inr ⟨r, i⟩)]
+    (ChomskyNormalFormGrammar.mk g.NT' initial rules.toFinset).Derives [Symbol.nonterminal (Sum.inr ⟨r, i⟩)]
       (embed_string (List.drop (r.output.length - 2 - i) r.output)) := by
   obtain ⟨n, p⟩ := i
   induction n with
@@ -397,7 +397,7 @@ lemma compute_rules_rec_derives [DecidableEq T] [DecidableEq g.NT] {r : ContextF
       rw [heq]
       simp only [List.map_cons, List.map_nil]
       rw [embed_symbol_nonterminal, embed_symbol_nonterminal]
-      apply ChomskyNormalForm.Produces.single
+      apply ChomskyNormalFormGrammar.Produces.single
       constructor
       · constructor
         · simp only [List.cons_subset, List.nil_subset, and_true, List.mem_toFinset] at hsub ⊢
@@ -416,7 +416,7 @@ lemma compute_rules_rec_derives [DecidableEq T] [DecidableEq g.NT] {r : ContextF
       simp only [List.cons_subset, List.get_eq_getElem] at hsub heq
       obtain ⟨h1, h2⟩ := hsub
       rw [← List.getElem_cons_drop_succ_eq_drop, heq]
-      apply ChomskyNormalForm.Produces.trans_derives
+      apply ChomskyNormalFormGrammar.Produces.trans_derives
       · constructor
         · constructor
           · simp only [List.mem_toFinset]
@@ -424,7 +424,7 @@ lemma compute_rules_rec_derives [DecidableEq T] [DecidableEq g.NT] {r : ContextF
           · exact ChomskyNormalFormRule.Rewrites.input_output
       · simp only [ChomskyNormalFormRule.output, List.map_cons, List.map_drop]
         rw [←List.singleton_append, ←List.singleton_append, embed_symbol_nonterminal, ←List.map_drop]
-        apply ChomskyNormalForm.Derives.append_left
+        apply ChomskyNormalFormGrammar.Derives.append_left
         have h : r.output.length - 2 - (n + 1) +1 = r.output.length - 2 - n := by omega
         rw [h]
         exact ih _ h2
@@ -437,14 +437,14 @@ lemma compute_rules_rec_derives [DecidableEq T] [DecidableEq g.NT] {r : ContextF
 lemma compute_rules_derives_embed_output [DecidableEq T] [DecidableEq g.NT]
     {r : ContextFreeRule T g.NT} {initial : g.NT'} {rules} (hsub : compute_rules r ⊆ rules)
     (hr : r.Wellformed) :
-    (ChomskyNormalForm.mk g.NT' initial rules.toFinset).Derives [Symbol.nonterminal (Sum.inl r.input)]
+    (ChomskyNormalFormGrammar.mk g.NT' initial rules.toFinset).Derives [Symbol.nonterminal (Sum.inl r.input)]
       (embed_string r.output) := by
   unfold compute_rules at hsub
   revert hsub
   split <;> intro hsub <;> rename_i heq
   · rename_i nt1 nt2
     simp only [List.cons_subset, List.nil_subset, and_true] at hsub
-    apply ChomskyNormalForm.Produces.single
+    apply ChomskyNormalFormGrammar.Produces.single
     constructor
     · constructor
       · rwa [List.mem_toFinset]
@@ -455,7 +455,7 @@ lemma compute_rules_derives_embed_output [DecidableEq T] [DecidableEq g.NT]
         exact ChomskyNormalFormRule.Rewrites.input_output
   · rename_i t
     simp only [List.cons_subset, List.nil_subset, and_true] at hsub
-    apply ChomskyNormalForm.Produces.single
+    apply ChomskyNormalFormGrammar.Produces.single
     constructor
     · constructor
       · rwa [List.mem_toFinset]
@@ -466,7 +466,7 @@ lemma compute_rules_derives_embed_output [DecidableEq T] [DecidableEq g.NT]
   · rename_i nt x1 x2 xs
     simp only [List.cons_subset] at hsub
     obtain ⟨h1, h2⟩ := hsub
-    apply ChomskyNormalForm.Produces.trans_derives
+    apply ChomskyNormalFormGrammar.Produces.trans_derives
     · constructor
       · constructor
         · rwa [List.mem_toFinset]
@@ -475,7 +475,7 @@ lemma compute_rules_derives_embed_output [DecidableEq T] [DecidableEq g.NT]
       simp only [ChomskyNormalFormRule.output, List.map_cons]
       rw [← List.singleton_append, ← (@List.singleton_append _ (embed_symbol _)),
            embed_symbol_nonterminal]
-      apply ChomskyNormalForm.Derives.append_left
+      apply ChomskyNormalFormGrammar.Derives.append_left
       have heq' :
         (embed_symbol x1 :: embed_symbol x2 :: List.map embed_symbol xs =
           embed_string (List.drop (r.output.length - 2 - (r.output.length - 3)) r.output)) := by
@@ -501,8 +501,8 @@ lemma restrict_length_produces_derives [DecidableEq T] [DecidableEq g.NT]
   obtain ⟨p,q, hu, hv⟩ := hr.exists_parts
   rw[hu, hv]
   repeat rw [embed_string_append]
-  apply ChomskyNormalForm.Derives.append_right
-  apply ChomskyNormalForm.Derives.append_left
+  apply ChomskyNormalFormGrammar.Derives.append_right
+  apply ChomskyNormalFormGrammar.Derives.append_left
   rw [embed_string_nonterminal]
   apply compute_rules_derives_embed_output _ (hg _ hrin)
   intro r' hrin'
@@ -515,7 +515,7 @@ lemma implies_restrict_length [DecidableEq T] [DecidableEq g.NT] {u v : List (Sy
   induction huv using Derives.head_induction_on with
   | refl => rfl
   | head hp _ ih =>
-    exact ChomskyNormalForm.Derives.trans (restrict_length_produces_derives hp hg) ih
+    exact ChomskyNormalFormGrammar.Derives.trans (restrict_length_produces_derives hp hg) ih
 
 theorem restrict_length_correct [DecidableEq T] [eq : DecidableEq g.NT] (hg : g.Wellformed) :
     g.language = (restrict_length g).language := by
