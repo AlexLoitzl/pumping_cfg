@@ -24,7 +24,7 @@ abbrev NullableWord (w : List (Symbol T g.NT)) : Prop := g.Derives w []
 private lemma DerivesIn.empty_of_append_left_aux {u v w: List (Symbol T g.NT)} {n : ℕ}
     (hwe : g.DerivesIn w [] n) (hw : w = u ++ v) :
     ∃ m ≤ n, g.DerivesIn u [] m := by
-  induction hwe using DerivesIn.induction_refl_head generalizing u v with
+  induction hwe using DerivesIn.head_induction_on generalizing u v with
   | refl =>
     rw [(List.nil_eq_append_iff.1 hw).1]
     exact ⟨0, Nat.le_refl 0, DerivesIn.zero_steps []⟩
@@ -71,7 +71,7 @@ lemma DerivesIn.empty_of_append_left {n : ℕ} {u v : List (Symbol T g.NT)}
 lemma DerivesIn.empty_of_append_right_aux {u v w : List (Symbol T g.NT)} {n : ℕ}
     (hwe : g.DerivesIn w [] n) (hw : w = u ++ v) :
     ∃ m ≤ n, g.DerivesIn v [] m := by
-  induction hwe using DerivesIn.induction_refl_head generalizing u v with
+  induction hwe using DerivesIn.head_induction_on generalizing u v with
   | refl =>
     rw [(List.nil_eq_append_iff.1 hw).2]
     exact ⟨0, Nat.le_refl 0, DerivesIn.zero_steps []⟩
@@ -828,7 +828,7 @@ lemma derives_not_epsilon {u v : List (Symbol T g.NT)} [DecidableEq T]
   change List (Symbol T g.eliminate_empty.NT) at u v
   induction huv using Derives.head_induction_on with
   | refl => exact hune
-  | step hp _ ih => exact ih (produces_not_epsilon (g := g) hp)
+  | head hp _ ih => exact ih (produces_not_epsilon (g := g) hp)
 
 -- Main proof of the only if direction: If the eliminate_empty grammar derives a string,
 -- it is derivable in the original grammar
@@ -902,7 +902,7 @@ lemma eliminate_empty_implies [DecidableEq T] {u v : List (Symbol T g.NT)}
   change (List (Symbol T g.eliminate_empty.NT)) at u v
   induction huv using Derives.head_induction_on with
   | refl => rfl
-  | step hp _ ih => exact Derives.trans (eliminate_empty_step_derives hp) ih
+  | head hp _ ih => exact Derives.trans (eliminate_empty_step_derives hp) ih
 
 -- *************************************************************** --
 -- If direction of the main correctness theorem of eliminate_empty --

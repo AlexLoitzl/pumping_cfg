@@ -384,7 +384,7 @@ lemma restrict_length_implies {u v : List (Symbol T g.NT')} [DecidableEq T] [Dec
     g.Derives (project_string u) (project_string v) := by
   induction huv using CNF.Derives.head_induction_on with
   | refl => rfl
-  | step hp _ ih => exact Derives.trans (restrict_length_produces_implies hp) ih
+  | head hp _ ih => exact Derives.trans (restrict_length_produces_implies hp) ih
 
 -- *************************************************************** --
 -- If direction of the main correctness theorem of restrict_length --
@@ -546,7 +546,7 @@ lemma implies_restrict_length [DecidableEq T] [DecidableEq g.NT] {u v : List (Sy
     (restrict_length g).Derives (embed_string u) (embed_string v) := by
   induction huv using Derives.head_induction_on with
   | refl => rfl
-  | step hp _ ih =>
+  | head hp _ ih =>
     exact CNF.Derives.trans (restrict_length_produces_derives hp hg) ih
 
 theorem restrict_length_correct [DecidableEq T] [eq : DecidableEq g.NT] (hg : g.Wellformed) :

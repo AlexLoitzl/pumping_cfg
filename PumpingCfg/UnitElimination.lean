@@ -22,7 +22,7 @@ lemma Produces.rule {nt : g.NT} {u : List (Symbol T g.NT)}
     ContextFreeRule.mk nt u ∈ g.rules := by
   obtain ⟨r, hrin, hr⟩ := hntu
   cases hr
-  simp
+  rw [List.append_nil]
   exact hrin
   contradiction
 
@@ -52,13 +52,9 @@ lemma UnitPair.derives {nt1 nt2 : g.NT} (h : UnitPair nt1 nt2) :
   induction h with
   | refl => rfl
   | trans hr _ ih =>
-    apply Produces.trans_derives
+    apply Produces.trans_derives _ ih
     constructor
-    constructor
-    exact hr
-    unfold unitRule
-    constructor
-    exact ih
+    exact ⟨hr, by constructor⟩
 
 /- We use this to concisely state a rule is not a `unitRule` if it's output is NonUnit -/
 abbrev NonUnit {N : Type*} (u : List (Symbol T N)) :=
@@ -71,9 +67,8 @@ lemma DerivesIn.unitPair_prefix {u : List T} {v : List (Symbol T g.NT)} {nt : g.
     (hv : [Symbol.nonterminal nt] = v) :
     ∃ nt' w m, UnitPair nt nt' ∧ g.Produces [Symbol.nonterminal nt'] w ∧ NonUnit w ∧ m ≤ n
       ∧ g.DerivesIn w (List.map Symbol.terminal u) m := by
-  induction hvu using DerivesIn.induction_refl_head generalizing nt with
-  | refl =>
-    cases u <;> simp at hv
+  induction hvu using DerivesIn.head_induction_on generalizing nt with
+  | refl => cases u <;> simp at hv
   | @head n v w hvw hwu ih =>
     by_cases h' : NonUnit w
     · use nt, w, n
@@ -558,7 +553,7 @@ lemma eliminate_unitRules_implies [DecidableEq T] {u v : List (Symbol T g.NT)}
   change List (Symbol T g.eliminate_unitRules.NT) at u v
   induction huv using Derives.head_induction_on with
   | refl => rfl
-  | @step v u hp _ ih =>
+  | @head v u hp _ ih =>
     obtain ⟨r, hrin, hr⟩ := hp
     unfold eliminate_unitRules at hrin
     obtain ⟨⟨p1,p2⟩, r', hpin, hrin', heq1, heq2, heq3⟩ := remove_unitRules_stuff hrin

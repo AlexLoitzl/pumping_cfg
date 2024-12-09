@@ -241,7 +241,7 @@ lemma restrict_terminals_implies {u v : List (Symbol T (g.NT ⊕ T))}
     g.Derives (project_string u) (project_string v) := by
   induction huv using Derives.head_induction_on with
   | refl => rfl
-  | step hp _ ih =>
+  | head hp _ ih =>
     exact Derives.trans (restrict_terminals_produces_derives hp) ih
 
 -- ****************************************************************** --
@@ -301,7 +301,7 @@ lemma implies_restrict_terminals {u v : List (Symbol T g.NT)} (huv : g.Derives u
     (restrict_terminals g).Derives (embed_string u) (embed_string v) := by
   induction huv using Derives.head_induction_on with
   | refl => rfl
-  | @step u w hp _ ih =>
+  | @head u w hp _ ih =>
     obtain ⟨r, hrin, hr⟩ := hp
     apply Derives.trans _ ih
     obtain ⟨p,q,hu,hw⟩ := hr.exists_parts

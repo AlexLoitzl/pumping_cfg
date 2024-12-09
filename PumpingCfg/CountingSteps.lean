@@ -187,8 +187,9 @@ lemma DerivesIn.three_split {p q r w : List (Symbol T g.NT)} {n : ℕ} (h : g.De
   exact hd3
   rw [hn2, hn1]
 
+
 @[elab_as_elim]
-lemma DerivesIn.induction_refl_head {b : List (Symbol T g.NT)}
+lemma DerivesIn.head_induction_on {b : List (Symbol T g.NT)}
     {P : ∀ n : ℕ, ∀ a : List (Symbol T g.NT), g.DerivesIn a b n → Prop}
     (refl : P 0 b (DerivesIn.zero_steps b))
     (head : ∀ {n a c} (hac : g.Produces a c) (hcb : g.DerivesIn c b n),
