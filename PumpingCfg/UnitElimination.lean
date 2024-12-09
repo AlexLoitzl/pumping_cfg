@@ -555,9 +555,10 @@ lemma remove_unitRules_stuff [DecidableEq T] {pairs : Finset (g.NT × g.NT)}
 
 lemma eliminate_unitRules_implies [DecidableEq T] {u v : List (Symbol T g.NT)}
     (huv : g.eliminate_unitRules.Derives u v) : g.Derives u v := by
-  induction huv using Relation.ReflTransGen.head_induction_on with
+  change List (Symbol T g.eliminate_unitRules.NT) at u v
+  induction huv using Derives.head_induction_on with
   | refl => rfl
-  | @head v u hp _ ih =>
+  | @step v u hp _ ih =>
     obtain ⟨r, hrin, hr⟩ := hp
     unfold eliminate_unitRules at hrin
     obtain ⟨⟨p1,p2⟩, r', hpin, hrin', heq1, heq2, heq3⟩ := remove_unitRules_stuff hrin

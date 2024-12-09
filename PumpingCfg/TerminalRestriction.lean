@@ -10,15 +10,6 @@ import PumpingCfg.UnitElimination
 
 universe uN uT
 variable {T : Type uT}
-namespace ContextFreeGrammar
-
--- theorem Derives.head_induction_on {v : List (Symbol T g.NT)} {P : ∀ u, g.Derives u v → Prop}
---   {u : List (Symbol T g.NT)} (h : g.Derives u v)
---   (refl : P v (Derives.refl v))
---   (step : ∀ {u w} (h' : g.Produces u w) (h : g.Derives w v), P w h → P u (h.head h')) : P u h :=
---   Relation.ReflTransGen.head_induction_on h refl step
-
-end ContextFreeGrammar
 
 section EmbedProject
 

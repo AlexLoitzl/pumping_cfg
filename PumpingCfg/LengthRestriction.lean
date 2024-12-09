@@ -382,9 +382,9 @@ lemma restrict_length_produces_implies {u v : List (Symbol T g.NT')} [DecidableE
 lemma restrict_length_implies {u v : List (Symbol T g.NT')} [DecidableEq T] [DecidableEq g.NT]
     (huv : (restrict_length g).Derives u v) :
     g.Derives (project_string u) (project_string v) := by
-  induction huv using Relation.ReflTransGen.head_induction_on with
+  induction huv using CNF.Derives.head_induction_on with
   | refl => rfl
-  | @head u' w' hp _ ih => exact Derives.trans (restrict_length_produces_implies hp) ih
+  | step hp _ ih => exact Derives.trans (restrict_length_produces_implies hp) ih
 
 -- *************************************************************** --
 -- If direction of the main correctness theorem of restrict_length --

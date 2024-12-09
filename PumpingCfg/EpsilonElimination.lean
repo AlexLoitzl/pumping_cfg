@@ -899,9 +899,10 @@ lemma eliminate_empty_step_derives [DecidableEq T] {u v : List (Symbol T g.NT)}
 
 lemma eliminate_empty_implies [DecidableEq T] {u v : List (Symbol T g.NT)}
     (huv : g.eliminate_empty.Derives u v) : g.Derives u v := by
-  induction huv using Relation.ReflTransGen.head_induction_on with
+  change (List (Symbol T g.eliminate_empty.NT)) at u v
+  induction huv using Derives.head_induction_on with
   | refl => rfl
-  | head hp _ ih => exact Derives.trans (eliminate_empty_step_derives hp) ih
+  | step hp _ ih => exact Derives.trans (eliminate_empty_step_derives hp) ih
 
 -- *************************************************************** --
 -- If direction of the main correctness theorem of eliminate_empty --
