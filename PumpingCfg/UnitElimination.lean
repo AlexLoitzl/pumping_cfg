@@ -149,18 +149,18 @@ lemma generators_prod_diag_unitPairs {p : g.NT × g.NT} (hp : p ∈ g.generators
       rw [←Finset.mem_toList, heq]
       exact List.mem_cons_of_mem r hvl
 
-def collect_unitPair (nᵢ output : g.NT) (p : g.NT × g.NT) (S : Finset (g.NT × g.NT)) :=
-  if output = p.1 then insert (nᵢ, p.2) S else S
+def collect_unitPair (nᵢ nₒ : g.NT) (p : g.NT × g.NT) (S : Finset (g.NT × g.NT)) :=
+  if nₒ = p.1 then insert (nᵢ, p.2) S else S
 
 def collect_unitPairs (r : ContextFreeRule T g.NT) (S : List (g.NT × g.NT)) :=
   match r.output with
   | [Symbol.nonterminal v] => S.foldr (collect_unitPair r.input v) {}
   | _ => {}
 
-lemma rec_collect_unitPairs_unitPairs {nᵢ output : g.NT} {p : g.NT × g.NT}
+lemma rec_collect_unitPairs_unitPairs {nᵢ nₒ : g.NT} {p : g.NT × g.NT}
     {L : List (g.NT × g.NT)} {S : Finset (g.NT × g.NT)}
-    (hp : p ∈ L.foldr (collect_unitPair nᵢ output) S) :
-    p ∈ S ∨ ∃ v, (output, v) ∈ L ∧ p = (nᵢ, v) := by
+    (hp : p ∈ L.foldr (collect_unitPair nᵢ nₒ) S) :
+    p ∈ S ∨ ∃ v, (nₒ, v) ∈ L ∧ p = (nᵢ, v) := by
   revert S
   induction L with
   | nil =>
