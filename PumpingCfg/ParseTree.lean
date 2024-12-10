@@ -6,10 +6,24 @@ Authors: Alexander Loitzl
 
 import PumpingCfg.ChomskyNormalForm
 import PumpingCfg.ChomskyNormalFormTranslation
+import PumpingCfg.ChomskyCountingSteps
 
 universe uN uT
 
 variable {T : Type uT}
+
+namespace ChomskyNormalFormRule
+
+lemma Rewrites.word {T N : Type*} {r : ChomskyNormalFormRule T N} {u : List T} {v : List (Symbol T N)}
+  (h: r.Rewrites (u.map Symbol.terminal) v) :
+  False := by
+  induction u generalizing v with
+  | nil => cases h
+  | cons u₁ u ih =>
+    cases  h; rename_i h
+    exact ih h
+
+end ChomskyNormalFormRule
 
 namespace ChomskyNormalFormGrammar
 
@@ -61,37 +75,75 @@ lemma Produces.rule {n : g.NT} {u : List (Symbol T g.NT)}
     ∃ r ∈ g.rules, r.input = n ∧ r.output = u := by
   obtain ⟨r, hrg, hnu⟩ := hnu
   cases hnu
-  · sorry
-  · sorry
-  · sorry
+  · exact ⟨_, hrg, rfl, rfl⟩
+  · exact ⟨_, hrg, rfl, rfl⟩
+  · contradiction
 
-private lemma Derives.yield_rec {n : g.NT} {u : List T} {v : List (Symbol T g.NT)}
-    (hvn : v = [Symbol.nonterminal n]) (h : g.Derives v (List.map Symbol.terminal u)) :
+-- TODO FIXME This cannot be the right way to prove this
+lemma list_eq {u v : List T}
+  (huv : u.map (@Symbol.terminal T g.NT) = v.map (@Symbol.terminal T g.NT)) : u = v := by
+  induction u generalizing v with
+  | nil =>
+    cases v
+    · rfl
+    · contradiction
+  | cons a u ih =>
+    cases v
+    · contradiction
+    · simp only [List.map_cons, List.cons.injEq, Symbol.terminal.injEq] at huv ⊢
+      exact ⟨huv.1, ih huv.2⟩
+
+lemma DerivesIn.terminal_refl {u v : List T} {m : ℕ}
+    (huv : g.DerivesIn (u.map Symbol.terminal) (v.map Symbol.terminal) m) :
+    u = v := by
+  cases m with
+  | zero => exact list_eq huv.zero_steps_eq
+  | succ m =>
+    obtain ⟨w, huw, hwv⟩ := huv.head_of_succ
+    obtain ⟨r, hrg, huw⟩ := huw
+    exfalso
+    exact huw.word
+
+private lemma DerivesIn.yield_rec {n : g.NT} {u : List T} {m : ℕ}
+    (hvu : g.DerivesIn [Symbol.nonterminal n] (List.map Symbol.terminal u) m) :
     ∃ p : ParseTree n, p.yield = u := by
-  induction h using Derives.head_induction_on generalizing n with
-  | refl =>
-    cases u <;> simp only [List.map_nil, List.ne_cons_self, List.map_cons, List.cons.injEq,
-      reduceCtorEq, List.map_eq_nil_iff, false_and] at hvn
-  | @head v w hvw hwu ih =>
-    rw [hvn] at hvw
+  cases m with
+  | zero =>
+    apply DerivesIn.zero_steps_eq at hvu
+    cases u <;> simp at hvu
+  | succ m =>
+    obtain ⟨w, hvw, hwu⟩ := hvu.head_of_succ
     obtain ⟨r, hrg, hr₁, hr₂⟩ := hvw.rule
     cases r with
     | leaf n t =>
-      cases hwu.eq_or_head with
-      | inl hw =>
-        simp at hr₁ hr₂
-        rw [hr₁] at hrg
-        use (ParseTree.tree_leaf t hrg)
-        simp [ParseTree.yield]
-        rw [hw] at hr₂
-        cases u; contradiction
-        simp at hr₂ ⊢
-        exact hr₂
-      | inr => sorry
-    | node => sorry
+      simp at hr₁ hr₂
+      rw [hr₁] at hrg
+      rw [←hr₂] at hwu
+      use (ParseTree.tree_leaf t hrg)
+      simp only [ParseTree.yield]
+      exact hwu.terminal_refl
+    | node nᵢ n₁ n₂ =>
+      simp at hr₂
+      simp at hr₁
+      rw [hr₁] at hrg
+      rw [←hr₂, ← List.singleton_append] at hwu
+      obtain ⟨u₁, u₂, k₁, k₂, hu, hnu₁, hnu₂, hm⟩ := hwu.append_split
+      rw [List.map_eq_append_iff] at hu
+      obtain ⟨u₁', u₂', hu, hu₁, hu₂⟩ := hu
+      rw [←hu₁] at hnu₁
+      rw [←hu₂] at hnu₂
+      obtain ⟨p₁, hp₁⟩ := hnu₁.yield_rec
+      obtain ⟨p₂, hp₂⟩ := hnu₂.yield_rec
+      use ParseTree.tree_node p₁ p₂ hrg
+      unfold ParseTree.yield
+      rw [hp₁, hp₂]
+      exact hu.symm
 
 lemma Derives.yield {n : g.NT} {u : List T}
     (h : g.Derives [Symbol.nonterminal n] (List.map Symbol.terminal u)) :
-    ∃ p : ParseTree n, p.yield = u := Derives.yield_rec rfl h
+    ∃ p : ParseTree n, p.yield = u := by
+  rw [derives_iff_derivesIn] at h
+  obtain ⟨_, h⟩ := h
+  exact DerivesIn.yield_rec h
 
 end ChomskyNormalFormGrammar

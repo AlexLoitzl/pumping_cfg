@@ -45,7 +45,7 @@ variable {g : ChomskyNormalFormGrammar.{uN} T}
 lemma DerivesIn.zero_steps (w : List (Symbol T g.NT)) : g.DerivesIn w w 0 := by
   left
 
-lemma DerivesIn.zero_steps_eq (u v : List (Symbol T g.NT)) (huv: g.DerivesIn u v 0) :
+lemma DerivesIn.zero_steps_eq {u v : List (Symbol T g.NT)} (huv: g.DerivesIn u v 0) :
     u = v:= by
   cases huv
   rfl
