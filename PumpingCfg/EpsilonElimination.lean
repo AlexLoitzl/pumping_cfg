@@ -22,10 +22,10 @@ abbrev NullableNonTerminal (v : g.NT) : Prop := g.Derives [Symbol.nonterminal v]
 
 abbrev NullableWord (w : List (Symbol T g.NT)) : Prop := g.Derives w []
 
-private lemma DerivesIn.empty_of_append_left_aux {u v w : List (Symbol T g.NT)} {n : ℕ}
-    (hwe : g.DerivesIn w [] n) (hw : w = u ++ v) :
-    ∃ m ≤ n, g.DerivesIn u [] m := by
-  induction hwe using DerivesIn.head_induction_on generalizing u v with
+private lemma DerivesIn.empty_of_append_left_aux {u v w : List (Symbol T g.NT)} {m : ℕ}
+    (hwm : g.DerivesIn w [] m) (hw : w = u ++ v) :
+    ∃ k ≤ m, g.DerivesIn u [] k := by
+  induction hwm using DerivesIn.head_induction_on generalizing u v with
   | refl =>
     rw [List.nil_eq_append_iff] at hw
     rw [hw.left]
@@ -37,33 +37,33 @@ private lemma DerivesIn.empty_of_append_left_aux {u v w : List (Symbol T g.NT)} 
     cases heq₁ with
     | inl hpv =>
       obtain ⟨x', hp, _⟩ := hpv
-      obtain ⟨m, _, _⟩ := @ih u (x' ++ r.output ++ q) (by simp [heq₂, hp])
-      use m
+      obtain ⟨m', _, _⟩ := @ih u (x' ++ r.output ++ q) (by simp [heq₂, hp])
+      use m'
       tauto
     | inr huq =>
       obtain ⟨x', hu, hr⟩ := huq
       cases x' with
       | nil =>
-        obtain ⟨m, _, _⟩ := @ih u (r.output ++ q) (by simp [heq₂, hu])
-        use m
+        obtain ⟨m', _, _⟩ := @ih u (r.output ++ q) (by simp [heq₂, hu])
+        use m'
         tauto
       | cons h t =>
         obtain ⟨_, _⟩ := hr
         rw [List.append_eq, ←List.append_assoc] at heq₂
-        obtain ⟨m, hm, hd⟩ := ih heq₂
-        refine ⟨m.succ, Nat.succ_le_succ hm, Produces.trans_derivesIn ⟨r, hrg, ?_⟩ hd⟩
+        obtain ⟨m', hm, hd⟩ := ih heq₂
+        refine ⟨m'.succ, Nat.succ_le_succ hm, Produces.trans_derivesIn ⟨r, hrg, ?_⟩ hd⟩
         rw [ContextFreeRule.rewrites_iff]
         exact ⟨p, t, List.append_assoc .. ▸ hu, rfl⟩
 
-lemma DerivesIn.empty_of_append_left {n : ℕ} {u v : List (Symbol T g.NT)}
-    (huv : g.DerivesIn (u ++ v) [] n) :
-    ∃ m ≤ n, g.DerivesIn u [] m := by
+lemma DerivesIn.empty_of_append_left {m : ℕ} {u v : List (Symbol T g.NT)}
+    (huv : g.DerivesIn (u ++ v) [] m) :
+    ∃ k ≤ m, g.DerivesIn u [] k := by
   apply empty_of_append_left_aux <;> tauto
 
-lemma DerivesIn.empty_of_append_right_aux {u v w : List (Symbol T g.NT)} {n : ℕ}
-    (hwn : g.DerivesIn w [] n) (hw : w = u ++ v) :
-    ∃ m ≤ n, g.DerivesIn v [] m := by
-  induction hwn using DerivesIn.head_induction_on generalizing u v with
+lemma DerivesIn.empty_of_append_right_aux {u v w : List (Symbol T g.NT)} {m : ℕ}
+    (hwm : g.DerivesIn w [] m) (hw : w = u ++ v) :
+    ∃ k ≤ m, g.DerivesIn v [] k := by
+  induction hwm using DerivesIn.head_induction_on generalizing u v with
   | refl =>
     rw [List.nil_eq_append_iff] at hw
     rw [hw.right]
@@ -99,17 +99,17 @@ lemma DerivesIn.empty_of_append_right_aux {u v w : List (Symbol T g.NT)} {n : �
         obtain ⟨_, _⟩ := hq
         rw [List.append_eq, List.append_assoc] at heq₂
         repeat rw [←List.append_assoc] at heq₂
-        obtain ⟨m', hm, hd⟩ := ih heq₂
-        exact ⟨m', Nat.le_succ_of_le hm, hd⟩
+        obtain ⟨m', hm, hv⟩ := ih heq₂
+        exact ⟨m', Nat.le_succ_of_le hm, hv⟩
 
-lemma DerivesIn.empty_of_append_right {n : ℕ} {u v : List (Symbol T g.NT)}
-    (huv : g.DerivesIn (u ++ v) [] n) :
-    ∃ m ≤ n, g.DerivesIn v [] m := by
+lemma DerivesIn.empty_of_append_right {m : ℕ} {u v : List (Symbol T g.NT)}
+    (huv : g.DerivesIn (u ++ v) [] m) :
+    ∃ k ≤ m, g.DerivesIn v [] k := by
   apply empty_of_append_right_aux <;> tauto
 
-lemma DerivesIn.empty_of_append {u v w : List (Symbol T g.NT)} {n : ℕ}
-    (huvwe : g.DerivesIn (u ++ v ++ w) [] n) :
-    ∃ m ≤ n, g.DerivesIn v [] m := by
+lemma DerivesIn.empty_of_append {u v w : List (Symbol T g.NT)} {m : ℕ}
+    (huvwe : g.DerivesIn (u ++ v ++ w) [] m) :
+    ∃ k ≤ m, g.DerivesIn v [] k := by
   obtain ⟨m₁, hm₁n, huve⟩ := huvwe.empty_of_append_left
   obtain ⟨m₂, hm₂n, hve⟩ := huve.empty_of_append_right
   exact ⟨m₂, Nat.le_trans hm₂n hm₁n, hve⟩
@@ -133,25 +133,25 @@ lemma NullableWord.empty_of_append_right {u v : List (Symbol T g.NT)}
   rw [List.append_nil]
   exact huv
 
-lemma DerivesIn.mem_nullable {u : List (Symbol T g.NT)} {s : Symbol T g.NT} {n : ℕ}
-    (hu : g.DerivesIn u [] n) (hsu : s ∈ u) :
-    ∃ m ≤ n, g.DerivesIn [s] [] m := by
-  induction u generalizing n with
+lemma DerivesIn.mem_nullable {u : List (Symbol T g.NT)} {s : Symbol T g.NT} {m : ℕ}
+    (hu : g.DerivesIn u [] m) (hsu : s ∈ u) :
+    ∃ k ≤ m, g.DerivesIn [s] [] k := by
+  induction u generalizing m with
   | nil => contradiction
-  | cons v t ih =>
+  | cons a l ih =>
     cases hsu with
     | head =>
       exact hu.empty_of_append_left
     | tail _ hs =>
-      change g.DerivesIn ([v] ++ t) [] n at hu
+      change g.DerivesIn ([a] ++ l) [] m at hu
       obtain ⟨m, hmn, hte⟩ := hu.empty_of_append_right
       obtain ⟨m', hmm, hse⟩ := ih hte hs
       exact ⟨m', hmm.trans hmn, hse⟩
 
 lemma rewrites_empty_output {u : List (Symbol T g.NT)} {r : ContextFreeRule T g.NT}
-    (hue : r.Rewrites u []) :
+    (hu : r.Rewrites u []) :
     r.output = [] := by
-  obtain ⟨_, _, -, _⟩ := hue.exists_parts
+  obtain ⟨_, _, -, _⟩ := hu.exists_parts
   simp_all
 
 lemma Derives.append_left_trans {u v w x: List (Symbol T g.NT)} (huv : g.Derives u v)
@@ -179,35 +179,33 @@ lemma Derives.empty_empty {u : List (Symbol T g.NT)} (hu : g.Derives [] u) : u =
   induction hu with
   | refl => rfl
   | tail _ hp _ =>
-    obtain ⟨r, _, hr⟩ := hp
+    obtain ⟨_, _, hr⟩ := hp
     cases hr <;> contradiction
 
 lemma symbols_nullable_nullableWord (u : List (Symbol T g.NT)) (hu : ∀ a ∈ u, g.Derives [a] []) :
     NullableWord u := by
   induction u with
   | nil => rfl
-  | cons d l ih =>
-    show g.Derives ([d] ++ l) []
+  | cons a l ih =>
+    show g.Derives ([a] ++ l) []
     trans
     · apply Derives.append_right
-      apply hu
-      exact List.mem_cons_self d l
+      exact hu _ (List.mem_cons_self a l)
     · apply ih
       intro v hv
       apply hu
       right
       exact hv
 
-lemma DerivesIn.nullable_mem_nonterminal {u : List (Symbol T g.NT)} {s : Symbol T g.NT} {n : ℕ}
-    (hu : g.DerivesIn u [] n) (hsu : s ∈ u) :
-    ∃ v, s = Symbol.nonterminal v := by
+lemma DerivesIn.nullable_mem_nonterminal {u : List (Symbol T g.NT)} {s : Symbol T g.NT} {m : ℕ}
+    (hu : g.DerivesIn u [] m) (hsu : s ∈ u) :
+    ∃ n, s = Symbol.nonterminal n := by
   have ⟨m, _, hsm⟩ := hu.mem_nullable hsu
   cases m with
-  | zero =>
-    contradiction
+  | zero => contradiction
   | succ m =>
-    obtain ⟨u, hwu, _⟩ := hsm.head_of_succ
-    obtain ⟨r, _, hsu⟩ := hwu
+    obtain ⟨_, hp, _⟩ := hsm.head_of_succ
+    obtain ⟨r, _, hsu⟩ := hp
     obtain ⟨p, q, hs, -⟩ := hsu.exists_parts
     cases p <;> simp at hs
     cases q <;> simp at hs
@@ -215,10 +213,10 @@ lemma DerivesIn.nullable_mem_nonterminal {u : List (Symbol T g.NT)} {s : Symbol 
 
 lemma NullableWord.nullableNonTerminal {u : List (Symbol T g.NT)} {s : Symbol T g.NT}
     (hu : NullableWord u) (hsu : s ∈ u) :
-    ∃ x, s = Symbol.nonterminal x ∧ NullableNonTerminal x := by
+    ∃ n, s = Symbol.nonterminal n ∧ NullableNonTerminal n := by
   induction u generalizing s with
   | nil => contradiction
-  | cons a u ih =>
+  | cons a l ih =>
     cases hsu with
     | head =>
       cases a with
@@ -227,7 +225,7 @@ lemma NullableWord.nullableNonTerminal {u : List (Symbol T g.NT)} {s : Symbol T 
     | tail _ hsu =>
       apply ih _ hsu
       apply NullableWord.empty_of_append_right
-      change NullableWord ([a] ++ u) at hu
+      change NullableWord ([a] ++ l) at hu
       exact hu
 
 end NullableDerivations
@@ -279,9 +277,9 @@ lemma NullableRelated.empty_nullable {u : List (Symbol T g.NT)} (hu : NullableRe
     NullableWord u := by
   induction u with
   | nil => rfl
-  | cons s w ih => cases hu with
-    | empty_left _ hsw => exact hsw
-    | cons_nterm_nullable hw hn => exact (Derives.append_right hn w).trans (ih hw)
+  | cons _ l ih => cases hu with
+    | empty_left _ hsl => exact hsl
+    | cons_nterm_nullable hl hn => exact (Derives.append_right hn l).trans (ih hl)
 
 lemma NullableRelated.empty_empty {u : List (Symbol T g.NT)} (hu : NullableRelated u []) :
     u = [] := by
@@ -293,9 +291,9 @@ lemma NullableRelated.append_nullable' {u v w : List (Symbol T g.NT)}
     NullableRelated v (w ++ u) := by
   induction w generalizing u v with
   | nil => rwa [List.nil_append]
-  | cons s w ih =>
-    change NullableWord ([s] ++ w) at hw
-    obtain ⟨_, rfl, hnt⟩ := hw.nullableNonTerminal (List.mem_cons_self s w)
+  | cons a l ih =>
+    rw [←List.singleton_append] at hw
+    obtain ⟨_, rfl, hnt⟩ := hw.nullableNonTerminal (List.mem_cons_self a l)
     constructor
     · exact ih hvu (NullableWord.empty_of_append_right hw)
     · exact hnt
@@ -305,12 +303,10 @@ lemma NullableRelated.append_nullable_left {u v w: List (Symbol T g.NT)}
     NullableRelated u (w ++ v) := by
   induction w generalizing u v with
   | nil => exact huv
-  | cons s w ih =>
-    change NullableWord ([s] ++ w) at hw
-    obtain ⟨_, rfl, hnt⟩ := hw.nullableNonTerminal (List.mem_cons_self s w)
-    constructor
-    · exact ih huv (NullableWord.empty_of_append_right hw)
-    · exact hnt
+  | cons a l ih =>
+    rw [←List.singleton_append] at hw
+    obtain ⟨_, rfl, hnt⟩ := hw.nullableNonTerminal (List.mem_cons_self a l)
+    exact NullableRelated.cons_nterm_nullable (ih huv (NullableWord.empty_of_append_right hw)) hnt
 
 lemma NullableRelated.append {u₁ u₂ v₁ v₂ : List (Symbol T g.NT)}
     (hv : NullableRelated v₁ v₂) (hu : NullableRelated u₁ u₂) :
@@ -321,36 +317,34 @@ lemma NullableRelated.append {u₁ u₂ v₁ v₂ : List (Symbol T g.NT)}
   | cons_nterm_match _ n ih => exact cons_nterm_match ih n
   | cons_nterm_nullable _ hnt ih => exact NullableRelated.cons_nterm_nullable ih hnt
 
--- TODO ? maybe easier to do (h : u = w1 ++ w2) and then induction on h. This is quite tedious
 lemma NullableRelated.append_split {u v w : List (Symbol T g.NT)}
     (huvw : NullableRelated u (v ++ w)) :
     ∃ v' w', u = v' ++ w' ∧ NullableRelated v' v ∧ NullableRelated w' w := by
   induction v generalizing u w with
   | nil =>
     exact ⟨[], u, rfl, refl [], huvw⟩
-  | cons s v ih =>
+  | cons a l ih =>
     cases u with
     | nil =>
       use [], []
       constructor; rfl
-      have hvw : NullableRelated [] (v ++ w) := by
+      have hvw : NullableRelated [] (l ++ w) := by
         constructor
-        apply NullableWord.empty_of_append_right
-        change NullableRelated [] ([s] ++ (v ++ w)) at huvw
-        exact huvw.empty_nullable
-      obtain ⟨v', w', hv'w', _, hnw'w⟩ := ih hvw
-      simp at hv'w'
+        rw [← List.singleton_append, List.append_assoc] at huvw
+        exact NullableWord.empty_of_append_right huvw.empty_nullable
+      obtain ⟨_, _, heq, _, hw⟩ := ih hvw
+      simp at heq
       constructor
       · constructor
         cases huvw
         · apply NullableWord.empty_of_append_left
           assumption
-        · change NullableWord ([Symbol.nonterminal _] ++ v)
+        · change NullableWord ([Symbol.nonterminal _] ++ l)
           apply Derives.trans
           · apply Derives.append_right
             assumption
           · exact hvw.empty_nullable.empty_of_append_left
-      · exact hv'w'.right ▸ hnw'w
+      · exact heq.right ▸ hw
     | cons sᵤ u =>
       cases huvw with
       | cons_term huvw t =>
@@ -382,19 +376,19 @@ section ComputeNullables
 
 variable {N : Type uN} [DecidableEq N]
 
-def symbol_is_nullable (nullable : Finset N) (s : Symbol T N) : Bool :=
+def symbol_is_nullable (p : Finset N) (s : Symbol T N) : Bool :=
   match s with
   | Symbol.terminal _ => False
-  | Symbol.nonterminal n => n ∈ nullable
+  | Symbol.nonterminal n => n ∈ p
 
-def rule_is_nullable (nullable : Finset N) (r : ContextFreeRule T N) : Bool :=
-  ∀ s ∈ r.output, symbol_is_nullable nullable s
+def rule_is_nullable (p : Finset N) (r : ContextFreeRule T N) : Bool :=
+  ∀ s ∈ r.output, symbol_is_nullable p s
 
-def add_if_nullable (r : ContextFreeRule T N) (nullable : Finset N) : Finset N :=
-  if rule_is_nullable nullable r then insert r.input nullable else nullable
+def add_if_nullable (r : ContextFreeRule T N) (p : Finset N) : Finset N :=
+  if rule_is_nullable p r then insert r.input p else p
 
-lemma add_if_nullable_subset (r : ContextFreeRule T N) (nullable : Finset N) :
-  nullable ⊆ (add_if_nullable r nullable) := by
+lemma add_if_nullable_subset (r : ContextFreeRule T N) (p : Finset N) :
+  p ⊆ (add_if_nullable r p) := by
   unfold add_if_nullable
   split <;> simp
 
@@ -411,8 +405,9 @@ lemma input_in_generators {r : ContextFreeRule T g.NT} (hrg : r ∈ g.rules) :
   revert hrg
   induction g.rules.toList with
   | nil => simp
-  | cons hd tl ih =>
-    simp at ih ⊢
+  | cons _ _ ih =>
+    simp only [List.mem_toFinset, List.mem_map, List.mem_cons, List.map_cons, List.toFinset_cons,
+      Finset.mem_insert] at ih ⊢
     rintro (c1 | c2)
     · left
       rw [c1]
@@ -427,64 +422,65 @@ lemma nonterminal_in_generators {v : g.NT} {r : ContextFreeRule T g.NT} (hrg : r
   revert hrg
   induction g.rules.toList with
   | nil => simp
-  | cons d l ih =>
-    simp at ih ⊢
+  | cons _ _ ih =>
+    simp only [List.mem_toFinset, List.mem_map, List.mem_cons, List.map_cons, List.toFinset_cons,
+      Finset.mem_insert] at ih ⊢
     rintro (c1 | c2)
     · left
       rw [← hv, c1]
     · right
       exact ih c2
 
-lemma add_if_nullable_subset_generators {r : ContextFreeRule T g.NT} {nullable : Finset g.NT}
-    (hsub : nullable ⊆ g.generators) (hrg : r ∈ g.rules) :
-    add_if_nullable r nullable ⊆ g.generators := by
+lemma add_if_nullable_subset_generators {r : ContextFreeRule T g.NT} {p : Finset g.NT}
+    (hpg : p ⊆ g.generators) (hrg : r ∈ g.rules) :
+    add_if_nullable r p ⊆ g.generators := by
   unfold add_if_nullable
   split
-  · exact Finset.insert_subset (input_in_generators hrg) hsub
-  · exact hsub
+  · exact Finset.insert_subset (input_in_generators hrg) hpg
+  · exact hpg
 
 /- Single round of fixpoint iteration; adds `r.input` to the set of nullable symbols if all symbols in
  `r.output` are nullable -/
-noncomputable def add_nullables (nullable : Finset g.NT) : Finset g.NT :=
-  g.rules.toList.attach.foldr (fun ⟨r, _⟩ ↦ add_if_nullable r) nullable
+noncomputable def add_nullables (p : Finset g.NT) : Finset g.NT :=
+  g.rules.toList.attach.foldr (fun ⟨r, _⟩ ↦ add_if_nullable r) p
 
-lemma add_nullables_sub_generators (nullable : Finset g.NT) (hsub : nullable ⊆ g.generators) :
-    add_nullables nullable ⊆ g.generators := by
+lemma add_nullables_sub_generators (p : Finset g.NT) (hpg : p ⊆ g.generators) :
+    add_nullables p ⊆ g.generators := by
   unfold add_nullables
   induction g.rules.toList.attach with
-  | nil => simpa using hsub
-  | cons d l ih => exact add_if_nullable_subset_generators ih (Finset.mem_toList.1 d.2)
+  | nil => simpa using hpg
+  | cons a _ ih => exact add_if_nullable_subset_generators ih (Finset.mem_toList.1 a.2)
 
-lemma nullable_sub_add_nullables (nullable : Finset g.NT) : nullable ⊆ (add_nullables nullable) := by
+lemma nullable_sub_add_nullables (p : Finset g.NT) : p ⊆ (add_nullables p) := by
   unfold add_nullables
   induction g.rules.toList.attach with
   | nil => simp
-  | cons hd tl ih =>
+  | cons a _ ih =>
     apply subset_trans ih
-    apply add_if_nullable_subset hd.1
+    apply add_if_nullable_subset a.1
 
 -- Proof of our termination measure shrinking
-lemma generators_limits_nullable (nullable : Finset g.NT) (hsub : nullable ⊆ g.generators)
-    (hne : nullable ≠ add_nullables nullable) :
-    (g.generators).card - (add_nullables nullable).card < (g.generators).card - nullable.card := by
-  have h := HasSubset.Subset.ssubset_of_ne (nullable_sub_add_nullables nullable) hne
+lemma generators_limits_nullable (p : Finset g.NT) (hpg : p ⊆ g.generators)
+    (hne : p ≠ add_nullables p) :
+    (g.generators).card - (add_nullables p).card < (g.generators).card - p.card := by
+  have h := HasSubset.Subset.ssubset_of_ne (nullable_sub_add_nullables p) hne
   apply Nat.sub_lt_sub_left
   · apply Nat.lt_of_lt_of_le
     · apply Finset.card_lt_card h
-    · exact Finset.card_le_card (add_nullables_sub_generators nullable hsub)
+    · exact Finset.card_le_card (add_nullables_sub_generators p hpg)
   · apply Finset.card_lt_card h
 
 /- Fixpoint iteration computing the set of nullable symbols of `g`. -/
-noncomputable def add_nullables_iter (nullable : Finset g.NT) (hsub : nullable ⊆ g.generators) :=
-  let nullable' := add_nullables nullable
-  if nullable = nullable' then
-    nullable
+noncomputable def add_nullables_iter (p : Finset g.NT) (hpg : p ⊆ g.generators) :=
+  let nullable' := add_nullables p
+  if p = nullable' then
+    p
   else
-    add_nullables_iter nullable' (add_nullables_sub_generators nullable hsub)
-  termination_by ((g.generators).card - nullable.card)
+    add_nullables_iter nullable' (add_nullables_sub_generators p hpg)
+  termination_by ((g.generators).card - p.card)
   decreasing_by
     rename_i h
-    exact generators_limits_nullable nullable hsub h
+    exact generators_limits_nullable p hpg h
 
 noncomputable def compute_nullables (g : ContextFreeGrammar.{uN, uT} T) [DecidableEq g.NT] :=
   add_nullables_iter ∅ g.generators.empty_subset
@@ -493,9 +489,8 @@ noncomputable def compute_nullables (g : ContextFreeGrammar.{uN, uT} T) [Decidab
 -- Only If direction of the main correctness theorem of compute_nullables --
 -- ********************************************************************** --
 
-lemma rule_is_nullable_correct (nullable : Finset g.NT) (r : ContextFreeRule T g.NT)
-    (hrg : r ∈ g.rules) (hn : ∀ v ∈ nullable, NullableNonTerminal v)
-    (hr : rule_is_nullable nullable r) :
+lemma rule_is_nullable_correct (p : Finset g.NT) (r : ContextFreeRule T g.NT) (hrg : r ∈ g.rules)
+    (hn : ∀ v ∈ p, NullableNonTerminal v) (hr : rule_is_nullable p r) :
     NullableNonTerminal r.input := by
   unfold rule_is_nullable at hr
   unfold NullableNonTerminal
@@ -512,57 +507,56 @@ lemma rule_is_nullable_correct (nullable : Finset g.NT) (r : ContextFreeRule T g
   cases v <;> simp [symbol_is_nullable] at hr
   exact hn _ hr
 
-lemma add_nullables_nullable (nullable : Finset g.NT) (hn : ∀ v ∈ nullable, NullableNonTerminal v) :
-    ∀ v ∈ add_nullables nullable, NullableNonTerminal v := by
+lemma add_nullables_nullable (p : Finset g.NT) (hp : ∀ v ∈ p, NullableNonTerminal v) :
+    ∀ v ∈ add_nullables p, NullableNonTerminal v := by
   unfold add_nullables
   induction g.rules.toList.attach with
-  | nil =>
-    exact hn
-  | cons d l ih =>
+  | nil => exact hp
+  | cons a l ih =>
     simp only [List.foldr_cons, Finset.mem_toList, List.foldr_subtype, add_if_nullable]
     split <;> rename_i hd
     · simp only [Finset.mem_insert, forall_eq_or_imp]
       constructor
-      · apply rule_is_nullable_correct _ _ (Finset.mem_toList.1 d.2) ih
+      · apply rule_is_nullable_correct _ _ (Finset.mem_toList.1 a.2) ih
         simpa using hd
       · simpa using ih
     · simpa using ih
 
 -- Main correctness result of the only if direction
-lemma add_nullables_iter_only_nullable (nullable : Finset g.NT)
-    (hsub : nullable ⊆ g.generators) (hn : ∀ v ∈ nullable, NullableNonTerminal v) :
-    ∀ v ∈ (add_nullables_iter nullable hsub), NullableNonTerminal v:= by
+lemma add_nullables_iter_only_nullable (p : Finset g.NT) (hpg : p ⊆ g.generators)
+    (hp : ∀ v ∈ p, NullableNonTerminal v) :
+    ∀ v ∈ (add_nullables_iter p hpg), NullableNonTerminal v:= by
   unfold add_nullables_iter
   intro
   simp only
   split
   · tauto
-  · apply add_nullables_iter_only_nullable (add_nullables nullable)
-          (add_nullables_sub_generators nullable hsub)
-          (add_nullables_nullable nullable hn)
-  termination_by ((g.generators).card - nullable.card)
+  · apply add_nullables_iter_only_nullable (add_nullables p)
+          (add_nullables_sub_generators p hpg)
+          (add_nullables_nullable p hp)
+  termination_by ((g.generators).card - p.card)
   decreasing_by
     rename_i h
-    exact generators_limits_nullable nullable hsub h
+    exact generators_limits_nullable p hpg h
 
 -- ***************************************************************** --
 -- If direction of the main correctness theorem of compute_nullables --
 -- ***************************************************************** --
 
-lemma subset_add_if_nullable_subset {r: ContextFreeRule T g.NT} {nullable nullable' : Finset g.NT}
-    (hsub : nullable ⊆ nullable') :
-    add_if_nullable r nullable ⊆ add_if_nullable r nullable' := by
+lemma subset_add_if_nullable_subset {r: ContextFreeRule T g.NT} {p₁ p₂ : Finset g.NT}
+    (hpp : p₁ ⊆ p₂) :
+    add_if_nullable r p₁ ⊆ add_if_nullable r p₂ := by
   intro v hvin
   unfold add_if_nullable rule_is_nullable at hvin ⊢
-  by_cases hsr : decide (∀ s ∈ r.output, symbol_is_nullable nullable s) = true <;>
+  by_cases hsr : decide (∀ s ∈ r.output, symbol_is_nullable p₁ s) = true <;>
     simp [hsr] at hvin; simp at hsr
   · split <;> rename_i hsr'; simp at hsr'
     · cases hvin with
       | inl hvr =>
         rw [hvr]
-        exact Finset.mem_insert_self r.input nullable'
+        exact Finset.mem_insert_self r.input p₂
       | inr hv =>
-        exact Finset.mem_insert_of_mem (hsub hv)
+        exact Finset.mem_insert_of_mem (hpp hv)
     · cases hvin with
       | inl h'' =>
         unfold symbol_is_nullable at hsr' hsr
@@ -573,35 +567,34 @@ lemma subset_add_if_nullable_subset {r: ContextFreeRule T g.NT} {nullable nullab
         · contradiction
         · rename_i u
           apply hsr at hsin
-          apply hsub at hsin
+          apply hpp at hsin
           contradiction
       | inr h =>
-        exact hsub h
+        exact hpp h
   · split
-    · exact Finset.mem_insert_of_mem (hsub hvin)
-    · exact hsub hvin
+    · exact Finset.mem_insert_of_mem (hpp hvin)
+    · exact hpp hvin
 
-private lemma add_if_nullable_subset_rec {rules : List (ContextFreeRule T g.NT)}
-    {nullable : Finset g.NT} :
-    nullable ⊆ List.foldr add_if_nullable nullable rules := by
-  induction rules with
+private lemma add_if_nullable_subset_rec {l : List (ContextFreeRule T g.NT)} {p : Finset g.NT} :
+    p ⊆ List.foldr add_if_nullable p l := by
+  induction l with
   | nil => rfl
   | cons _ _ ih =>
     simp
     apply Finset.Subset.trans ih
     apply add_if_nullable_subset
 
-lemma nullable_in_add_nullables {r : ContextFreeRule T g.NT} {nullable : Finset g.NT}
-    (hr : rule_is_nullable nullable r) (hrg : r ∈ g.rules) :
-    r.input ∈ add_nullables nullable := by
+lemma nullable_in_add_nullables {r : ContextFreeRule T g.NT} {p : Finset g.NT}
+    (hr : rule_is_nullable p r) (hrg : r ∈ g.rules) :
+    r.input ∈ add_nullables p := by
   unfold add_nullables
   have hrg := List.mem_attach g.rules.toList ⟨r, (Finset.mem_toList.2 hrg)⟩
-  revert r nullable
+  revert r p
   induction g.rules.toList.attach with
   | nil =>
     intro r nullable _ hrg
     simp
-  | cons r t ih =>
+  | cons _ _ ih =>
     intro r' nullable h hr' hr''
     cases hr'' <;> simp at ih ⊢
     · apply Finset.mem_of_subset (subset_add_if_nullable_subset add_if_nullable_subset_rec)
@@ -609,28 +602,27 @@ lemma nullable_in_add_nullables {r : ContextFreeRule T g.NT} {nullable : Finset 
     · rename_i hr''
       exact Finset.mem_of_subset (add_if_nullable_subset _ _) (ih h hr' hr'')
 
-lemma add_nullable_add_nullable_iter (nullable: Finset g.NT) (hsub : nullable ⊆ g.generators) :
-    add_nullables_iter nullable hsub = add_nullables (add_nullables_iter nullable hsub) := by
+lemma add_nullable_add_nullable_iter (p: Finset g.NT) (hpg : p ⊆ g.generators) :
+    add_nullables_iter p hpg = add_nullables (add_nullables_iter p hpg) := by
   unfold add_nullables_iter
   dsimp only
   split
   · assumption
   · apply add_nullable_add_nullable_iter
-  termination_by ((g.generators).card - nullable.card)
+  termination_by ((g.generators).card - p.card)
   decreasing_by
     rename_i h
-    exact generators_limits_nullable nullable hsub h
+    exact generators_limits_nullable p hpg h
 
-lemma nullable_in_compute_nullables (nullable : Finset g.NT) (hsub : nullable ⊆ g.generators)
-    (v : g.NT) (n : ℕ) (hgvn : g.DerivesIn [Symbol.nonterminal v] [] n) :
-    v ∈ add_nullables_iter nullable hsub := by
-  cases n with
-  | zero =>
-    cases hgvn
-  | succ n =>
-    obtain ⟨u, hwu, hue⟩ := hgvn.head_of_succ
+lemma nullable_in_compute_nullables (p : Finset g.NT) (hpg : p ⊆ g.generators)
+    (n : g.NT) (m : ℕ) (hvgm : g.DerivesIn [Symbol.nonterminal n] [] m) :
+    n ∈ add_nullables_iter p hpg := by
+  cases m with
+  | zero => cases hvgm
+  | succ m =>
+    obtain ⟨u, hwu, hue⟩ := hvgm.head_of_succ
     obtain ⟨r, hrg, hwu⟩ := hwu
-    have hr : rule_is_nullable (add_nullables_iter nullable hsub) r := by
+    have hr : rule_is_nullable (add_nullables_iter p hpg) r := by
       have hur : u = r.output := by
         obtain ⟨p, q, hv, hu⟩ := hwu.exists_parts
         cases p <;> simp at hv
@@ -646,7 +638,7 @@ lemma nullable_in_compute_nullables (nullable : Finset g.NT) (hsub : nullable �
       have ⟨_, _, _⟩ := hue.mem_nullable hs
       apply nullable_in_compute_nullables
       rwa [←hv']
-    have hv : v = r.input := by
+    have hv : n = r.input := by
       obtain ⟨p, q, hu, _⟩ := hwu.exists_parts
       cases p <;> simp at hu
       cases q <;> simp at hu
@@ -655,15 +647,15 @@ lemma nullable_in_compute_nullables (nullable : Finset g.NT) (hsub : nullable �
     exact nullable_in_add_nullables hr hrg
 
 -- Main correctness theorem of computing all nullable symbols --
-lemma compute_nullables_iff (v : g.NT) : v ∈ compute_nullables g ↔ NullableNonTerminal v := by
+lemma compute_nullables_iff (n : g.NT) : n ∈ compute_nullables g ↔ NullableNonTerminal n := by
   constructor
-  · intro hvg
-    apply add_nullables_iter_only_nullable _ _ _ _ hvg
+  · intro hng
+    apply add_nullables_iter_only_nullable _ _ _ _ hng
     tauto
-  · intro hv
-    obtain ⟨m, hgv⟩ := (derives_iff_derivesIn _ _ _).1 hv
+  · intro hn
+    obtain ⟨m, hgnm⟩ := (derives_iff_derivesIn _ _ _).1 hn
     apply nullable_in_compute_nullables
-    exact hgv
+    exact hgnm
 
 end ComputeNullables
 
@@ -676,26 +668,26 @@ section EliminateEmpty
 variable {N : Type uN} [DecidableEq N]
 
 /- Compute all possible combinations of leaving out nullable nonterminals from output -/
-def remove_nullable (nullable : Finset N) (output : List (Symbol T N)) :=
-  match output with
+def remove_nullable (p : Finset N) (u : List (Symbol T N)) :=
+  match u with
   | [] => [[]]
   | x :: s =>
     match x with
     | Symbol.nonterminal n =>
-      (if n ∈ nullable then remove_nullable nullable s else []) ++
-        (remove_nullable nullable s).map (x :: ·)
-    | Symbol.terminal _ => (remove_nullable nullable s).map (x :: ·)
+      (if n ∈ p then remove_nullable p s else []) ++
+        (remove_nullable p s).map (x :: ·)
+    | Symbol.terminal _ => (remove_nullable p s).map (x :: ·)
 
-def remove_nullable_rule (nullable : Finset N) (r: ContextFreeRule T N) :=
+def remove_nullable_rule (p : Finset N) (r: ContextFreeRule T N) :=
   let fltrmap : List (Symbol T N) → Option (ContextFreeRule T N)
     | [] => Option.none
     | h :: t => ContextFreeRule.mk r.input (h :: t)
-  (remove_nullable nullable r.output).filterMap fltrmap
+  (remove_nullable p r.output).filterMap fltrmap
 
 variable {g : ContextFreeGrammar.{uN, uT} T} [DecidableEq g.NT]
 
-noncomputable def remove_nullables (nullable : Finset g.NT) [DecidableEq T] :=
-  (g.rules.toList.map (remove_nullable_rule nullable)).flatten.toFinset
+noncomputable def remove_nullables (p : Finset g.NT) [DecidableEq T] :=
+  (g.rules.toList.map (remove_nullable_rule p)).flatten.toFinset
 
 /- Given `g`, computes a new grammar g' in which all rules deriving `[]` are removed and all
  rules in `g` have a set of corresponding rules in g' in which some nullable symbols do not appear
@@ -709,8 +701,8 @@ noncomputable def eliminate_empty (g : ContextFreeGrammar.{uN, uT} T) [Decidable
 -- Only If direction of the main correctness theorem of eliminate_empty --
 -- ******************************************************************** --
 
-lemma in_remove_nullable_rule {r r': ContextFreeRule T g.NT} {nullable : Finset g.NT}
-    (hrr : r' ∈ remove_nullable_rule nullable r) :
+lemma in_remove_nullable_rule {r r': ContextFreeRule T g.NT} {p : Finset g.NT}
+    (hrr : r' ∈ remove_nullable_rule p r) :
     r'.output ≠ [] := by
   unfold remove_nullable_rule at hrr
   rw [List.mem_filterMap] at hrr
@@ -719,8 +711,8 @@ lemma in_remove_nullable_rule {r r': ContextFreeRule T g.NT} {nullable : Finset 
   rw [←ha]
   tauto
 
-lemma in_remove_not_epsilon {r : ContextFreeRule T g.NT} {nullable : Finset g.NT} [DecidableEq T]
-    (hr : r ∈ remove_nullables nullable) :
+lemma in_remove_not_epsilon {r : ContextFreeRule T g.NT} {p : Finset g.NT} [DecidableEq T]
+    (hr : r ∈ remove_nullables p) :
     r.output ≠ [] := by
   unfold remove_nullables at hr
   rw [List.mem_toFinset, List.mem_flatten] at hr
@@ -751,8 +743,8 @@ lemma derives_not_epsilon {u v : List (Symbol T g.NT)} [DecidableEq T]
 -- Main proof of the only if direction: If the eliminate_empty grammar derives a string,
 -- it is derivable in the original grammar
 
-lemma remove_nullable_related {u v: List (Symbol T g.NT)} (nullable : Finset g.NT)
-    (hn : ∀ x ∈ nullable, NullableNonTerminal x) (huv : u ∈ (remove_nullable nullable v)) :
+lemma remove_nullable_related {u v: List (Symbol T g.NT)} (p : Finset g.NT)
+    (hn : ∀ x ∈ p, NullableNonTerminal x) (huv : u ∈ (remove_nullable p v)) :
     NullableRelated u v := by
   induction v generalizing u with
   | nil =>
@@ -764,7 +756,7 @@ lemma remove_nullable_related {u v: List (Symbol T g.NT)} (nullable : Finset g.N
       simp [remove_nullable] at huv -- TODO
       cases huv with
       | inl hnu =>
-        by_cases hnn : n ∈ nullable <;> simp only [hnn, false_and, true_and] at hnu
+        by_cases hnn : n ∈ p <;> simp only [hnn, false_and, true_and] at hnu
         exact NullableRelated.cons_nterm_nullable (ih hnu) (hn _ hnn)
       | inr huv =>
         obtain ⟨u', hu', rfl⟩ := huv
@@ -819,25 +811,24 @@ lemma eliminate_empty_implies [DecidableEq T] {u v : List (Symbol T g.NT)}
 -- If direction of the main correctness theorem of eliminate_empty --
 -- *************************************************************** --
 
-lemma in_remove_nullable (nullable : Finset g.NT) (u : List (Symbol T g.NT)) :
-    u ∈ remove_nullable nullable u := by
+lemma in_remove_nullable (p : Finset g.NT) (u : List (Symbol T g.NT)) : u ∈ remove_nullable p u := by
   induction u with
   | nil =>
     simp [remove_nullable]
   | cons s _ ih =>
     cases s with
     | terminal t => simpa [remove_nullable] using ih
-    | nonterminal n => by_cases hn : n ∈ nullable <;> simp [remove_nullable, hn, ih]
+    | nonterminal n => by_cases hn : n ∈ p <;> simp [remove_nullable, hn, ih]
 
-lemma nullableRelated_in_remove_nullable {nullable : Finset g.NT} {u v : List (Symbol T g.NT)}
-    (hvu : NullableRelated v u) (hn : ∀ s, s ∈ nullable ↔ NullableNonTerminal s) :
-    v ∈ remove_nullable nullable u := by
+lemma nullableRelated_in_remove_nullable {p : Finset g.NT} {u v : List (Symbol T g.NT)}
+    (hvu : NullableRelated v u) (hn : ∀ s, s ∈ p ↔ NullableNonTerminal s) :
+    v ∈ remove_nullable p u := by
   induction u generalizing v with
   | nil =>
     rw [hvu.empty_empty]
     exact List.mem_singleton.2 rfl
-  | cons s u ih =>
-    cases s with
+  | cons a l ih =>
+    cases a with
     | terminal t =>
       simp [remove_nullable]
       cases hvu with
@@ -854,7 +845,7 @@ lemma nullableRelated_in_remove_nullable {nullable : Finset g.NT} {u v : List (S
         left
         rw [←List.singleton_append] at hu
         rw [hn]
-        exact ⟨hu.empty_of_append_left, ih (NullableRelated.empty_left u hu.empty_of_append_right)⟩
+        exact ⟨hu.empty_of_append_left, ih (NullableRelated.empty_left l hu.empty_of_append_right)⟩
       | cons_nterm_match hu'u =>
         right
         constructor
@@ -866,12 +857,12 @@ lemma nullableRelated_in_remove_nullable {nullable : Finset g.NT} {u v : List (S
 
 variable [DecidableEq T]
 
-lemma in_remove_nullables (nullable : Finset g.NT) (r : ContextFreeRule T g.NT)
-    (hrg : r ∈ g.rules) (hne : r.output ≠ []) :
-    r ∈ remove_nullables nullable := by
+lemma in_remove_nullables (p : Finset g.NT) (r : ContextFreeRule T g.NT) (hrg : r ∈ g.rules)
+    (hne : r.output ≠ []) :
+    r ∈ remove_nullables p := by
   unfold remove_nullables
   rw [List.mem_toFinset, List.mem_flatten]
-  use (remove_nullable_rule nullable r)
+  use (remove_nullable_rule p r)
   constructor
   · simp
     use r
@@ -886,8 +877,7 @@ lemma in_remove_nullables (nullable : Finset g.NT) (r : ContextFreeRule T g.NT)
       · rfl
 
 lemma nullableRelated_rule_in_rules {r : ContextFreeRule T g.NT}
-    {u : List (Symbol T g.NT)} (hrg : r ∈ g.rules) (h : NullableRelated u r.output)
-    (hneq : u ≠ []) :
+    {u : List (Symbol T g.NT)} (hrg : r ∈ g.rules) (h : NullableRelated u r.output) (hneq : u ≠ []) :
     { input := r.input, output := u } ∈ g.eliminate_empty.rules := by
   unfold eliminate_empty
   unfold remove_nullables
@@ -936,9 +926,9 @@ lemma empty_related_produces_derives {u v w : List (Symbol T g.NT)}
       exact Produces.single ⟨⟨r.input, d :: l⟩, hrdl, ContextFreeRule.rewrites_of_exists_parts _ w₁ w₃⟩
 
 lemma implies_eliminate_empty_related {u v : List (Symbol T g.NT)}
-    (hv : v ≠ []) {n : ℕ} (huv : g.DerivesIn u v n) :
+    (hv : v ≠ []) {m : ℕ} (huv : g.DerivesIn u v m) :
     ∃ u', NullableRelated u' u ∧ g.eliminate_empty.Derives u' v := by
-  cases n with
+  cases m with
   | zero =>
     cases huv
     use u
@@ -948,11 +938,11 @@ lemma implies_eliminate_empty_related {u v : List (Symbol T g.NT)}
     obtain ⟨v', hvrv', hpv'u'⟩ := empty_related_produces_derives huv hru'
     exact ⟨v', hvrv', hpv'u'.trans huw'⟩
 
-lemma implies_eliminate_empty {w : List (Symbol T g.NT)} {n : g.NT} {hw : w ≠ []}
-    {m : ℕ} (hntw : g.DerivesIn [Symbol.nonterminal n] w m) :
+lemma implies_eliminate_empty {w : List (Symbol T g.NT)} {n : g.NT} {hw : w ≠ []} {m : ℕ}
+    (hnwm : g.DerivesIn [Symbol.nonterminal n] w m) :
     g.eliminate_empty.Derives [Symbol.nonterminal n] w := by
-  obtain ⟨w', hw', hww⟩ := implies_eliminate_empty_related hw hntw
-  cases hw' with
+  obtain ⟨w', hw, hww⟩ := implies_eliminate_empty_related hw hnwm
+  cases hw with
   | empty_left =>
     obtain ⟨_, _⟩ := hww.eq_or_head
     · contradiction
