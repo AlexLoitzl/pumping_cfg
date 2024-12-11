@@ -368,7 +368,7 @@ lemma restrict_length_produces_implies {u v : List (Symbol T g.NT')} [DecidableE
     rw [heqo, heqi]
     simp only [project_string, project_symbol, List.map_cons, List.map_nil, List.flatten_cons,
       List.flatten_nil, List.singleton_append]
-    exact Produces.single (rewrites_produces hrg')
+    exact Produces.single (Produces.input_output hrg')
   | inr =>
     rw [compute_rules_rec_project, h]
     exact compute_rules_inr_in_rec

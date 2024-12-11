@@ -80,7 +80,7 @@ lemma DerivesIn.unitPair_prefix {u : List T} {v : List (Symbol T g.NT)} {n : g.N
           | zero => cases u <;> cases hwu
           | succ =>
             obtain ⟨w', hgw', _⟩ := hwu.head_of_succ
-            exact nonterminal_in_generators hgw'.rule rfl
+            exact input_mem_generators hgw'.rule
         obtain ⟨v'', w', m, hnv'', hgv'', hw', hm, hgw'⟩ := ih hn' rfl
         use v'', w', m
         constructor
@@ -143,14 +143,14 @@ lemma generators_prod_diag_unitPairs {p : g.NT × g.NT} (hp : p ∈ g.generators
       rw [hpr]
       change UnitPair r.input r.input
       constructor
-      apply input_in_generators
+      apply input_mem_generators
       rw [←Finset.mem_toList, heq]
       exact List.mem_cons_self r l
     | inr hap =>
       obtain ⟨v, hvl, hvp⟩ := hap
       rw [← hvp]
       constructor
-      apply input_in_generators
+      apply input_mem_generators
       rw [←Finset.mem_toList, heq]
       exact List.mem_cons_of_mem r hvl
 
@@ -253,7 +253,7 @@ lemma collect_unitPairs_subset_generators_prod {r : ContextFreeRule T g.NT} (l :
     rw [hp2]
     simp only
     constructor
-    · exact input_in_generators hrg
+    · exact input_mem_generators hrg
     · rw [Finset.mem_toList] at hvl
       specialize hlg hvl
       rw[Finset.mem_product] at hlg
@@ -532,7 +532,7 @@ lemma eliminate_unitRules_implies [DecidableEq T] {u v : List (Symbol T g.NT)}
         rewrite [heq1]
         apply hpin.derives
       · rw [← heq3]
-        exact rewrites_produces hrin'
+        exact Produces.input_output hrin'
     · rwa [← heq2, ←hu]
 
 -- ******************************************************************* --
@@ -594,7 +594,7 @@ lemma nonUnit_in_eliminate_unitRules {r : ContextFreeRule T g.NT}
   refine ⟨nonUnit_rules (r.input, r.input), ⟨r.input, r.input, ?_, rfl⟩,
     nonUnit_rules_nonUnit hrg hro⟩
   rw [compute_unitPairs_iff]
-  exact UnitPair.rfl (nonterminal_in_generators hrg rfl)
+  exact UnitPair.rfl (input_mem_generators hrg)
 
 lemma implies_eliminate_unitRules {u : List (Symbol T g.NT)} {v : List T} {m : ℕ}
     (huv : g.DerivesIn u (List.map Symbol.terminal v) m) :
@@ -629,9 +629,7 @@ lemma implies_eliminate_unitRules {u : List (Symbol T g.NT)} {v : List T} {m : �
           | zero => cases s₂ <;> cases hd2
           | succ =>
             obtain ⟨w', hp, _⟩ := hd2.head_of_succ
-            apply nonterminal_in_generators
-            apply hp.rule
-            rfl
+            exact input_mem_generators hp.rule
         obtain ⟨u, w', _, hvu, hp, hw', _, hd2'⟩ := hd2.unitPair_prefix hvg rfl
         apply Produces.trans_derives _ (implies_eliminate_unitRules hd2')
         · apply eliminate_unitRules_produces _ hp hw'
