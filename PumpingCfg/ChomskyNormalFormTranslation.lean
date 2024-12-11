@@ -120,17 +120,17 @@ lemma restrictTerminals_nonUnit_output (hrₒ : ∀ r ∈ g.rules, NonUnit r.out
   simp only [restrictTerminals, restrictTerminalRules, restrictTerminalRule, newTerminalRules,
     List.mem_toFinset, List.mem_flatten, List.mem_map, Finset.mem_toList, exists_exists_and_eq_and,
     List.mem_cons, List.mem_filterMap, forall_exists_index, and_imp]
-  intro r' r hrg h
-  cases h with
-  | inl h =>
-    revert h
+  intro r' r hrg hr'
+  cases hr' with
+  | inl hr' =>
+    revert hr' -- TODO
     split <;> intro h <;> rw [h]
     · constructor
     · simp only
       apply rightEmbed_string_nonUnit (hrₒ _ hrg)
       assumption
-  | inr h =>
-    obtain ⟨s, ⟨_ₒ, hsr⟩⟩ := h
+  | inr hr' =>
+    obtain ⟨s, ⟨_, hsr⟩⟩ := hr'
     cases s <;> simp [reduceCtorEq, Option.some.injEq] at hsr
     rw [← hsr]
     exact True.intro
@@ -140,14 +140,16 @@ lemma restrictTerminals_not_empty_output (hne : ∀ r ∈ g.rules, r.output ≠ 
   simp only [restrictTerminals, restrictTerminalRules, restrictTerminalRule, newTerminalRules,
     List.mem_toFinset, List.mem_flatten, List.mem_map, Finset.mem_toList, exists_exists_and_eq_and,
     List.mem_cons, List.mem_filterMap, ne_eq, forall_exists_index, and_imp]
-  intro r' r hrg h'
-  cases h' <;> rename_i h
-  · revert h
+  intro r' r hrg hr'
+  cases hr' with
+  | inl hr' =>
+    revert hr' -- TODO
     split <;> intro h <;> rw [h]
     · simp
-    · simp only [List.map_eq_nil_iff, ne_eq]
+    · rw [List.map_eq_nil_iff]
       exact hne _ hrg
-  · obtain ⟨s, ⟨_, hsr⟩⟩ := h
+  | inr hr' =>
+    obtain ⟨s, ⟨_, hsr⟩⟩ := hr'
     cases s <;> simp [reduceCtorEq, Option.some.injEq] at hsr
     · rw [← hsr]
       simp
@@ -183,29 +185,28 @@ lemma eliminateUnitRules_not_empty_output (hne : ∀ r ∈ g.rules, r.output ≠
   simp only [eliminateUnitRules, removeUnitRules, computeUnitPairRules, List.mem_toFinset,
     List.mem_flatten, List.mem_map, Finset.mem_toList, Prod.exists, ne_eq,
     forall_exists_index, and_imp]
-  intro r _ _ _ _ h'
-  rw [← h']
+  intro r _ _ _ _ hg
+  rw [← hg]
   simp only [List.mem_filterMap, Finset.mem_toList, Option.ite_none_right_eq_some,
     forall_exists_index, and_imp]
   intro _ hrg _
   split
-  · intro; contradiction
+  · simp
   · simp only [Option.some.injEq]
     intro hr
     rw [← hr]
-    simp only
     apply hne _ hrg
 
 lemma eliminateEmpty_not_empty_output : ∀ r ∈ g.eliminateEmpty.rules, r.output ≠ [] := by
-  simp only [ne_eq, eliminateEmpty]
+  simp only [eliminateEmpty]
   intro r hrg
   exact output_mem_removeNullables hrg
 
 lemma eliminateUnitRules_output_nonUnit : ∀ r ∈ g.eliminateUnitRules.rules, NonUnit r.output := by
   simp only [eliminateUnitRules, removeUnitRules, computeUnitPairRules, List.mem_toFinset,
     List.mem_flatten, List.mem_map, Finset.mem_toList, Prod.exists, forall_exists_index, and_imp]
-  intro r l n₁ n₂ _ h hrl
-  rw [← h] at hrl
+  intro r l n₁ n₂ _ hl hrl
+  rw [← hl] at hrl
   simp only [List.mem_filterMap, Finset.mem_toList, Option.ite_none_right_eq_some] at hrl
   obtain ⟨_, _, _, hr⟩ := hrl
   revert hr
@@ -214,21 +215,19 @@ lemma eliminateUnitRules_output_nonUnit : ∀ r ∈ g.eliminateUnitRules.rules, 
   · simp only [Option.some.injEq]
     intro hr
     rw [← hr]
-    rename_i h
-    simp only
     unfold NonUnit
     split <;> tauto
 
 theorem toCNF_correct : g.language \ {[]} = g.toCNF.language := by
   unfold toCNF
   rw [eliminateEmpty_correct, eliminateUnitRules_correct, restrictTerminals_correct,
-    restrictLength_correct (e := (id (id (id (id instDecidableEqSum)))))]
+    restrictLength_correct (e := instDecidableEqSum)]
   intro r hrg
   match hrₒ : r.output with
   | [] =>
     exfalso
-    exact restrictTerminals_not_empty_output (eliminateUnitRules_not_empty_output eliminateEmpty_not_empty_output) _
-      hrg hrₒ
+    exact restrictTerminals_not_empty_output
+      (eliminateUnitRules_not_empty_output eliminateEmpty_not_empty_output) _ hrg hrₒ
   | [Symbol.terminal _] =>
     cases r; simp only at hrₒ; rw [hrₒ]
     constructor
