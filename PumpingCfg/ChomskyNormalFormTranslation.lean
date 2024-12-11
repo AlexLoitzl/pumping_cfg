@@ -99,13 +99,13 @@ namespace ContextFreeGrammar
 
 /-- Translation of `ContextFreeGrammar` to `ChomskyNormalFormGrammar`, composing the individual
  translation passes -/
-noncomputable def toChomskyNormalForm [DecidableEq T] (g : ContextFreeGrammar T) [DecidableEq g.NT]
+noncomputable def toCNF [DecidableEq T] (g : ContextFreeGrammar T) [DecidableEq g.NT]
     : ChomskyNormalFormGrammar T :=
   g.eliminateEmpty.eliminateUnitRules.restrictTerminals.restrictLength (e := instDecidableEqSum)
 
 variable {g : ContextFreeGrammar T}
 
-lemma new_terminal_rules_terminals {r : ContextFreeRule T g.NT} :
+lemma newTerminalRules_terminal_output {r : ContextFreeRule T g.NT} :
     ∀ r' ∈ newTerminalRules r, ∃ t, r'.output = [Symbol.terminal t] := by
   simp only [newTerminalRules, List.mem_filterMap, forall_exists_index, and_imp]
   intro r' s hs
@@ -115,7 +115,7 @@ lemma new_terminal_rules_terminals {r : ContextFreeRule T g.NT} :
 
 variable [DecidableEq g.NT] [DecidableEq T]
 
-lemma terminal_restriction_nonUnit (hrₒ : ∀ r ∈ g.rules, NonUnit r.output) :
+lemma restrictTerminals_nonUnit_output (hrₒ : ∀ r ∈ g.rules, NonUnit r.output) :
     ∀ r' ∈ g.restrictTerminals.rules, NonUnit r'.output := by
   simp only [restrictTerminals, restrictTerminalRules, restrictTerminalRule, newTerminalRules,
     List.mem_toFinset, List.mem_flatten, List.mem_map, Finset.mem_toList, exists_exists_and_eq_and,
@@ -135,7 +135,7 @@ lemma terminal_restriction_nonUnit (hrₒ : ∀ r ∈ g.rules, NonUnit r.output)
     rw [←hsr]
     exact True.intro
 
-lemma terminal_restriction_nonempty (hne : ∀ r ∈ g.rules, r.output ≠ []) :
+lemma restrictTerminals_not_empty_output (hne : ∀ r ∈ g.rules, r.output ≠ []) :
     ∀ r' ∈ g.restrictTerminals.rules, r'.output ≠ [] := by
   simp only [restrictTerminals, restrictTerminalRules, restrictTerminalRule, newTerminalRules,
     List.mem_toFinset, List.mem_flatten, List.mem_map, Finset.mem_toList, exists_exists_and_eq_and,
@@ -152,7 +152,7 @@ lemma terminal_restriction_nonempty (hne : ∀ r ∈ g.rules, r.output ≠ []) :
     · rw [←hsr]
       simp
 
-lemma restrict_terminals_no_terminals :
+lemma restrictTerminals_terminal_or_nonterminals :
     ∀ r ∈ g.restrictTerminals.rules, (∃ t, r.output = [Symbol.terminal t])
       ∨ (∀ s ∈ r.output, ∃ nt, s = Symbol.nonterminal nt) := by
   simp only [restrictTerminals, restrictTerminalRules, restrictTerminalRule, List.mem_toFinset,
@@ -166,7 +166,7 @@ lemma restrict_terminals_no_terminals :
       simp
     | inr hr =>
       left
-      exact new_terminal_rules_terminals r' hr
+      exact newTerminalRules_terminal_output r' hr
   · cases h with
     | inl hr =>
       right
@@ -176,9 +176,9 @@ lemma restrict_terminals_no_terminals :
       cases s <;> tauto
     | inr hr =>
       left
-      exact new_terminal_rules_terminals r' hr
+      exact newTerminalRules_terminal_output r' hr
 
-lemma eliminate_unitRules_nonempty (hne : ∀ r ∈ g.rules, r.output ≠ []) :
+lemma eliminateUnitRules_not_empty_output (hne : ∀ r ∈ g.rules, r.output ≠ []) :
     ∀ r' ∈ g.eliminateUnitRules.rules, r'.output ≠ [] := by
   simp only [eliminateUnitRules, removeUnitRules, computeUnitPairRules, List.mem_toFinset,
     List.mem_flatten, List.mem_map, Finset.mem_toList, Prod.exists, ne_eq,
@@ -196,12 +196,12 @@ lemma eliminate_unitRules_nonempty (hne : ∀ r ∈ g.rules, r.output ≠ []) :
     simp only
     apply hne _ hrg
 
-lemma eliminate_empty_nonempty : ∀ r ∈ g.eliminateEmpty.rules, r.output ≠ [] := by
+lemma eliminateEmpty_not_empty_output : ∀ r ∈ g.eliminateEmpty.rules, r.output ≠ [] := by
   simp only [ne_eq, eliminateEmpty]
   intro r hrg
   exact output_mem_removeNullables hrg
 
-lemma eliminate_unitRules_nonUnit : ∀ r ∈ g.eliminateUnitRules.rules, NonUnit r.output := by
+lemma eliminateUnitRules_output_nonUnit : ∀ r ∈ g.eliminateUnitRules.rules, NonUnit r.output := by
   simp only [eliminateUnitRules, removeUnitRules, computeUnitPairRules, List.mem_toFinset,
     List.mem_flatten, List.mem_map, Finset.mem_toList, Prod.exists, forall_exists_index, and_imp]
   intro r l n₁ n₂ _ h hrl
@@ -219,28 +219,28 @@ lemma eliminate_unitRules_nonUnit : ∀ r ∈ g.eliminateUnitRules.rules, NonUni
     unfold NonUnit
     split <;> tauto
 
-theorem toChomskyNormalForm_correct : g.language \ {[]} = g.toChomskyNormalForm.language := by
-  unfold toChomskyNormalForm
+theorem toCNF_correct : g.language \ {[]} = g.toCNF.language := by
+  unfold toCNF
   rw [eliminateEmpty_correct, eliminateUnitRules_correct, restrictTerminals_correct,
     restrictLength_correct (e := (id (id (id (id instDecidableEqSum)))))]
   intro r hrg
   match hrₒ : r.output with
   | [] =>
     exfalso
-    exact terminal_restriction_nonempty (eliminate_unitRules_nonempty eliminate_empty_nonempty) _
+    exact restrictTerminals_not_empty_output (eliminateUnitRules_not_empty_output eliminateEmpty_not_empty_output) _
       hrg hrₒ
   | [Symbol.terminal _] =>
     cases r; simp only at hrₒ; rw [hrₒ]
     constructor
   | [Symbol.nonterminal _] =>
     exfalso
-    apply terminal_restriction_nonUnit at hrg
+    apply restrictTerminals_nonUnit_output at hrg
     · rw [hrₒ] at hrg
       contradiction
-    · exact eliminate_unitRules_nonUnit
+    · exact eliminateUnitRules_output_nonUnit
   | _ :: _ :: _ =>
     cases r
-    apply restrict_terminals_no_terminals at hrg
+    apply restrictTerminals_terminal_or_nonterminals at hrg
     cases hrg <;> rename_i hrg
     · obtain ⟨t, ht⟩ := hrg
       rw [ht] at hrₒ
