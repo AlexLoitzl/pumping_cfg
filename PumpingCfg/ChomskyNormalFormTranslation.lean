@@ -101,7 +101,7 @@ namespace ContextFreeGrammar
  translation passes -/
 noncomputable def toChomskyNormalForm [DecidableEq T] (g : ContextFreeGrammar T) [DecidableEq g.NT]
     : ChomskyNormalFormGrammar T :=
-  g.eliminateEmpty.eliminate_unitRules.restrict_terminals.restrict_length (e := instDecidableEqSum)
+  g.eliminateEmpty.eliminateUnitRules.restrict_terminals.restrict_length (e := instDecidableEqSum)
 
 variable {g : ContextFreeGrammar T}
 
@@ -179,8 +179,8 @@ lemma restrict_terminals_no_terminals :
       exact new_terminal_rules_terminals r' hr
 
 lemma eliminate_unitRules_nonempty (hne : ∀ r ∈ g.rules, r.output ≠ []) :
-    ∀ r' ∈ g.eliminate_unitRules.rules, r'.output ≠ [] := by
-  simp only [eliminate_unitRules, remove_unitRules, nonUnit_rules, List.mem_toFinset,
+    ∀ r' ∈ g.eliminateUnitRules.rules, r'.output ≠ [] := by
+  simp only [eliminateUnitRules, removeUnitRules, computeUnitPairRules, List.mem_toFinset,
     List.mem_flatten, List.mem_map, Finset.mem_toList, Prod.exists, ne_eq,
     forall_exists_index, and_imp]
   intro r _ _ _ _ h'
@@ -201,8 +201,8 @@ lemma eliminate_empty_nonempty : ∀ r ∈ g.eliminateEmpty.rules, r.output ≠ 
   intro r hrg
   exact output_mem_removeNullables hrg
 
-lemma eliminate_unitRules_nonUnit : ∀ r ∈ g.eliminate_unitRules.rules, NonUnit r.output := by
-  simp only [eliminate_unitRules, remove_unitRules, nonUnit_rules, List.mem_toFinset,
+lemma eliminate_unitRules_nonUnit : ∀ r ∈ g.eliminateUnitRules.rules, NonUnit r.output := by
+  simp only [eliminateUnitRules, removeUnitRules, computeUnitPairRules, List.mem_toFinset,
     List.mem_flatten, List.mem_map, Finset.mem_toList, Prod.exists, forall_exists_index, and_imp]
   intro r l n₁ n₂ _ h hrl
   rw [←h] at hrl
@@ -221,7 +221,7 @@ lemma eliminate_unitRules_nonUnit : ∀ r ∈ g.eliminate_unitRules.rules, NonUn
 
 theorem toChomskyNormalForm_correct : g.language \ {[]} = g.toChomskyNormalForm.language := by
   unfold toChomskyNormalForm
-  rw [eliminateEmpty_correct, eliminate_unitRules_correct, restrict_terminals_correct,
+  rw [eliminateEmpty_correct, eliminateUnitRules_correct, restrict_terminals_correct,
     restrict_length_correct (e := (id (id (id (id instDecidableEqSum)))))]
   intro r hrg
   match hrₒ : r.output with
