@@ -18,9 +18,9 @@ variable {T : Type uT}
 
 namespace ChomskyNormalFormRule
 
--- Type of nonterminals.
 variable {N : Type uN}
 
+/-- Translation of `ChomskyNormalFormRule` to `ContextFreeRule` -/
 def toCFGRule (r : ChomskyNormalFormRule T N) : ContextFreeRule T N :=
   match r with
   | leaf n t => { input := n, output := [Symbol.terminal t] }
@@ -44,6 +44,7 @@ namespace ChomskyNormalFormGrammar
 
 variable [DecidableEq T]
 
+/-- Translation of `ChomskyNormalFormGrammar` to `ContextFreeGrammar` -/
 noncomputable def toCFG (g : ChomskyNormalFormGrammar T) [DecidableEq g.NT] :
     ContextFreeGrammar T where
   NT := g.NT
@@ -96,6 +97,8 @@ end ChomskyNormalFormGrammar
 
 namespace ContextFreeGrammar
 
+/-- Translation of `ContextFreeGrammar` to `ChomskyNormalFormGrammar`, composing the individual
+ translation passes -/
 noncomputable def toChomskyNormalForm [DecidableEq T] (g : ContextFreeGrammar T) [DecidableEq g.NT]
     : ChomskyNormalFormGrammar T :=
   g.eliminate_empty.eliminate_unitRules.restrict_terminals.restrict_length (e := instDecidableEqSum)

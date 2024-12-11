@@ -83,8 +83,12 @@ section RestrictLength
 
 variable {g : ContextFreeGrammar.{uN, uT} T}
 
+/-- Shorthand for the new type of nonterminals. -/
 abbrev NT' := g.NT ⊕ Σ r : ContextFreeRule T g.NT, Fin (r.output.length - 2)
 
+/-- Computes a cascade of rules generating `r.output` if it only contains nonterminals. For a rule
+ r : n -> n₁n₂n₃n₄, generates rules n -> n₁m₂, m₂ -> n₂m₃, and m₃ -> n₃n₄. The type of of NT',
+ encodes the correspondence between rules and the new nonterminals. -/
 def compute_rules_rec (r : ContextFreeRule T g.NT) (i : Fin (r.output.length - 2)) :
     List (ChomskyNormalFormRule T g.NT') :=
   match i with
@@ -100,6 +104,9 @@ def compute_rules_rec (r : ContextFreeRule T g.NT) (i : Fin (r.output.length - 2
                    :: compute_rules_rec r ⟨n, by omega⟩
                  | _ => []
 
+/-- We assume all rules' output is either a pair of nonterminals, a single terminal or a string of
+ at least 3 nonterminals. In the first two cases we can directly translate them, otherwise we generate
+ new rules using `compute_rules_rec`. -/
 def compute_rules (r : ContextFreeRule T g.NT) : List (ChomskyNormalFormRule T g.NT') :=
   match h : r.output with
   | [Symbol.nonterminal n₁, Symbol.nonterminal n₂] =>
@@ -111,21 +118,25 @@ def compute_rules (r : ContextFreeRule T g.NT) : List (ChomskyNormalFormRule T g
       :: compute_rules_rec r ⟨r.output.length - 3, by rw [h]; simp⟩
   | _ => []
 
+/-- Compute all `ChomskyNormalFormRule`s corresponding to the original `ContextFreeRule`s -/
 def restrict_length_rules [DecidableEq T] [DecidableEq g.NT] (l : List (ContextFreeRule T g.NT)) :=
   (l.map compute_rules).flatten.toFinset
 
 end RestrictLength
 
+/-- Construct a `ChomskyNormalGrammar` corresponding to the original `ContextFreeGrammar` -/
 noncomputable def restrict_length (g : ContextFreeGrammar.{uN,uT} T) [DecidableEq T]
     [e : DecidableEq g.NT] :=
   ChomskyNormalFormGrammar.mk g.NT' (Sum.inl g.initial) (restrict_length_rules g.rules.toList)
 
+/-- A grammar is `Wellformed` if all rules are `ContextFreeRule.Wellformed` -/
 def Wellformed (g : ContextFreeGrammar T) : Prop := ∀ r ∈ g.rules, r.Wellformed
 
 section EmbedProject
 
 variable {g : ContextFreeGrammar.{uN, uT} T}
 
+/-- Intuitive embedding of symbols of the original grammar into symbols of the new grammar's type -/
 def embed_symbol (s : Symbol T g.NT) : Symbol T g.NT' :=
   match s with
   | Symbol.terminal t => Symbol.terminal t
@@ -137,6 +148,7 @@ lemma embed_symbol_nonterminal {n : g.NT} :
 lemma embed_symbol_terminal {t : T} :
     embed_symbol (Symbol.terminal t) = (@Symbol.terminal T g.NT') t := by rfl
 
+/-- Intuitive embedding of strings of the original grammar into strings of the new grammar's type -/
 abbrev embed_string (u : List (Symbol T g.NT)) : List (Symbol T g.NT') := u.map embed_symbol
 
 lemma embed_string_nonterminal {n : g.NT} :
@@ -151,15 +163,17 @@ lemma embed_string_terminals {u : List T} :
       at ih ⊢
     exact ⟨rfl, ih⟩
 
-def embed_string_append {u v : List (Symbol T g.NT)} :
+lemma embed_string_append {u v : List (Symbol T g.NT)} :
   embed_string (u ++ v) = embed_string u ++ embed_string v := List.map_append embed_symbol u v
 
+/-- Projection from symbols of the new grammars type into symbols of the original grammar -/
 def project_symbol (s : Symbol T g.NT') : List (Symbol T g.NT) :=
   match s with
   | Symbol.terminal t => [Symbol.terminal t]
   | Symbol.nonterminal (Sum.inl n) => [Symbol.nonterminal n]
   | Symbol.nonterminal (Sum.inr ⟨r, ⟨i, _⟩⟩) => List.drop (r.output.length - 2 - i) r.output
 
+/-- Projection from strings of the new grammars type into strings of the original grammar -/
 abbrev project_string (u : List (Symbol T g.NT')) : List (Symbol T g.NT) :=
   (u.map project_symbol).flatten
 

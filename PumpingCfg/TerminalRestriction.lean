@@ -16,26 +16,33 @@ section EmbedProject
 
 variable {N : Type uN}
 
+/-- Intuitive Embedding of symbols of the original grammar into symbols of the new grammar's type -/
 def embed_symbol (s : Symbol T N) : Symbol T (N ⊕ T) :=
   match s with
   | Symbol.terminal t => Symbol.terminal t
   | Symbol.nonterminal n => Symbol.nonterminal (Sum.inl n)
 
+/-- Intuitive Embedding of strings of the original grammar into strings of the new grammar's type -/
 abbrev embed_string (u : List (Symbol T N)) : List (Symbol T (N ⊕ T)) := u.map embed_symbol
 
+/-- Embedding of symbols of the original grammar into nonterminals of the new grammar -/
 def right_embed_symbol (s : Symbol T N) : Symbol T (N ⊕ T) :=
   match s with
   | Symbol.terminal t => Symbol.nonterminal (Sum.inr t)
   | Symbol.nonterminal n => Symbol.nonterminal (Sum.inl n)
 
+/-- Embedding of strings of the original grammar into nonterminal (symbol) strings of the new
+ grammar -/
 abbrev right_embed_string (w : List (Symbol T N)) := w.map right_embed_symbol
 
+/-- Projection from symbols of the new grammars type into symbols of the original grammar -/
 def project_symbol (s : Symbol T (N ⊕ T)) : Symbol T N :=
   match s with
   | Symbol.terminal t => Symbol.terminal t
   | Symbol.nonterminal (Sum.inl nt) => Symbol.nonterminal nt
   | Symbol.nonterminal (Sum.inr t) => Symbol.terminal t
 
+/-- Projection from strings of the new grammars type into strings of the original grammar -/
 def project_string (u : List (Symbol T (N ⊕ T))) : List (Symbol T N) := u.map project_symbol
 
 lemma embed_nonterminal_eq {nt : N} :
@@ -96,6 +103,7 @@ namespace ContextFreeGrammar
 
 section RestrictTerminals
 
+/-- Computes rules r' : T -> t, for all terminals t occuring in `r.output`-/
 def new_terminal_rules {N : Type*} (r : ContextFreeRule T N) : List (ContextFreeRule T (N ⊕ T)) :=
   let terminal_rule (s : Symbol T N) : Option (ContextFreeRule T (N ⊕ T)) :=
     match s with
@@ -103,15 +111,21 @@ def new_terminal_rules {N : Type*} (r : ContextFreeRule T N) : List (ContextFree
     | Symbol.nonterminal _ => none
   r.output.filterMap terminal_rule
 
+/-- If `r.output` is a single terminal, we lift the rule to the new grammar, otherwise add new rules
+ for each terminal symbol in `r.output` and right-lift the rule, i.e., replace all terminals with
+ nonterminals -/
 def restrict_terminal_rule {N : Type*} (r : ContextFreeRule T N) : List (ContextFreeRule T (N ⊕ T)) :=
   (match r.output with
   | [Symbol.terminal t] => ContextFreeRule.mk (Sum.inl r.input) ([Symbol.terminal t])
   | _ => (ContextFreeRule.mk (Sum.inl r.input) (right_embed_string r.output))) :: new_terminal_rules r
 
+/-- Compute all lifted rules -/
 noncomputable def restrict_terminal_rules {N : Type*} [DecidableEq T] [DecidableEq N]
   (l : List (ContextFreeRule T N)) : Finset (ContextFreeRule T (N ⊕ T)) :=
   (l.map restrict_terminal_rule).flatten.toFinset
 
+/-- Construct new grammar, using the lifted rules. Each rule's output is either a single terminal
+ or only nonterminals -/
 noncomputable def restrict_terminals (g : ContextFreeGrammar.{uN, uT} T) [DecidableEq T]
     [DecidableEq g.NT] :=
   ContextFreeGrammar.mk (g.NT ⊕ T) (Sum.inl g.initial) (restrict_terminal_rules g.rules.toList)
