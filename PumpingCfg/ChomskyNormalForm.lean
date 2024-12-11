@@ -135,7 +135,7 @@ def language (g : ChomskyNormalFormGrammar T) : Language T :=
 number of steps. -/
 @[simp]
 lemma mem_language_iff (g : ChomskyNormalFormGrammar T) (w : List T) :
-    w ∈ g.language ↔ g.Generates (List.map Symbol.terminal w) := by
+    w ∈ g.language ↔ g.Generates (w.map Symbol.terminal) := by
   rfl
 
 variable {g : ChomskyNormalFormGrammar T}
@@ -199,9 +199,10 @@ lemma Derives.append_right {u v : List (Symbol T g.NT)}
   | tail _ last ih => exact ih.trans_produces <| last.append_right p
 
 theorem Derives.head_induction_on {v : List (Symbol T g.NT)} {P : ∀ u, g.Derives u v → Prop}
-  {u : List (Symbol T g.NT)} (h : g.Derives u v)
+  {u : List (Symbol T g.NT)} (huv : g.Derives u v)
   (refl : P v (Derives.refl v))
-  (head : ∀ {u w} (h' : g.Produces u w) (h : g.Derives w v), P w h → P u (h.head h')) : P u h :=
-  Relation.ReflTransGen.head_induction_on h refl head
+  (head : ∀ {u w} (huw : g.Produces u w) (hwv : g.Derives w v), P w hwv → P u (hwv.head huw)) :
+  P u huv :=
+  Relation.ReflTransGen.head_induction_on huv refl head
 
 end ChomskyNormalFormGrammar

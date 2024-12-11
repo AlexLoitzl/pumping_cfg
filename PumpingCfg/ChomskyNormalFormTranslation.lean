@@ -23,8 +23,8 @@ variable {N : Type uN}
 /-- Translation of `ChomskyNormalFormRule` to `ContextFreeRule` -/
 def toCFGRule (r : ChomskyNormalFormRule T N) : ContextFreeRule T N :=
   match r with
-  | leaf n t => { input := n, output := [Symbol.terminal t] }
-  | node nᵢ n₁ n₂ => { input := nᵢ, output := [Symbol.nonterminal n₁, Symbol.nonterminal n₂] }
+  | leaf n t => ⟨n, [Symbol.terminal t]⟩
+  | node nᵢ n₁ n₂ => ⟨nᵢ, [Symbol.nonterminal n₁, Symbol.nonterminal n₂]⟩
 
 lemma Rewrites.toCFGRule_match {u v : List (Symbol T N)} {r : ChomskyNormalFormRule T N}
     (huv : r.Rewrites u v) :
@@ -109,9 +109,8 @@ lemma newTerminalRules_terminal_output {r : ContextFreeRule T g.NT} :
     ∀ r' ∈ newTerminalRules r, ∃ t, r'.output = [Symbol.terminal t] := by
   simp only [newTerminalRules, List.mem_filterMap, forall_exists_index, and_imp]
   intro r' s hs
-  split <;> intro h <;> simp only [reduceCtorEq, Option.some.injEq] at h
-  rw [← h]
-  simp
+  split <;> intro hr' <;> simp only [reduceCtorEq, Option.some.injEq] at hr'
+  simp [← hr']
 
 variable [DecidableEq g.NT] [DecidableEq T]
 
