@@ -13,9 +13,9 @@ namespace ChomskyNormalFormGrammar
 /-- Given a context-free grammar `g`, strings `u` and `v`, and number `n`
 `g.DerivesIn u v n` means that `g` can transform `u` to `v` in `n` rewriting steps. -/
 inductive DerivesIn (g : ChomskyNormalFormGrammar.{uN} T) : List (Symbol T g.NT) → List (Symbol T g.NT) → ℕ → Prop
-  /-- TODO -/
+  /-- 0 steps entail no transformation -/
   | refl (w : List (Symbol T g.NT)) : g.DerivesIn w w 0
-  /-- TODO -/
+  /-- n + 1 steps, if transforms `u` to `v` in n steps, and `v` to `w` in 1 step  -/
   | tail (u v w : List (Symbol T g.NT)) (n : ℕ) : g.DerivesIn u v n → g.Produces v w → g.DerivesIn u w n.succ
 
 lemma derives_iff_derivesIn (g : ChomskyNormalFormGrammar.{uN} T) (v w : List (Symbol T g.NT)) :
