@@ -123,17 +123,14 @@ lemma restrictTerminals_nonUnit_output (hrₒ : ∀ r ∈ g.rules, NonUnit r.out
   intro r' r hrg hr'
   cases hr' with
   | inl hr' =>
-    revert hr' -- TODO
-    split <;> intro h <;> rw [h]
-    · constructor
-    · simp only
-      apply rightEmbed_string_nonUnit (hrₒ _ hrg)
-      assumption
+    have : (∀ t : T, r.output ≠ [Symbol.terminal t]) → NonUnit (rightEmbedString r.output) :=
+      rightEmbed_string_nonUnit (hrₒ _ hrg)
+    aesop
   | inr hr' =>
     obtain ⟨s, ⟨_, hsr⟩⟩ := hr'
     cases s <;> simp [reduceCtorEq, Option.some.injEq] at hsr
     rw [← hsr]
-    exact True.intro
+    trivial
 
 lemma restrictTerminals_not_empty_output (hne : ∀ r ∈ g.rules, r.output ≠ []) :
     ∀ r' ∈ g.restrictTerminals.rules, r'.output ≠ [] := by
@@ -142,17 +139,13 @@ lemma restrictTerminals_not_empty_output (hne : ∀ r ∈ g.rules, r.output ≠ 
     List.mem_cons, List.mem_filterMap, ne_eq, forall_exists_index, and_imp]
   intro r' r hrg hr'
   cases hr' with
-  | inl hr' =>
-    revert hr' -- TODO
-    split <;> intro h <;> rw [h]
-    · simp
-    · rw [List.map_eq_nil_iff]
-      exact hne _ hrg
+  | inl =>
+    aesop
   | inr hr' =>
     obtain ⟨s, ⟨_, hsr⟩⟩ := hr'
     cases s <;> simp [reduceCtorEq, Option.some.injEq] at hsr
-    · rw [← hsr]
-      simp
+    rw [← hsr]
+    simp
 
 lemma restrictTerminals_terminal_or_nonterminals :
     ∀ r ∈ g.restrictTerminals.rules, (∃ t, r.output = [Symbol.terminal t])
