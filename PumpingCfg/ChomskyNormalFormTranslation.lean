@@ -101,7 +101,7 @@ namespace ContextFreeGrammar
  translation passes -/
 noncomputable def toChomskyNormalForm [DecidableEq T] (g : ContextFreeGrammar T) [DecidableEq g.NT]
     : ChomskyNormalFormGrammar T :=
-  g.eliminateEmpty.eliminateUnitRules.restrictTerminals.restrict_length (e := instDecidableEqSum)
+  g.eliminateEmpty.eliminateUnitRules.restrictTerminals.restrictLength (e := instDecidableEqSum)
 
 variable {g : ContextFreeGrammar T}
 
@@ -222,7 +222,7 @@ lemma eliminate_unitRules_nonUnit : ∀ r ∈ g.eliminateUnitRules.rules, NonUni
 theorem toChomskyNormalForm_correct : g.language \ {[]} = g.toChomskyNormalForm.language := by
   unfold toChomskyNormalForm
   rw [eliminateEmpty_correct, eliminateUnitRules_correct, restrictTerminals_correct,
-    restrict_length_correct (e := (id (id (id (id instDecidableEqSum)))))]
+    restrictLength_correct (e := (id (id (id (id instDecidableEqSum)))))]
   intro r hrg
   match hrₒ : r.output with
   | [] =>
