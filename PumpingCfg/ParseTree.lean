@@ -33,11 +33,6 @@ variable {g : ChomskyNormalFormGrammar.{uN,uT} T}
 ------------------ STUFF ------------------
 -------------------------------------------
 
-lemma Derives.append_left_trans {u v w x: List (Symbol T g.NT)} (huv : g.Derives u v)
-    (hwx : g.Derives w x) :
-    g.Derives (w ++ u) (x ++ v) :=
-  (huv.append_left _).trans (hwx.append_right _)
-
 inductive ParseTree : g.NT → Type _ where
   | tree_leaf {n : g.NT} (t : T)
       (h : (ChomskyNormalFormRule.leaf n t) ∈ g.rules) : ParseTree n
@@ -53,20 +48,17 @@ def yield {n : g.NT} (p : ParseTree n) : List T :=
 
 variable {n : g.NT} {p : ParseTree n}
 
-lemma yield_derives {u : List T} (h : p.yield = u) :
-    g.Derives [Symbol.nonterminal n] (List.map Symbol.terminal u) := by
-  induction p generalizing u with
+lemma yield_derives : g.Derives [Symbol.nonterminal n] (List.map Symbol.terminal p.yield) := by
+  induction p with
   | tree_leaf t hg =>
-    simp only [yield] at h
-    rw [← h]
+    simp only [yield]
     exact Produces.single ⟨_, hg, ChomskyNormalFormRule.Rewrites.input_output⟩
   | tree_node l r hg ihl ihr =>
-    simp only [yield] at h
-    rw [← h]
+    simp only [yield]
     apply Produces.trans_derives
     exact ⟨_, hg, ChomskyNormalFormRule.Rewrites.input_output⟩
     rw [ChomskyNormalFormRule.output, List.map_append, ←List.singleton_append]
-    exact ((ihr rfl).append_left _).trans ((ihl rfl).append_right _)
+    exact (ihr.append_left _).trans (ihl.append_right _)
 
 end ParseTree
 
