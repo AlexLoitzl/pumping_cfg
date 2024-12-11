@@ -57,7 +57,7 @@ lemma yield_derives : g.Derives [Symbol.nonterminal n] (List.map Symbol.terminal
     simp only [yield]
     apply Produces.trans_derives
     exact ⟨_, hg, ChomskyNormalFormRule.Rewrites.input_output⟩
-    rw [ChomskyNormalFormRule.output, List.map_append, ←List.singleton_append]
+    rw [ChomskyNormalFormRule.output, List.map_append, ← List.singleton_append]
     exact (ihr.append_left _).trans (ihl.append_right _)
 
 end ParseTree
@@ -99,7 +99,7 @@ private lemma DerivesIn.yield_rec {n : g.NT} {u : List T} {m : ℕ}
     | leaf n t =>
       simp at hr₁ hr₂
       rw [hr₁] at hrg
-      rw [←hr₂] at hwu
+      rw [← hr₂] at hwu
       use (ParseTree.tree_leaf t hrg)
       simp only [ParseTree.yield]
       exact hwu.terminal_refl
@@ -107,12 +107,12 @@ private lemma DerivesIn.yield_rec {n : g.NT} {u : List T} {m : ℕ}
       simp at hr₂
       simp at hr₁
       rw [hr₁] at hrg
-      rw [←hr₂, ← List.singleton_append] at hwu
+      rw [← hr₂, ← List.singleton_append] at hwu
       obtain ⟨u₁, u₂, k₁, k₂, hu, hnu₁, hnu₂, hm⟩ := hwu.append_split
       rw [List.map_eq_append_iff] at hu
       obtain ⟨u₁', u₂', hu, hu₁, hu₂⟩ := hu
-      rw [←hu₁] at hnu₁
-      rw [←hu₂] at hnu₂
+      rw [← hu₁] at hnu₁
+      rw [← hu₂] at hnu₂
       obtain ⟨p₁, hp₁⟩ := hnu₁.yield_rec
       obtain ⟨p₂, hp₂⟩ := hnu₂.yield_rec
       use ParseTree.tree_node p₁ p₂ hrg

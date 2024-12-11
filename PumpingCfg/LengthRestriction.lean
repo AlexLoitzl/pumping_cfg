@@ -205,7 +205,7 @@ lemma projectString_terminals {u : List T} :
   induction u with
   | nil => rfl
   | cons =>
-    rw [←List.singleton_append, List.map_append, List.map_append, projectString_append]
+    rw [← List.singleton_append, List.map_append, List.map_append, projectString_append]
     congr
 
 end EmbedProject
@@ -441,7 +441,7 @@ lemma computeRulesRec_derives [DecidableEq T] [DecidableEq g.NT] {r : ContextFre
             exact hx₁
           · exact ChomskyNormalFormRule.Rewrites.input_output
       · simp only [ChomskyNormalFormRule.output, List.map_cons, List.map_drop]
-        rw [←List.singleton_append, ←List.singleton_append, embedSymbol_nonterminal, ←List.map_drop]
+        rw [← List.singleton_append, ← List.singleton_append, embedSymbol_nonterminal, ← List.map_drop]
         apply ChomskyNormalFormGrammar.Derives.append_left
         have hrₒ : r.output.length - 2 - (n + 1) +1 = r.output.length - 2 - n := by omega
         rw [hrₒ]

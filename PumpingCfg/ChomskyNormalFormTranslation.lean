@@ -132,7 +132,7 @@ lemma restrictTerminals_nonUnit_output (hrₒ : ∀ r ∈ g.rules, NonUnit r.out
   | inr h =>
     obtain ⟨s, ⟨_ₒ, hsr⟩⟩ := h
     cases s <;> simp [reduceCtorEq, Option.some.injEq] at hsr
-    rw [←hsr]
+    rw [← hsr]
     exact True.intro
 
 lemma restrictTerminals_not_empty_output (hne : ∀ r ∈ g.rules, r.output ≠ []) :
@@ -149,7 +149,7 @@ lemma restrictTerminals_not_empty_output (hne : ∀ r ∈ g.rules, r.output ≠ 
       exact hne _ hrg
   · obtain ⟨s, ⟨_, hsr⟩⟩ := h
     cases s <;> simp [reduceCtorEq, Option.some.injEq] at hsr
-    · rw [←hsr]
+    · rw [← hsr]
       simp
 
 lemma restrictTerminals_terminal_or_nonterminals :
@@ -184,7 +184,7 @@ lemma eliminateUnitRules_not_empty_output (hne : ∀ r ∈ g.rules, r.output ≠
     List.mem_flatten, List.mem_map, Finset.mem_toList, Prod.exists, ne_eq,
     forall_exists_index, and_imp]
   intro r _ _ _ _ h'
-  rw [←h']
+  rw [← h']
   simp only [List.mem_filterMap, Finset.mem_toList, Option.ite_none_right_eq_some,
     forall_exists_index, and_imp]
   intro _ hrg _
@@ -192,7 +192,7 @@ lemma eliminateUnitRules_not_empty_output (hne : ∀ r ∈ g.rules, r.output ≠
   · intro; contradiction
   · simp only [Option.some.injEq]
     intro hr
-    rw [←hr]
+    rw [← hr]
     simp only
     apply hne _ hrg
 
@@ -205,7 +205,7 @@ lemma eliminateUnitRules_output_nonUnit : ∀ r ∈ g.eliminateUnitRules.rules, 
   simp only [eliminateUnitRules, removeUnitRules, computeUnitPairRules, List.mem_toFinset,
     List.mem_flatten, List.mem_map, Finset.mem_toList, Prod.exists, forall_exists_index, and_imp]
   intro r l n₁ n₂ _ h hrl
-  rw [←h] at hrl
+  rw [← h] at hrl
   simp only [List.mem_filterMap, Finset.mem_toList, Option.ite_none_right_eq_some] at hrl
   obtain ⟨_, _, _, hr⟩ := hrl
   revert hr
@@ -213,7 +213,7 @@ lemma eliminateUnitRules_output_nonUnit : ∀ r ∈ g.eliminateUnitRules.rules, 
   · simp
   · simp only [Option.some.injEq]
     intro hr
-    rw [←hr]
+    rw [← hr]
     rename_i h
     simp only
     unfold NonUnit
