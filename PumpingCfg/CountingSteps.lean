@@ -203,4 +203,3 @@ lemma DerivesIn.head_induction_on {b : List (Symbol T g.NT)}
     · exact head last _ refl
     · intro _ _ _ produc deriv
       exact head produc (deriv.tail _ _ _ _ last)
-

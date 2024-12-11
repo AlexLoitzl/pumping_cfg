@@ -152,7 +152,7 @@ lemma restrictTerminalRule_right_terminal_output {t : T} {r : ContextFreeRule T 
     simp only [List.mem_filterMap] at hrr
     obtain ⟨s, _, hsr⟩ := hrr
     cases s <;> simp only [Option.some.injEq, reduceCtorEq] at hsr
-    rw [←hsr] at hrt ⊢
+    rw [← hsr] at hrt ⊢
     simp only [Sum.inr.injEq, List.cons.injEq, Symbol.terminal.injEq, and_true] at hrt ⊢
     exact hrt
 
@@ -247,7 +247,7 @@ lemma restrictTerminals_derives_rightEmbedString_embedString {u : List (Symbol T
   | nil => rfl
   | cons a _ ih =>
     simp only [List.mem_cons, List.map_cons] at hu ⊢
-    rw [←List.singleton_append, ← @List.singleton_append _ (embedSymbol a)]
+    rw [← List.singleton_append, ← @List.singleton_append _ (embedSymbol a)]
     apply Derives.append_left_trans
     · apply ih
       intro t h'

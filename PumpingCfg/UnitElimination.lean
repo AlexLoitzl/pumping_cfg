@@ -134,14 +134,14 @@ lemma generatorsProdDiag_unitPairs {p : g.NT × g.NT} (hp : p ∈ g.generatorsPr
       change UnitPair r.input r.input
       constructor
       apply input_mem_generators
-      rw [←Finset.mem_toList, heq]
+      rw [← Finset.mem_toList, heq]
       exact List.mem_cons_self r l
     | inr hap =>
       obtain ⟨v, hvl, hvp⟩ := hap
       rw [← hvp]
       constructor
       apply input_mem_generators
-      rw [←Finset.mem_toList, heq]
+      rw [← Finset.mem_toList, heq]
       exact List.mem_cons_of_mem r hvl
 
 /-- Reflects transitivity of unit pairs. If `(n₂, n₃)` is a unit pair and `g` rewrites `n₁` to `n₂`
@@ -521,7 +521,7 @@ lemma eliminateUnitRules_derives_to_derives [DecidableEq T] {u v : List (Symbol 
         apply hpin.derives
       · rw [← heq3]
         exact Produces.input_output hrin'
-    · rwa [← heq2, ←hu]
+    · rwa [← heq2, ← hu]
 
 -- ******************************************************************* --
 -- If direction of the main correctness theorem of eliminate_unitPairs --
@@ -591,7 +591,7 @@ lemma derives_to_eliminateUnitRules_derives {u : List (Symbol T g.NT)} {v : List
         rw [← hs₁] at hd1
         rw [← hs₂] at hd2
         rw [← hs₃] at hd3
-        rw [hs, hw, ←hs₁, ←hs₂, ←hs₃]
+        rw [hs, hw, ← hs₁, ← hs₂, ← hs₃]
         apply Derives.append_left_trans
         apply derives_to_eliminateUnitRules_derives hd3
         apply Derives.append_left_trans _ (derives_to_eliminateUnitRules_derives hd1)
@@ -623,7 +623,7 @@ theorem eliminateUnitRules_correct :
     obtain ⟨n, hn⟩ := (derives_iff_derivesIn _ _ _).1 hw
     exact derives_to_eliminateUnitRules_derives hn
   · intro w hw
-    rw [Set.mem_setOf_eq, ←hg]
+    rw [Set.mem_setOf_eq, ← hg]
     exact eliminateUnitRules_derives_to_derives hw
 
 end EliminateUnitRules

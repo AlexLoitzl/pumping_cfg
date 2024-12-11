@@ -64,7 +64,7 @@ private lemma DerivesIn.empty_of_append_left_aux {u v w : List (Symbol T g.NT)} 
         tauto
       | cons h t =>
         obtain ⟨_, _⟩ := hr
-        rw [List.append_eq, ←List.append_assoc] at heq₂
+        rw [List.append_eq, ← List.append_assoc] at heq₂
         obtain ⟨m', hm, hd⟩ := ih heq₂
         refine ⟨m'.succ, Nat.succ_le_succ hm, Produces.trans_derivesIn ⟨r, hrg, ?_⟩ hd⟩
         rw [ContextFreeRule.rewrites_iff]
@@ -113,7 +113,7 @@ lemma DerivesIn.empty_of_append_right_aux {u v w : List (Symbol T g.NT)} {m : �
       | cons _ t =>
         obtain ⟨_, _⟩ := hq
         rw [List.append_eq, List.append_assoc] at heq₂
-        repeat rw [←List.append_assoc] at heq₂
+        repeat rw [← List.append_assoc] at heq₂
         obtain ⟨m', hm, hv⟩ := ih heq₂
         exact ⟨m', Nat.le_succ_of_le hm, hv⟩
 
@@ -301,7 +301,7 @@ lemma NullableRelated.append_nullable_left {u v w: List (Symbol T g.NT)}
   induction w generalizing u v with
   | nil => exact huv
   | cons a l ih =>
-    rw [←List.singleton_append] at hw
+    rw [← List.singleton_append] at hw
     obtain ⟨_, rfl, hnt⟩ := hw.nullableNonTerminal (List.mem_cons_self a l)
     exact NullableRelated.cons_nterm_nullable (ih huv (NullableWord.empty_of_append_right hw)) hnt
 
@@ -613,13 +613,13 @@ lemma nullable_mem_addNullablesIter (p : Finset g.NT) (hpg : p ⊆ g.generators)
       unfold ruleIsNullable
       rw [decide_eq_true_eq]
       intro s hs
-      rw [←hur] at hs
+      rw [← hur] at hs
       obtain ⟨v', hv'⟩ := hue.nullable_mem_nonterminal hs
       unfold symbolIsNullable
       rw [hv', decide_eq_true_eq]
       have ⟨_, _, _⟩ := hue.mem_nullable hs
       apply nullable_mem_addNullablesIter
-      rwa [←hv']
+      rwa [← hv']
     have hv : n = r.input := by
       obtain ⟨p, q, hu, _⟩ := hwu.exists_parts
       cases p <;> simp at hu
@@ -692,7 +692,7 @@ lemma output_mem_removeNullableRule {r r': ContextFreeRule T g.NT} {p : Finset g
   rw [List.mem_filterMap] at hrr
   obtain ⟨a, -, ha⟩ := hrr
   cases a <;> simp at ha
-  rw [←ha]
+  rw [← ha]
   tauto
 
 lemma output_mem_removeNullables {r : ContextFreeRule T g.NT} {p : Finset g.NT} [DecidableEq T]
@@ -703,7 +703,7 @@ lemma output_mem_removeNullables {r : ContextFreeRule T g.NT} {p : Finset g.NT} 
   obtain ⟨l, hl, hr⟩ := hr
   rw [List.mem_map] at hl
   obtain ⟨r', _, hr'⟩ := hl
-  rw [←hr'] at hr
+  rw [← hr'] at hr
   exact output_mem_removeNullableRule hr
 
 lemma eliminateEmpty_produces_not_empty {u v : List (Symbol T g.NT)} [DecidableEq T]
@@ -756,7 +756,7 @@ lemma mem_removeNullableRule_nullableRelated {r': ContextFreeRule T g.NT} [Decid
   rw [removeNullableRule, List.mem_filterMap] at hrg
   obtain ⟨o, ho, ho'⟩ := hrg
   cases o <;> simp at ho'
-  rw [←ho']
+  rw [← ho']
   constructor; rfl
   apply mem_nullableCombinations_nullableRelated
   intro
@@ -823,7 +823,7 @@ lemma nullableRelated_mem_removeNullable {p : Finset g.NT} {u v : List (Symbol T
       cases hvu with
       | empty_left _ hu =>
         left
-        rw [←List.singleton_append] at hu
+        rw [← List.singleton_append] at hu
         rw [hn]
         exact ⟨hu.empty_of_append_left, ih (NullableRelated.empty_left l hu.empty_of_append_right)⟩
       | cons_nterm_match hu'u => exact Or.inr ⟨_, ih hu'u, rfl⟩
