@@ -71,25 +71,14 @@ lemma Produces.rule {n : g.NT} {u : List (Symbol T g.NT)}
   · exact ⟨_, hrg, rfl, rfl⟩
   · contradiction
 
--- TODO FIXME This cannot be the right way to prove this
-lemma list_eq {u v : List T}
-  (huv : u.map (@Symbol.terminal T g.NT) = v.map (@Symbol.terminal T g.NT)) : u = v := by
-  induction u generalizing v with
-  | nil =>
-    cases v
-    · rfl
-    · contradiction
-  | cons a u ih =>
-    cases v
-    · contradiction
-    · simp only [List.map_cons, List.cons.injEq, Symbol.terminal.injEq] at huv ⊢
-      exact ⟨huv.1, ih huv.2⟩
-
 lemma DerivesIn.terminal_refl {u v : List T} {m : ℕ}
     (huv : g.DerivesIn (u.map Symbol.terminal) (v.map Symbol.terminal) m) :
     u = v := by
   cases m with
-  | zero => exact list_eq huv.zero_steps_eq
+  | zero =>
+    apply Function.Injective.list_map; swap
+    exact huv.zero_steps_eq
+    apply Symbol.terminal.inj
   | succ m =>
     obtain ⟨w, huw, hwv⟩ := huv.head_of_succ
     obtain ⟨r, hrg, huw⟩ := huw
