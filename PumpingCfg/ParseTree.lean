@@ -110,9 +110,17 @@ lemma yield_length_le_two_pow_height : p.yield.length ≤ 2^(p.height - 1) := by
     nth_rewrite 3 [h''']
     rw [Nat.two_pow_succ]
 
+lemma subtree_replacement {u v : List T} {n₁ n₂ : g.NT} {p : parseTree n₁} {p₁ : parseTree n₂}
+    (p₂ : parseTree n₂) (hpp : Subtree p₁ p) (huv : p.yield = u ++ p₁.yield ++ v) :
+    ∃ p' : parseTree n₁, p'.yield = u ++ p₂.yield ++ v := by sorry
+
 lemma subtree_decomposition {n₁ n₂ : g.NT} {p₁ : parseTree n₁} {p₂ : parseTree n₂}
     (hpp : Subtree p₂ p₁) :
     ∃ u v, p₁.yield = u ++ p₂.yield ++ v := by sorry
+
+lemma strict_subtree_decomposition {n : g.NT} {p₁ : parseTree n} {p₂ : parseTree n}
+    (hpp : Subtree p₂ p₁) (hne : p₁ ≠ p₂) :
+    ∃ u v, p₁.yield = u ++ p₂.yield ++ v ∧ (u ++ v).length > 0 := by sorry
 
 end parseTree
 
