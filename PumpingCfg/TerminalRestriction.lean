@@ -88,12 +88,12 @@ lemma embedString_append {u v : List (Symbol T N)} :
 
 lemma rightEmbed_string_nonUnit {u : List (Symbol T N)} (hu : ContextFreeGrammar.NonUnit u)
     (hut : ∀ t, u ≠ [Symbol.terminal t]) :
-    ContextFreeGrammar.NonUnit (rightEmbedString u) := by
+    ContextFreeGrammar.NonUnit (rightEmbedString u) :=
   match u with
   | [] => trivial
-  | [Symbol.nonterminal _] => exact hu
-  | [Symbol.terminal t] => exact hut t rfl
-  | _ :: _ :: _ => simp [List.map_cons, ContextFreeGrammar.NonUnit]
+  | [Symbol.nonterminal _] => hu
+  | [Symbol.terminal t] => hut t rfl
+  | _ :: _ :: _ => by simp [ContextFreeGrammar.NonUnit]
 
 end EmbedProject
 
@@ -123,12 +123,12 @@ def restrictTerminalRule {N : Type*} (r : ContextFreeRule T N) : List (ContextFr
 
 /-- Compute all lifted rules -/
 noncomputable def restrictTerminalRules {N : Type*} [DecidableEq T] [DecidableEq N]
-  (l : List (ContextFreeRule T N)) : Finset (ContextFreeRule T (N ⊕ T)) :=
+    (l : List (ContextFreeRule T N)) : Finset (ContextFreeRule T (N ⊕ T)) :=
   (l.map restrictTerminalRule).flatten.toFinset
 
 /-- Construct new grammar, using the lifted rules. Each rule's output is either a single terminal
  or only nonterminals -/
-noncomputable def restrictTerminals (g : ContextFreeGrammar.{uN, uT} T) [DecidableEq T]
+noncomputable def restrictTerminals [DecidableEq T] (g : ContextFreeGrammar.{uN, uT} T)
     [DecidableEq g.NT] :=
   ContextFreeGrammar.mk (g.NT ⊕ T) (Sum.inl g.initial) (restrictTerminalRules g.rules.toList)
 
@@ -189,7 +189,7 @@ lemma terminal_mem_newTerminalRules {t : T} {r : ContextFreeRule T g.NT}
   rw [newTerminalRules, List.mem_filterMap]
   use Symbol.terminal t
 
-variable [DecidableEq T] [eq : DecidableEq g.NT]
+variable [DecidableEq T] [DecidableEq g.NT]
 
 lemma restrictTerminalsRules_left {n : g.NT} {r' : ContextFreeRule T (g.NT ⊕ T)}
     (hrg : r' ∈ restrictTerminalRules g.rules.toList) (hrn : r'.input = Sum.inl n) :
@@ -214,16 +214,10 @@ lemma restrictTerminals_produces_derives_projectString {u v : List (Symbol T (g.
     apply Produces.single
     apply Produces.append_right
     apply Produces.append_left
-    use r
-    constructor
-    · exact hrg
-    · rw [← hrₒ, ← hrᵢ]
-      simp only [projectSymbol, List.map_cons, List.map_nil]
-      exact ContextFreeRule.Rewrites.input_output
+    exact ⟨r, hrg, hrₒ ▸ hrᵢ ▸ ContextFreeRule.Rewrites.input_output⟩
   | inr =>
     rw [hu, hv, hr', restrictTerminalRules_right_terminal_output hrg' hr']
-    simp only [projectString, projectSymbol, List.append_assoc, List.singleton_append,
-      List.map_append, List.map_cons]
+    simp only [projectString, List.map_append]
     rfl
 
 lemma restrictTerminals_derives_derives_projectString {u v : List (Symbol T (g.NT ⊕ T))}
@@ -287,12 +281,9 @@ lemma derives_restrictTerminals_derives_embedString {u v : List (Symbol T g.NT)}
       constructor
       · unfold restrictTerminals restrictTerminalRules restrictTerminalRule
         simp only [List.mem_toFinset, List.mem_flatten, List.mem_map, Finset.mem_toList,
-          exists_exists_and_eq_and, List.mem_cons]
-        use r
-        constructor
-        · exact hrg
-        · rw [hrt]
-          simp
+          exists_exists_and_eq_and]
+        use r, hrg
+        simp [hrt]
       · rw [hrt]
         simp only [List.map_cons, List.map_nil]
         exact ContextFreeRule.Rewrites.input_output
@@ -301,7 +292,7 @@ lemma derives_restrictTerminals_derives_embedString {u v : List (Symbol T g.NT)}
         constructor
         · simp only [restrictTerminals, restrictTerminalRules, restrictTerminalRule,
             List.mem_toFinset, List.mem_flatten, List.mem_map, Finset.mem_toList,
-            exists_exists_and_eq_and, List.mem_cons]
+            exists_exists_and_eq_and]
           use r, hrg
           split <;> rename_i heq
           · rename_i t'
@@ -313,7 +304,7 @@ lemma derives_restrictTerminals_derives_embedString {u v : List (Symbol T g.NT)}
           simp only [List.map_cons, List.map_nil]
           exact ContextFreeRule.Rewrites.input_output
       · apply restrictTerminals_derives_rightEmbedString_embedString
-        intros t ht
+        intros
         use r
 
 theorem restrictTerminals_correct : g.language = g.restrictTerminals.language := by

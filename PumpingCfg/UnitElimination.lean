@@ -33,8 +33,8 @@ variable {g : ContextFreeGrammar.{uN, uT} T} [DecidableEq g.NT]
 /-- Convenient to talk about the rule rewriting a nonterminal `nᵢ` to another nonterminal `nₒ` -/
 abbrev unitRule (nᵢ nₒ : g.NT) : ContextFreeRule T g.NT := ⟨nᵢ, [Symbol.nonterminal nₒ]⟩
 
-/-- `UnitPair n₁ n₂`, (w.r.t. a ContextFreeGrammar `g`) means that `g` can derive `n₂` from
- `n₁` only using unitRules -/
+/-- `UnitPair n₁ n₂`, (w.r.t. a ContextFreeGrammar `g`) means that `g` can derive `n₂` from `n₁`
+only using unitRules -/
 inductive UnitPair : g.NT → g.NT → Prop where
   /- UnitPair is reflexive due to the empty derivation -/
   | refl {n : g.NT} (hng : n ∈ g.generators) : UnitPair n n
@@ -153,8 +153,8 @@ def addUnitPair (nᵢ nₒ : g.NT) (p : g.NT × g.NT) (l : Finset (g.NT × g.NT)
 `(r.output, n)` in `l` -/
 def collectUnitPairs (r : ContextFreeRule T g.NT) (l : List (g.NT × g.NT)) :=
   match r.output with
-  | [Symbol.nonterminal v] => l.foldr (addUnitPair r.input v) {}
-  | _ => {}
+  | [Symbol.nonterminal v] => l.foldr (addUnitPair r.input v) ∅
+  | _ => ∅
 
 lemma collectUnitPairs_unitPair_rec {nᵢ nₒ : g.NT} {p : g.NT × g.NT} {l : List (g.NT × g.NT)}
     {x : Finset (g.NT × g.NT)} (hp : p ∈ l.foldr (addUnitPair nᵢ nₒ) x) :
@@ -170,11 +170,7 @@ lemma collectUnitPairs_unitPair_rec {nᵢ nₒ : g.NT} {p : g.NT × g.NT} {l : L
       cases hp with
       | inl hpd =>
         right
-        use a.2
-        constructor
-        · rw [ha]
-          left
-        · exact hpd
+        exact ⟨a.2, ha ▸ l.mem_cons_self a, hpd⟩
       | inr hpl =>
         specialize ih hpl
         cases ih with
@@ -191,8 +187,8 @@ lemma collectUnitPairs_unitPair_rec {nᵢ nₒ : g.NT} {p : g.NT × g.NT} {l : L
         right
         exact ⟨v, List.mem_cons_of_mem a hvl, hpv ▸ rfl⟩
 
-lemma collectUnitPairs_unitPair {r : ContextFreeRule T g.NT} (l : List (g.NT × g.NT)) (hrg : r ∈ g.rules)
-    (hp : ∀ p ∈ l, UnitPair p.1 p.2) :
+lemma collectUnitPairs_unitPair {r : ContextFreeRule T g.NT} {l : List (g.NT × g.NT)}
+    (hrg : r ∈ g.rules) (hp : ∀ p ∈ l, UnitPair p.1 p.2) :
     ∀ p ∈ collectUnitPairs r l, UnitPair p.1 p.2 := by
   intro p hprl
   match hro : r.output with
@@ -201,10 +197,11 @@ lemma collectUnitPairs_unitPair {r : ContextFreeRule T g.NT} (l : List (g.NT × 
   | [Symbol.terminal _ ] => simp [collectUnitPairs, hro] at hprl
   | [Symbol.nonterminal _] =>
     rw [collectUnitPairs, hro] at hprl
-    have hp' := collectUnitPairs_unitPair_rec hprl
-    cases hp' <;> rename_i hp''; contradiction
-    obtain ⟨v', hl, hpr⟩ := hp''
-    exact UnitPair.trans ((congr_arg (⟨p.fst, · ⟩ ∈ g.rules) hro).mp (hpr ▸ hrg)) (hpr ▸ (hp _ hl))
+    cases collectUnitPairs_unitPair_rec hprl
+    · contradiction
+    · rename_i hp''
+      obtain ⟨v', hl, hpr⟩ := hp''
+      exact UnitPair.trans ((congr_arg (⟨p.fst, · ⟩ ∈ g.rules) hro).mp (hpr ▸ hrg)) (hpr ▸ (hp _ hl))
 
 /-- Single step of fixpoint iteration, adding unit pairs to `l` for all rules `r` in `g.rules` -/
 noncomputable def addUnitPairs (l : Finset (g.NT × g.NT)) : Finset (g.NT × g.NT) :=
@@ -233,28 +230,27 @@ lemma collectUnitPairs_sub_generatorsProd {r : ContextFreeRule T g.NT} (l : Fins
       exact hlg.2
   | [] => simp [heq] at hp
   | [Symbol.terminal _] => simp [heq] at hp
-  | x :: y :: tl => simp [heq] at hp
+  | _ :: _ :: _ => simp [heq] at hp
 
 lemma addUnitPairs_sub_generatorsProd (l : Finset (g.NT × g.NT)) (hlg : l ⊆ g.generators ×ˢ g.generators) :
     addUnitPairs l ⊆ g.generators ×ˢ g.generators := by
   unfold addUnitPairs
   induction g.rules.toList.attach with
   | nil => exact hlg
-  | cons hd tl ih =>
+  | cons d _ ih =>
     simp only [List.pure_def, List.bind_eq_flatMap, Finset.mem_toList, List.flatMap_subtype,
       List.flatMap_singleton', List.flatMap_cons, List.singleton_append, List.foldr_cons] at ih ⊢
     exact Finset.union_subset
-      (collectUnitPairs_sub_generatorsProd _ hlg (Finset.mem_toList.1 hd.2)) ih
+      (collectUnitPairs_sub_generatorsProd _ hlg (Finset.mem_toList.1 d.2)) ih
 
 lemma sub_addUnitPairs (l : Finset (g.NT × g.NT)) : l ⊆ (addUnitPairs l) := by
   unfold addUnitPairs
   induction g.rules.toList.attach with
-  | nil => exact fun ⦃a⦄ a ↦ a
-  | cons _ _ ih =>
-    apply subset_trans ih
-    simp
+  | nil => rfl
+  | cons _ _ ih => simp [subset_trans ih]
 
-lemma generatorsProd_limits_unitPairs (l : Finset (g.NT × g.NT)) (hlg : l ⊆ g.generators ×ˢ g.generators)
+lemma generatorsProd_limits_unitPairs {l : Finset (g.NT × g.NT)}
+    (hlg : l ⊆ g.generators ×ˢ g.generators)
     (hne : l ≠ addUnitPairs l) :
     (g.generators ×ˢ g.generators).card - (addUnitPairs l).card
       < (g.generators ×ˢ g.generators).card - l.card := by
@@ -272,8 +268,8 @@ noncomputable def addUnitPairsIter (l : Finset (g.NT × g.NT)) (hlg : l ⊆ g.ge
     addUnitPairsIter l' (addUnitPairs_sub_generatorsProd l hlg)
   termination_by ((g.generators ×ˢ g.generators).card - l.card)
   decreasing_by
-    rename_i h
-    exact generatorsProd_limits_unitPairs l hlg h
+    rename_i hl
+    exact generatorsProd_limits_unitPairs hlg hl
 
 /-- Compute the least-fixpoint of `add_unitPairs_iter`, i.e., all (and only) unit pairs -/
 noncomputable def computeUnitPairs : Finset (g.NT × g.NT) :=
@@ -298,9 +294,9 @@ lemma mem_addUnitPairs_unitPair (l : Finset (g.NT × g.NT)) (hl : ∀ p ∈ l, U
       Finset.mem_union] at hpl
     cases hpl with
     | inl hpdl =>
-      apply collectUnitPairs_unitPair l.toList (Finset.mem_toList.1 a.2) _ _ hpdl
+      apply collectUnitPairs_unitPair (Finset.mem_toList.1 a.2) _ _ hpdl
       intro p hp'
-      rw [Finset.mem_toList] at hp'
+      simp [Finset.mem_toList] at hp'
       exact hl p hp'
     | inr hpl =>
       apply ih
@@ -321,7 +317,7 @@ lemma mem_addUnitPairIter_unitPair (l : Finset (g.NT × g.NT))
   termination_by ((g.generators ×ˢ g.generators).card - l.card)
   decreasing_by
     rename_i hl
-    exact generatorsProd_limits_unitPairs l hlg hl
+    exact generatorsProd_limits_unitPairs hlg hl
 
 -- ***************************************************************** --
 -- If direction of the main correctness theorem of compute_unitPairs --
@@ -337,7 +333,7 @@ lemma addUnitPairsIter_fixpoint (l : Finset (g.NT × g.NT)) (hlg : l ⊆ g.gener
   termination_by ((g.generators ×ˢ g.generators).card - l.card)
   decreasing_by
     rename_i hl
-    exact generatorsProd_limits_unitPairs l hlg hl
+    exact generatorsProd_limits_unitPairs hlg hl
 
 lemma sub_addUnitPairsIter {l : Finset (g.NT × g.NT)} {hlg : l ⊆ g.generators ×ˢ g.generators} :
     l ⊆ (addUnitPairsIter l hlg) := by
@@ -350,7 +346,7 @@ lemma sub_addUnitPairsIter {l : Finset (g.NT × g.NT)} {hlg : l ⊆ g.generators
   termination_by ((g.generators ×ˢ g.generators).card - l.card)
   decreasing_by
     rename_i hl
-    exact generatorsProd_limits_unitPairs l hlg hl
+    exact generatorsProd_limits_unitPairs hlg hl
 
 lemma mem_collectUnitPairs {l : List (g.NT × g.NT)} {n₁ n₂ n₃ : g.NT} (hl : (n₂, n₃) ∈ l) :
     (n₁, n₃) ∈ collectUnitPairs (unitRule n₁ n₂) l := by
@@ -381,8 +377,8 @@ lemma mem_addUnitPairs {l : Finset (g.NT × g.NT)} {n₁ n₂ n₃ : g.NT} (hl :
     intro _ n₂ _ hg h
     contradiction
   | cons r t ih =>
-    intro _ v2 hl hg h
-    cases h
+    intro _ _ hl hg hrt
+    cases hrt
     · simp only [List.pure_def, List.bind_eq_flatMap, List.flatMap_cons, Finset.mem_toList,
         List.flatMap_subtype, List.flatMap_singleton', List.singleton_append, List.foldr_cons,
         Finset.mem_union]

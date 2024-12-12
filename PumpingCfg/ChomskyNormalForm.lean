@@ -77,12 +77,8 @@ lemma Rewrites.input_output : r.Rewrites [.nonterminal r.input] r.output := by
 lemma rewrites_of_exists_parts (r : ChomskyNormalFormRule T N) (p q : List (Symbol T N)) :
     r.Rewrites (p ++ [Symbol.nonterminal r.input] ++ q) (p ++ r.output ++ q) := by
     induction p with
-    | nil =>
-      simp
-      cases r <;> constructor
-    | cons _ _ h =>
-      constructor
-      exact h
+    | nil => cases r <;> constructor
+    | cons _ _ hr => exact Rewrites.cons r _ hr
 
 /-- Rule `r` rewrites string `u` to string `v` iff they share both a prefix `p` and postfix `q`
 such that the remaining middle part of `u` is the input of `r` and the remaining middle part
@@ -199,10 +195,10 @@ lemma Derives.append_right {u v : List (Symbol T g.NT)}
   | tail _ last ih => exact ih.trans_produces <| last.append_right p
 
 theorem Derives.head_induction_on {v : List (Symbol T g.NT)} {P : ∀ u, g.Derives u v → Prop}
-  {u : List (Symbol T g.NT)} (huv : g.Derives u v)
-  (refl : P v (Derives.refl v))
-  (head : ∀ {u w} (huw : g.Produces u w) (hwv : g.Derives w v), P w hwv → P u (hwv.head huw)) :
-  P u huv :=
+    {u : List (Symbol T g.NT)} (huv : g.Derives u v)
+    (refl : P v (Derives.refl v))
+    (head : ∀ {u w} (huw : g.Produces u w) (hwv : g.Derives w v), P w hwv → P u (hwv.head huw)) :
+    P u huv :=
   Relation.ReflTransGen.head_induction_on huv refl head
 
 end ChomskyNormalFormGrammar
