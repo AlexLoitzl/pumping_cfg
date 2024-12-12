@@ -45,7 +45,12 @@ namespace ParseTree
 def yield {n : g.NT} (p : ParseTree n) : List T :=
   match p with
   | tree_leaf t _ => [t]
-  | tree_node t1 t2 _ => yield t1 ++ yield t2
+  | tree_node t₁ t₂ _ => yield t₁ ++ yield t₂
+
+def height {n : g.NT} (p : ParseTree n) : ℕ :=
+  match p with
+  | tree_leaf _ _ => 1
+  | tree_node t₁ t₂ _ => max (height t₁) (height t₂) + 1
 
 variable {n : g.NT} {p : ParseTree n}
 
@@ -60,6 +65,26 @@ lemma yield_derives : g.Derives [Symbol.nonterminal n] (p.yield.map Symbol.termi
     exact ⟨_, hg, ChomskyNormalFormRule.Rewrites.input_output⟩
     rw [ChomskyNormalFormRule.output, List.map_append, ← List.singleton_append]
     exact (ihr.append_left _).trans (ihl.append_right _)
+
+lemma height_pos : p.height > 0 := by cases p <;> simp [height]
+
+lemma yield_length_le_two_pow_height : p.yield.length ≤ 2^(p.height - 1) := by
+  induction p with
+  | tree_leaf => simp [yield, height]
+  | tree_node t₁ t₂ hpg ih₁ ih₂=>
+    simp [height, yield]
+    have h : t₁.yield.length + t₂.yield.length ≤ 2 ^ (t₁.height -1) + 2 ^ (t₂.height -1) := by omega
+    have h'' : 2 ^ (t₁.height -1) + 2 ^ (t₂.height - 1)
+        ≤ 2 ^ ((max t₁.height t₂.height) -1) + 2 ^ ((max t₁.height t₂.height) -1) := by
+      apply Nat.add_le_add <;> apply Nat.pow_le_pow_of_le_right <;> omega
+    apply le_trans h
+    apply le_trans h''
+    have h''' : (max t₁.height t₂.height) = (max t₁.height t₂.height) -1 + 1 := by
+      rw [Nat.sub_one_add_one]
+      have h : 0 < (max t₁.height t₂.height) := lt_sup_of_lt_left t₁.height_pos
+      omega
+    nth_rewrite 3 [h''']
+    rw [Nat.two_pow_succ]
 
 end ParseTree
 
