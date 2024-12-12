@@ -286,10 +286,11 @@ lemma mem_computRules_right_length {n : Σ r : ContextFreeRule T g.NT, Fin (r.ou
     (hrn : r'.input = Sum.inr n) :
     3 ≤ r.output.length := by
   unfold computeRules at hrr
-  split at hrr <;> simp at hrr -- TODO
+  split at hrr <;> try rw [List.mem_singleton] at hrr
   · rw [hrr] at hrn; simp at hrn
   · rw [hrr] at hrn; simp at hrn
-  · cases hrr <;> rename_i hrn _ <;> simp [hrn]
+  · rename_i heq; simp [heq]
+  · contradiction
 
 lemma mem_computeRules_right_mem_computeRulesRec {n : Σ r : ContextFreeRule T g.NT, Fin (r.output.length - 2)}
     {r : ContextFreeRule T g.NT} {r' : ChomskyNormalFormRule T g.NT'}

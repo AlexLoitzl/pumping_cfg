@@ -536,8 +536,7 @@ lemma addIfNullable_monotone {r : ContextFreeRule T g.NT} {p₁ p₂ : Finset g.
         exact Finset.mem_insert_of_mem (hpp hv)
     · cases hv with
       | inl =>
-        unfold symbolIsNullable at hsr' hsr
-        simp at hsr' hsr -- TODO
+        simp [symbolIsNullable] at hsr' hsr -- TODO
         obtain ⟨s, hsin, hs⟩ := hsr'
         specialize hsr s
         cases s <;> simp at hs hsr -- TODO
@@ -749,16 +748,16 @@ lemma mem_removeNullableRule_nullableRelated {r': ContextFreeRule T g.NT} [Decid
   cases o <;> simp at ho'
   rw [← ho']
   constructor; rfl
-  apply mem_nullableCombinations_nullableRelated
+  apply mem_nullableCombinations_nullableRelated _ _ ho
   intro
-  apply (computeNullables_iff _).1 -- TODO
-  exact ho
+  rw [computeNullables_iff]
+  exact id
 
 lemma mem_eliminateEmpty [DecidableEq T] {r : ContextFreeRule T g.NT}
     (hrg : r ∈ g.eliminateEmpty.rules) :
     ∃ r' ∈ g.rules, r.input = r'.input ∧ NullableRelated r.output r'.output := by
-  unfold eliminateEmpty removeNullables at hrg
-  simp at hrg -- TODO
+  simp only [eliminateEmpty, removeNullables, List.mem_toFinset, List.mem_flatten, List.mem_map,
+    Finset.mem_toList, exists_exists_and_eq_and] at hrg
   obtain ⟨r', hgr', hr'⟩ := hrg
   use r', hgr'
   apply mem_removeNullableRule_nullableRelated
