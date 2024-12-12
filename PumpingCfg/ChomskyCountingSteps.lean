@@ -170,10 +170,8 @@ lemma DerivesIn.append_split {p q w : List (Symbol T g.NT)} {n : ℕ} (hpqw : g.
       use x, y, m₁, m₂ + 1, hw, hd₁
       constructor
       · apply Produces.trans_derivesIn
-        use r
-        constructor
-        · exact hrg
-        · rw [hq, ← List.singleton_append, ← List.append_assoc]
+        · use r, hrg
+          rw [hq, ← List.singleton_append, ← List.append_assoc]
           apply r.rewrites_of_exists_parts
         · rwa [List.append_assoc]
       · omega

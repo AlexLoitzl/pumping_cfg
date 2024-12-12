@@ -134,10 +134,8 @@ lemma DerivesIn.append_split {p q w : List (Symbol T g.NT)} {n : ℕ} (hpqw : g.
         | nil =>
           right
           use []
-          rw [hq]
-          constructor
-          · repeat rw [List.append_nil]
-          · rfl
+          rw [hq, List.append_nil, List.append_nil]
+          exact ⟨rfl, rfl⟩
         | cons d l =>
           left
           use l

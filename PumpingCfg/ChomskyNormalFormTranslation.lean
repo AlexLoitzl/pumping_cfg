@@ -99,8 +99,8 @@ namespace ContextFreeGrammar
 
 /-- Translation of `ContextFreeGrammar` to `ChomskyNormalFormGrammar`, composing the individual
  translation passes -/
-noncomputable def toCNF [DecidableEq T] (g : ContextFreeGrammar T) [DecidableEq g.NT]
-    : ChomskyNormalFormGrammar T :=
+noncomputable def toCNF [DecidableEq T] (g : ContextFreeGrammar T) [DecidableEq g.NT] :
+    ChomskyNormalFormGrammar T :=
   g.eliminateEmpty.eliminateUnitRules.restrictTerminals.restrictLength (e := instDecidableEqSum)
 
 variable {g : ContextFreeGrammar T}
@@ -112,7 +112,7 @@ lemma newTerminalRules_terminal_output {r : ContextFreeRule T g.NT} :
   split <;> intro hr' <;> simp only [reduceCtorEq, Option.some.injEq] at hr'
   simp [← hr']
 
-variable [DecidableEq g.NT] [DecidableEq T]
+variable [DecidableEq T] [DecidableEq g.NT]
 
 lemma restrictTerminals_nonUnit_output (hrₒ : ∀ r ∈ g.rules, NonUnit r.output) :
     ∀ r' ∈ g.restrictTerminals.rules, NonUnit r'.output := by
@@ -238,7 +238,7 @@ theorem toCNF_correct : g.language \ {[]} = g.toCNF.language := by
       simp only [List.mem_cons, forall_eq_or_imp] at hrg
       obtain ⟨n₁, hn₁⟩ := hrg.1
       obtain ⟨n₂, hn₂⟩ := hrg.2.1
-      simp only at hrₒ
+      dsimp only at hrₒ
       rw [hrₒ, hn₁, hn₂]
       constructor
       simp only [List.length_cons, Nat.le_add_left]

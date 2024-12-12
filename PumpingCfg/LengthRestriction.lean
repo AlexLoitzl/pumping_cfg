@@ -59,7 +59,7 @@ lemma Wellformed.cases {r : ContextFreeRule T N} (hr : r.Wellformed) :
   | nonterminals u _ hu =>
     match u with
     | [] => contradiction
-    | [x] => contradiction
+    | [_] => contradiction
     | .terminal t :: _ :: _ => specialize hu (Symbol.terminal t); simp at hu
     | _ :: .terminal t :: _ => specialize hu (Symbol.terminal t); simp at hu
     | .nonterminal n₁ :: .nonterminal n₂ :: u =>
@@ -123,7 +123,7 @@ def restrictLengthRules [DecidableEq T] [DecidableEq g.NT] (l : List (ContextFre
 end RestrictLength
 
 /-- Construct a `ChomskyNormalGrammar` corresponding to the original `ContextFreeGrammar` -/
-noncomputable def restrictLength (g : ContextFreeGrammar.{uN,uT} T) [DecidableEq T]
+noncomputable def restrictLength [DecidableEq T] (g : ContextFreeGrammar.{uN,uT} T)
     [e : DecidableEq g.NT] :=
   ChomskyNormalFormGrammar.mk g.NT' (Sum.inl g.initial) (restrictLengthRules g.rules.toList)
 
