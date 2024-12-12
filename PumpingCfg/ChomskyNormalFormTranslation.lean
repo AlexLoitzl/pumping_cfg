@@ -201,11 +201,9 @@ lemma eliminateUnitRules_output_nonUnit : ∀ r ∈ g.eliminateUnitRules.rules, 
   rw [← hl] at hrl
   simp only [List.mem_filterMap, Finset.mem_toList, Option.ite_none_right_eq_some] at hrl
   obtain ⟨_, _, _, hr⟩ := hrl
-  revert hr
-  split
-  · simp
-  · simp only [Option.some.injEq]
-    intro hr
+  split at hr
+  · contradiction
+  · simp only [Option.some_inj] at hr
     rw [← hr]
     unfold NonUnit
     split <;> tauto

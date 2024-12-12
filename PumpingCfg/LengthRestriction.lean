@@ -226,8 +226,7 @@ lemma mem_computeRulesRec_projectString_input_eq_output {r : ContextFreeRule T g
   induction m with
   | zero =>
     simp only [computeRulesRec, List.get_eq_getElem] at hrri
-    revert hrri
-    split <;> intro hrri <;> simp at hrri
+    split at hrri <;> simp at hrri
     · rename_i n₁ n₂ hn₁ hn₂
       rw [hrri, ChomskyNormalFormRule.input, ChomskyNormalFormRule.output]
       simp only [projectString, projectSymbol, List.map_cons, List.map_nil, List.flatten_cons,
@@ -244,8 +243,7 @@ lemma mem_computeRulesRec_projectString_input_eq_output {r : ContextFreeRule T g
         omega
   | succ _ ih =>
     simp only [computeRulesRec, List.get_eq_getElem] at hrri
-    revert hrri
-    split <;> intro hrri <;>
+    split at hrri <;>
       simp only [Nat.succ_eq_add_one, List.mem_cons, List.not_mem_nil] at hrri
     cases hrri <;> rename_i heq hrri
     · rw [hrri]
@@ -288,8 +286,7 @@ lemma mem_computRules_right_length {n : Σ r : ContextFreeRule T g.NT, Fin (r.ou
     (hrn : r'.input = Sum.inr n) :
     3 ≤ r.output.length := by
   unfold computeRules at hrr
-  revert hrr
-  split <;> intro hrr <;> simp at hrr -- TODO
+  split at hrr <;> simp at hrr -- TODO
   · rw [hrr] at hrn; simp at hrn
   · rw [hrr] at hrn; simp at hrn
   · cases hrr <;> rename_i hrn _ <;> simp [hrn]
@@ -300,8 +297,7 @@ lemma mem_computeRules_right_mem_computeRulesRec {n : Σ r : ContextFreeRule T g
     (hrn : r'.input = Sum.inr n) :
     r' ∈ computeRulesRec r ⟨r.output.length - 3, hrₒ⟩ := by
   unfold computeRules at hrr
-  revert hrr
-  split <;> intro hrr <;> simp at hrr
+  split at hrr <;> simp at hrr
   · rw [hrr] at hrn; simp at hrn
   · rw [hrr] at hrn; simp at hrn
   · cases hrr <;> rename_i hrr
@@ -312,8 +308,7 @@ lemma mem_computeRules_left {n : g.NT} {r : ContextFreeRule T g.NT} {r' : Chomsk
     (hrr : r' ∈ computeRules r) (hrn : r'.input = Sum.inl n) :
     projectString r'.output = r.output ∧ n = r.input := by
   unfold computeRules at hrr
-  revert hrr
-  split <;> intro hrr
+  split at hrr
   · rename_i n₁ n₂ hrnn
     rw [List.mem_singleton] at hrr
     rw [hrr, hrnn]
@@ -393,8 +388,7 @@ lemma computeRulesRec_derives [DecidableEq T] [DecidableEq g.NT] {r : ContextFre
   | zero =>
     unfold computeRulesRec at hrix
     simp only [List.get_eq_getElem, Nat.sub_zero, List.map_drop] at hrix ⊢
-    revert hrix
-    split <;> intro hrix
+    split at hrix
     · rename_i n₁ n₂ hrn₁ hrn₂
       have heq :
           (r.output.map embedSymbol).drop (r.output.length - 2) =
@@ -425,8 +419,7 @@ lemma computeRulesRec_derives [DecidableEq T] [DecidableEq g.NT] {r : ContextFre
       exact hn _ _ hn₁ hn₂
   | succ n ih =>
     unfold computeRulesRec at hrix
-    revert hrix
-    split <;> intro hrix
+    split at hrix
     · rename_i _ hrn
       simp only [List.cons_subset, List.get_eq_getElem] at hrix hrn
       obtain ⟨hx₁, hx₂⟩ := hrix
@@ -456,8 +449,7 @@ lemma computeRules_derives_embedString [DecidableEq T] [DecidableEq g.NT]
       [Symbol.nonterminal (Sum.inl r.input)]
       (embedString r.output) := by
   unfold computeRules at hrx
-  revert hrx
-  split <;> intro hrx <;> rename_i hrn
+  split at hrx <;> rename_i hrn
   · rename_i n₁ n₂
     simp only [List.cons_subset, List.nil_subset, and_true] at hrx
     apply ChomskyNormalFormGrammar.Produces.single

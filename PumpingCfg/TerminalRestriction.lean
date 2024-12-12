@@ -148,8 +148,7 @@ lemma restrictTerminalRule_right_terminal_output {t : T} {r : ContextFreeRule T 
     r'.output = [Symbol.terminal t] := by
   simp only [restrictTerminalRule, List.mem_cons] at hrr
   cases hrr <;> rename_i hrr
-  · revert hrr
-    split <;> intro hr' <;> rw [hr'] at hrt <;> simp at hrt
+  · split at hrr <;> rw [hrr] at hrt <;> simp at hrt
   · simp only [newTerminalRules, List.mem_filterMap] at hrr
     obtain ⟨s, _, hsr⟩ := hrr
     cases s <;> simp only [Option.some.injEq, reduceCtorEq] at hsr
@@ -172,8 +171,7 @@ lemma restrictTerminalRule_left {n : g.NT} {r : ContextFreeRule T g.NT}
     r.input = n ∧ r.output = projectString r'.output := by
   simp only [restrictTerminalRule, List.mem_cons] at hrr
   cases hrr <;> rename_i hrr
-  · revert hrr
-    split <;> intro hrr <;> rw [hrr] at hrn ⊢ <;> simp only [Sum.inl.injEq] at hrn ⊢
+  · split at hrr <;> rw [hrr] at hrn ⊢ <;> simp only [Sum.inl.injEq] at hrn ⊢
     · rename_i hrt
       simp only [projectString, projectSymbol, List.map_cons, List.map_nil]
       exact ⟨hrn, hrt⟩

@@ -159,44 +159,37 @@ def collectUnitPairs (r : ContextFreeRule T g.NT) (l : List (g.NT × g.NT)) :=
 lemma collectUnitPairs_unitPair_rec {nᵢ nₒ : g.NT} {p : g.NT × g.NT} {l : List (g.NT × g.NT)}
     {x : Finset (g.NT × g.NT)} (hp : p ∈ l.foldr (addUnitPair nᵢ nₒ) x) :
     p ∈ x ∨ ∃ v, (nₒ, v) ∈ l ∧ p = (nᵢ, v) := by
-  revert x
-  induction l with
+  induction l generalizing x with
   | nil =>
-    intro S hp
     left
     exact hp
   | cons a l ih =>
-    intro S
-    simp only [addUnitPair, List.foldr_cons, List.mem_cons]
-    split <;> (rename_i hd; intro hp)
+    simp only [addUnitPair, List.foldr_cons, List.mem_cons] at hp
+    split at hp <;> rename_i ha
     · simp only [Finset.mem_insert] at hp
       cases hp with
       | inl hpd =>
         right
         use a.2
         constructor
-        · left
-          rw [hd]
+        · rw [ha]
+          left
         · exact hpd
-      | inr hpS =>
-        specialize ih hpS
+      | inr hpl =>
+        specialize ih hpl
         cases ih with
         | inl => left; assumption
         | inr hlp =>
           obtain ⟨v, hvl, hpv⟩ := hlp
           right
-          use v
-          rw [hpv]
-          exact ⟨Or.inr hvl, rfl⟩
+          exact ⟨v, List.mem_cons_of_mem a hvl, hpv ▸ rfl⟩
     · specialize ih hp
       cases ih with
       | inl => left; assumption
       | inr hlp =>
         obtain ⟨v, hvl, hpv⟩ := hlp
         right
-        use v
-        rw [hpv]
-        exact ⟨Or.inr hvl, rfl⟩
+        exact ⟨v, List.mem_cons_of_mem a hvl, hpv ▸ rfl⟩
 
 lemma collectUnitPairs_unitPair {r : ContextFreeRule T g.NT} (l : List (g.NT × g.NT)) (hrg : r ∈ g.rules)
     (hp : ∀ p ∈ l, UnitPair p.1 p.2) :
@@ -470,15 +463,13 @@ noncomputable def eliminateUnitRules [DecidableEq T] (g : ContextFreeGrammar T) 
 lemma nonUnit_rules_mem {p : g.NT × g.NT} {r : ContextFreeRule T g.NT}
     (hrp : r ∈ computeUnitPairRules p) :
     r.input = p.1 ∧ ∃ r' ∈ g.rules, r.output = r'.output ∧ r'.input = p.2 := by
-  revert hrp
   simp only [List.mem_filterMap, Finset.mem_toList, Option.ite_none_right_eq_some,
-    forall_exists_index, and_imp, computeUnitPairRules]
-  intro r' _ _
-  split
-  · simp
-  · rw [Option.some.injEq]
-    intro hr
-    rw [← hr]
+    forall_exists_index, and_imp, computeUnitPairRules] at hrp
+  obtain ⟨r', hrg, hrp, hrr⟩ := hrp
+  split at hrr
+  · contradiction
+  · rw [Option.some.injEq] at hrr
+    rw [← hrr]
     simp only [true_and]
     use r'
 
