@@ -536,12 +536,21 @@ lemma addIfNullable_monotone {r : ContextFreeRule T g.NT} {p₁ p₂ : Finset g.
         exact Finset.mem_insert_of_mem (hpp hv)
     · cases hv with
       | inl =>
-        simp [symbolIsNullable] at hsr' hsr -- TODO
+        simp only [symbolIsNullable, decide_false, decide_eq_true_eq, not_forall, Classical.not_imp,
+          Bool.not_eq_true] at hsr' hsr
         obtain ⟨s, hsin, hs⟩ := hsr'
         specialize hsr s
-        cases s <;> simp at hs hsr -- TODO
-        · contradiction
-        · tauto
+        cases s with
+        | terminal =>
+          rw [Bool.false_eq_true, imp_false] at hsr
+          exfalso
+          exact hsr hsin
+        | nonterminal n =>
+          rw [decide_eq_false_iff_not] at hs
+          exfalso
+          apply hs
+          apply hpp
+          simpa using hsr hsin
       | inr hvp₁ =>
         exact hpp hvp₁
   · split
@@ -567,7 +576,8 @@ lemma nullable_input_mem_addNullables {r : ContextFreeRule T g.NT} {p : Finset g
     simp
   | cons _ _ ih =>
     intro r' _ hr hr' hr''
-    cases hr'' <;> simp at ih ⊢ -- TODO
+    simp only [Finset.mem_toList, List.foldr_subtype, List.foldr_cons] at ih ⊢
+    cases hr''
     · apply Finset.mem_of_subset (addIfNullable_monotone sub_addIfNullable_rec)
       simp [addIfNullable, hr]
     · rename_i hr''
@@ -727,7 +737,7 @@ lemma mem_nullableCombinations_nullableRelated {u v : List (Symbol T g.NT)} (p :
   | cons s v ih =>
     cases s with
     | nonterminal n =>
-      simp [nullableCombinations] at huv -- TODO
+      simp only [nullableCombinations, List.mem_append, List.mem_ite_nil_right, List.mem_map] at huv
       cases huv with
       | inl hnu =>
         by_cases hnn : n ∈ p <;> simp only [hnn, false_and, true_and] at hnu
