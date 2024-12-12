@@ -15,13 +15,14 @@ variable {T : Type uT}
 namespace ChomskyNormalFormRule
 
 lemma Rewrites.word {T N : Type*} {r : ChomskyNormalFormRule T N} {u : List T} {v : List (Symbol T N)}
-  (h: r.Rewrites (u.map Symbol.terminal) v) :
-  False := by
+    (hruv : r.Rewrites (u.map Symbol.terminal) v) :
+    False := by
   induction u generalizing v with
-  | nil => cases h
+  | nil => cases hruv
   | cons u₁ u ih =>
-    cases  h; rename_i h
-    exact ih h
+    cases hruv
+    rename_i hru
+    exact ih hru
 
 end ChomskyNormalFormRule
 
@@ -48,7 +49,7 @@ def yield {n : g.NT} (p : ParseTree n) : List T :=
 
 variable {n : g.NT} {p : ParseTree n}
 
-lemma yield_derives : g.Derives [Symbol.nonterminal n] (List.map Symbol.terminal p.yield) := by
+lemma yield_derives : g.Derives [Symbol.nonterminal n] (p.yield.map Symbol.terminal) := by
   induction p with
   | tree_leaf t hg =>
     simp only [yield]
@@ -86,7 +87,7 @@ lemma DerivesIn.terminal_refl {u v : List T} {m : ℕ}
     exact huw.word
 
 private lemma DerivesIn.yield_rec {n : g.NT} {u : List T} {m : ℕ}
-    (hvu : g.DerivesIn [Symbol.nonterminal n] (List.map Symbol.terminal u) m) :
+    (hvu : g.DerivesIn [Symbol.nonterminal n] (u.map Symbol.terminal) m) :
     ∃ p : ParseTree n, p.yield = u := by
   cases m with
   | zero =>
@@ -121,10 +122,9 @@ private lemma DerivesIn.yield_rec {n : g.NT} {u : List T} {m : ℕ}
       exact hu.symm
 
 lemma Derives.yield {n : g.NT} {u : List T}
-    (h : g.Derives [Symbol.nonterminal n] (List.map Symbol.terminal u)) :
+    (hnu : g.Derives [Symbol.nonterminal n] (u.map Symbol.terminal)) :
     ∃ p : ParseTree n, p.yield = u := by
-  rw [derives_iff_derivesIn] at h
-  obtain ⟨_, h⟩ := h
-  exact DerivesIn.yield_rec h
+  rw [derives_iff_derivesIn] at hnu
+  exact DerivesIn.yield_rec hnu.choose_spec
 
 end ChomskyNormalFormGrammar

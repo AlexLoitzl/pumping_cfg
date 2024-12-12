@@ -57,11 +57,11 @@ abbrev NonUnit {N : Type*} (u : List (Symbol T N)) : Prop :=
   | _ => True
 
 lemma DerivesIn.unitPair_prefix {u : List T} {v : List (Symbol T g.NT)} {n : g.NT} {m : ℕ}
-    (hvu : g.DerivesIn v (List.map Symbol.terminal u) m) (hng : n ∈ g.generators)
+    (hvu : g.DerivesIn v (u.map Symbol.terminal) m) (hng : n ∈ g.generators)
     (hv : [Symbol.nonterminal n] = v) :
     ∃ n' w k,
       UnitPair n n' ∧ g.Produces [Symbol.nonterminal n'] w ∧ NonUnit w ∧ k ≤ m
-      ∧ g.DerivesIn w (List.map Symbol.terminal u) k := by
+      ∧ g.DerivesIn w (u.map Symbol.terminal) k := by
   induction hvu using DerivesIn.head_induction_on generalizing n with
   | refl =>
     cases u <;> simp only
@@ -90,9 +90,9 @@ end UnitPairs
 -- ****************************************** Unit Pairs ***************************************** --
 -- *********************************************************************************************** --
 
-/-! Fixpoint iteration to compute all `UnitPair`s. A unit pair is a pair (n₁, n₂) of nonterminals
- s.t. `g` can transform n₁ to n₂ only using `unitRule`s, i.e., a chain of productions rewriting
- nonterminals to nonterminals -/
+/-! Fixpoint iteration to compute all `UnitPair`s.
+A unit pair is a pair `(n₁, n₂)` of nonterminals s.t. `g` can transform `n₁` to `n₂` only using
+`unitRule`s, i.e., a chain of productions rewriting nonterminals to nonterminals -/
 
 section ComputeUnitPairs
 
@@ -202,23 +202,16 @@ lemma collectUnitPairs_unitPair {r : ContextFreeRule T g.NT} (l : List (g.NT × 
     (hp : ∀ p ∈ l, UnitPair p.1 p.2) :
     ∀ p ∈ collectUnitPairs r l, UnitPair p.1 p.2 := by
   intro p hprl
-  unfold collectUnitPairs at hprl
   match hro : r.output with
+  | [] => simp [collectUnitPairs, hro] at hprl
+  | _ :: _ :: _ => simp [collectUnitPairs, hro] at hprl
+  | [Symbol.terminal _ ] => simp [collectUnitPairs, hro] at hprl
   | [Symbol.nonterminal _] =>
-    rw [hro] at hprl
-    simp only at hprl
+    rw [collectUnitPairs, hro] at hprl
     have hp' := collectUnitPairs_unitPair_rec hprl
     cases hp' <;> rename_i hp''; contradiction
     obtain ⟨v', hl, hpr⟩ := hp''
-    constructor
-    · unfold unitRule
-      rw [← hro, hpr]
-      exact hrg
-    · rw [hpr]
-      exact (hp _ hl)
-  | [] => simp [hro] at hprl
-  | [Symbol.terminal _ ] => simp [hro] at hprl
-  | _ :: _ :: _ => simp [hro] at hprl
+    exact UnitPair.trans ((congr_arg (⟨p.fst, · ⟩ ∈ g.rules) hro).mp (hpr ▸ hrg)) (hpr ▸ (hp _ hl))
 
 /-- Single step of fixpoint iteration, adding unit pairs to `l` for all rules `r` in `g.rules` -/
 noncomputable def addUnitPairs (l : Finset (g.NT × g.NT)) : Finset (g.NT × g.NT) :=
@@ -232,7 +225,6 @@ lemma collectUnitPairs_sub_generatorsProd {r : ContextFreeRule T g.NT} (l : Fins
   match heq : r.output with
   | [Symbol.nonterminal v] =>
     rw [heq] at hp
-    simp at hp
     obtain hpp := collectUnitPairs_unitPair_rec hp
     cases hpp
     · contradiction
@@ -240,12 +232,11 @@ lemma collectUnitPairs_sub_generatorsProd {r : ContextFreeRule T g.NT} (l : Fins
     rename_i hp'
     obtain ⟨v', hvl, hp2⟩ := hp'
     rw [hp2]
-    simp only
     constructor
     · exact input_mem_generators hrg
     · rw [Finset.mem_toList] at hvl
       specialize hlg hvl
-      rw[Finset.mem_product] at hlg
+      rw [Finset.mem_product] at hlg
       exact hlg.2
   | [] => simp [heq] at hp
   | [Symbol.terminal _] => simp [heq] at hp
@@ -568,8 +559,8 @@ lemma nonUnit_output_mem_eliminateUnitRules {r : ContextFreeRule T g.NT}
   exact UnitPair.rfl (input_mem_generators hrg)
 
 lemma derives_to_eliminateUnitRules_derives {u : List (Symbol T g.NT)} {v : List T} {m : ℕ}
-    (huv : g.DerivesIn u (List.map Symbol.terminal v) m) :
-    g.eliminateUnitRules.Derives u (List.map Symbol.terminal v):= by
+    (huv : g.DerivesIn u (v.map Symbol.terminal) m) :
+    g.eliminateUnitRules.Derives u (v.map Symbol.terminal):= by
   cases m with
   | zero =>
     cases huv
@@ -614,16 +605,11 @@ lemma derives_to_eliminateUnitRules_derives {u : List (Symbol T g.NT)} {v : List
 -- Main correctness theorem of `eliminate_unitRules`
 theorem eliminateUnitRules_correct :
     g.language = g.eliminateUnitRules.language := by
-  unfold language Generates
-  have hg : g.eliminateUnitRules.initial = g.initial := rfl
-  apply Set.eq_of_subset_of_subset
-  · intro w hw
-    rw [Set.mem_setOf_eq] at hw
-    rw [hg]
+  apply Set.eq_of_subset_of_subset <;> intro w hw
+  · rw [mem_language_iff] at hw
     obtain ⟨n, hn⟩ := (derives_iff_derivesIn _ _ _).1 hw
     exact derives_to_eliminateUnitRules_derives hn
-  · intro w hw
-    rw [Set.mem_setOf_eq, ← hg]
+  · rw [mem_language_iff]
     exact eliminateUnitRules_derives_to_derives hw
 
 end EliminateUnitRules
