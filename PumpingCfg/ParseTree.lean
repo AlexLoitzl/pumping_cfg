@@ -34,25 +34,49 @@ variable {g : ChomskyNormalFormGrammar.{uN,uT} T}
 ------------------ STUFF ------------------
 -------------------------------------------
 
-inductive ParseTree : g.NT → Type _ where
+inductive parseTree : g.NT → Type _ where
   | tree_leaf {n : g.NT} (t : T)
-      (h : (ChomskyNormalFormRule.leaf n t) ∈ g.rules) : ParseTree n
-  | tree_node {n c₁ c₂ : g.NT} (t₁ : ParseTree c₁) (t₂ : ParseTree c₂)
-      (h : (ChomskyNormalFormRule.node n c₁ c₂) ∈ g.rules) : ParseTree n
+      (h : (ChomskyNormalFormRule.leaf n t) ∈ g.rules) : parseTree n
+  | tree_node {n c₁ c₂ : g.NT} (t₁ : parseTree c₁) (t₂ : parseTree c₂)
+      (h : (ChomskyNormalFormRule.node n c₁ c₂) ∈ g.rules) : parseTree n
 
-namespace ParseTree
+-- noncomputable instance {n : g.NT} [eqt : DecidableEq T] [DecidableEq g.NT] :
+--     DecidableEq (ParseTree n) := by
+--   intro x y
+--   match x, y with
+--   | ParseTree.tree_leaf _ _, ParseTree.tree_leaf _ _ =>
+--     simp only [ParseTree.tree_leaf.injEq]
+--     apply eqt
+--   | @ParseTree.tree_node _ _ _ c₁ c₂ t₁ t₂ h₁, @ParseTree.tree_node _ _ _ c₃ c₄ t₃ t₄ h₂ =>
+--     simp only [ParseTree.tree_node.injEq]
+--     exact Classical.propDecidable (c₁ = c₃ ∧ c₂ = c₄ ∧ HEq t₁ t₃ ∧ HEq t₂ t₄)
+--   | ParseTree.tree_leaf _ _, ParseTree.tree_node _ _ _ =>
+--     simp only [reduceCtorEq]
+--     exact instDecidableFalse
+--   | ParseTree.tree_node _ _ _, ParseTree.tree_leaf _ _ =>
+--     simp only [reduceCtorEq]
+--     exact instDecidableFalse
 
-def yield {n : g.NT} (p : ParseTree n) : List T :=
+namespace parseTree
+
+def yield {n : g.NT} (p : parseTree n) : List T :=
   match p with
   | tree_leaf t _ => [t]
   | tree_node t₁ t₂ _ => yield t₁ ++ yield t₂
 
-def height {n : g.NT} (p : ParseTree n) : ℕ :=
+def height {n : g.NT} (p : parseTree n) : ℕ :=
   match p with
   | tree_leaf _ _ => 1
   | tree_node t₁ t₂ _ => max (height t₁) (height t₂) + 1
 
-variable {n : g.NT} {p : ParseTree n}
+-- TODO
+/-- `SubTree p₁ p₂` encodes that `p₁` is a subtree of `p2` -/
+inductive Subtree {n₁ n₂ : g.NT} : parseTree n₁ → parseTree n₂ → Prop where
+  | refl_leaf {t : T} (hmk : n₁ = n₂) (hrn₁ : (ChomskyNormalFormRule.leaf n₁ t) ∈ g.rules)
+      (hrn₂ : (ChomskyNormalFormRule.leaf n₂ t) ∈ g.rules) :
+      Subtree (tree_leaf t hrn₁) (tree_leaf t hrn₂)
+
+variable {n : g.NT} {p : parseTree n}
 
 lemma yield_derives : g.Derives [Symbol.nonterminal n] (p.yield.map Symbol.terminal) := by
   induction p with
@@ -86,7 +110,11 @@ lemma yield_length_le_two_pow_height : p.yield.length ≤ 2^(p.height - 1) := by
     nth_rewrite 3 [h''']
     rw [Nat.two_pow_succ]
 
-end ParseTree
+lemma subtree_decomposition {n₁ n₂ : g.NT} {p₁ : parseTree n₁} {p₂ : parseTree n₂}
+    (hpp : Subtree p₂ p₁) :
+    ∃ u v, p₁.yield = u ++ p₂.yield ++ v := by sorry
+
+end parseTree
 
 lemma Produces.rule {n : g.NT} {u : List (Symbol T g.NT)}
     (hnu : g.Produces [Symbol.nonterminal n] u) :
@@ -113,7 +141,7 @@ lemma DerivesIn.terminal_refl {u v : List T} {m : ℕ}
 
 private lemma DerivesIn.yield_rec {n : g.NT} {u : List T} {m : ℕ}
     (hvu : g.DerivesIn [Symbol.nonterminal n] (u.map Symbol.terminal) m) :
-    ∃ p : ParseTree n, p.yield = u := by
+    ∃ p : parseTree n, p.yield = u := by
   cases m with
   | zero =>
     apply DerivesIn.zero_steps_eq at hvu
@@ -126,8 +154,8 @@ private lemma DerivesIn.yield_rec {n : g.NT} {u : List T} {m : ℕ}
       simp at hr₁ hr₂
       rw [hr₁] at hrg
       rw [← hr₂] at hwu
-      use (ParseTree.tree_leaf t hrg)
-      simp only [ParseTree.yield]
+      use (parseTree.tree_leaf t hrg)
+      simp only [parseTree.yield]
       exact hwu.terminal_refl
     | node nᵢ n₁ n₂ =>
       simp at hr₂
@@ -141,14 +169,14 @@ private lemma DerivesIn.yield_rec {n : g.NT} {u : List T} {m : ℕ}
       rw [← hu₂] at hnu₂
       obtain ⟨p₁, hp₁⟩ := hnu₁.yield_rec
       obtain ⟨p₂, hp₂⟩ := hnu₂.yield_rec
-      use ParseTree.tree_node p₁ p₂ hrg
-      unfold ParseTree.yield
+      use parseTree.tree_node p₁ p₂ hrg
+      unfold parseTree.yield
       rw [hp₁, hp₂]
       exact hu.symm
 
 lemma Derives.yield {n : g.NT} {u : List T}
     (hnu : g.Derives [Symbol.nonterminal n] (u.map Symbol.terminal)) :
-    ∃ p : ParseTree n, p.yield = u := by
+    ∃ p : parseTree n, p.yield = u := by
   rw [derives_iff_derivesIn] at hnu
   exact DerivesIn.yield_rec hnu.choose_spec
 
