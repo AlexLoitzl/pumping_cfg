@@ -20,9 +20,8 @@ lemma Rewrites.word {T N : Type*} {r : ChomskyNormalFormRule T N} {u : List T} {
   induction u generalizing v with
   | nil => cases hruv
   | cons u₁ u ih =>
-    cases hruv
-    rename_i hru
-    exact ih hru
+    cases hruv with
+    | cons _ _ hru => exact ih hru
 
 end ChomskyNormalFormRule
 
@@ -36,9 +35,9 @@ variable {g : ChomskyNormalFormGrammar.{uN,uT} T}
 
 inductive parseTree : g.NT → Type _ where
   | tree_leaf {n : g.NT} (t : T)
-      (h : (ChomskyNormalFormRule.leaf n t) ∈ g.rules) : parseTree n
+      (hnt : (ChomskyNormalFormRule.leaf n t) ∈ g.rules) : parseTree n
   | tree_node {n c₁ c₂ : g.NT} (t₁ : parseTree c₁) (t₂ : parseTree c₂)
-      (h : (ChomskyNormalFormRule.node n c₁ c₂) ∈ g.rules) : parseTree n
+      (hnc : (ChomskyNormalFormRule.node n c₁ c₂) ∈ g.rules) : parseTree n
 
 -- noncomputable instance {n : g.NT} [eqt : DecidableEq T] [DecidableEq g.NT] :
 --     DecidableEq (ParseTree n) := by
@@ -70,7 +69,7 @@ def height {n : g.NT} (p : parseTree n) : ℕ :=
   | tree_node t₁ t₂ _ => max (height t₁) (height t₂) + 1
 
 -- TODO
-/-- `SubTree p₁ p₂` encodes that `p₁` is a subtree of `p2` -/
+/-- `SubTree p₁ p₂` encodes that `p₁` is a subtree of `p₂` -/
 inductive Subtree {n₁ n₂ : g.NT} : parseTree n₁ → parseTree n₂ → Prop where
   | refl_leaf {t : T} (hmk : n₁ = n₂) (hrn₁ : (ChomskyNormalFormRule.leaf n₁ t) ∈ g.rules)
       (hrn₂ : (ChomskyNormalFormRule.leaf n₂ t) ∈ g.rules) :
@@ -81,12 +80,10 @@ variable {n : g.NT} {p : parseTree n}
 lemma yield_derives : g.Derives [Symbol.nonterminal n] (p.yield.map Symbol.terminal) := by
   induction p with
   | tree_leaf t hg =>
-    simp only [yield]
     exact Produces.single ⟨_, hg, ChomskyNormalFormRule.Rewrites.input_output⟩
   | tree_node l r hg ihl ihr =>
     simp only [yield]
-    apply Produces.trans_derives
-    exact ⟨_, hg, ChomskyNormalFormRule.Rewrites.input_output⟩
+    apply Produces.trans_derives ⟨_, hg, ChomskyNormalFormRule.Rewrites.input_output⟩
     rw [ChomskyNormalFormRule.output, List.map_append, ← List.singleton_append]
     exact (ihr.append_left _).trans (ihl.append_right _)
 
@@ -96,18 +93,19 @@ lemma yield_length_le_two_pow_height : p.yield.length ≤ 2^(p.height - 1) := by
   induction p with
   | tree_leaf => simp [yield, height]
   | tree_node t₁ t₂ hpg ih₁ ih₂=>
-    simp [height, yield]
-    have h : t₁.yield.length + t₂.yield.length ≤ 2 ^ (t₁.height -1) + 2 ^ (t₂.height -1) := by omega
-    have h'' : 2 ^ (t₁.height -1) + 2 ^ (t₂.height - 1)
-        ≤ 2 ^ ((max t₁.height t₂.height) -1) + 2 ^ ((max t₁.height t₂.height) -1) := by
-      apply Nat.add_le_add <;> apply Nat.pow_le_pow_of_le_right <;> omega
-    apply le_trans h
-    apply le_trans h''
-    have h''' : (max t₁.height t₂.height) = (max t₁.height t₂.height) -1 + 1 := by
-      rw [Nat.sub_one_add_one]
-      have h : 0 < (max t₁.height t₂.height) := lt_sup_of_lt_left t₁.height_pos
+    simp only [yield, height, List.length_append, Nat.add_one_sub_one]
+    have ht : t₁.yield.length + t₂.yield.length ≤ 2 ^ (t₁.height -1) + 2 ^ (t₂.height -1) := by
       omega
-    nth_rewrite 3 [h''']
+    have ht' : 2 ^ (t₁.height - 1) + 2 ^ (t₂.height - 1)
+        ≤ 2 ^ (max t₁.height t₂.height - 1) + 2 ^ (max t₁.height t₂.height - 1) := by
+      apply Nat.add_le_add <;> apply Nat.pow_le_pow_of_le_right <;> omega
+    apply le_trans ht
+    apply le_trans ht'
+    have ht'' : max t₁.height t₂.height = max t₁.height t₂.height - 1 + 1 := by
+      rw [Nat.sub_one_add_one]
+      have : 0 < max t₁.height t₂.height := lt_sup_of_lt_left t₁.height_pos
+      omega
+    nth_rewrite 3 [ht'']
     rw [Nat.two_pow_succ]
 
 lemma subtree_replacement {u v : List T} {n₁ n₂ : g.NT} {p : parseTree n₁} {p₁ : parseTree n₂}
@@ -138,8 +136,7 @@ lemma DerivesIn.terminal_refl {u v : List T} {m : ℕ}
     u = v := by
   cases m with
   | zero =>
-    apply Function.Injective.list_map; swap
-    exact huv.zero_steps_eq
+    apply Function.Injective.list_map _ huv.zero_steps_eq
     apply Symbol.terminal.inj
   | succ m =>
     obtain ⟨w, huw, hwv⟩ := huv.head_of_succ
@@ -159,15 +156,14 @@ private lemma DerivesIn.yield_rec {n : g.NT} {u : List T} {m : ℕ}
     obtain ⟨r, hrg, hr₁, hr₂⟩ := hvw.rule
     cases r with
     | leaf n t =>
-      simp at hr₁ hr₂
+      rw [ChomskyNormalFormRule.input] at hr₁
+      rw [ChomskyNormalFormRule.output] at hr₂
       rw [hr₁] at hrg
       rw [← hr₂] at hwu
-      use (parseTree.tree_leaf t hrg)
-      simp only [parseTree.yield]
-      exact hwu.terminal_refl
+      exact ⟨parseTree.tree_leaf t hrg, hwu.terminal_refl⟩
     | node nᵢ n₁ n₂ =>
-      simp at hr₂
-      simp at hr₁
+      rw [ChomskyNormalFormRule.input] at hr₁
+      rw [ChomskyNormalFormRule.output] at hr₂
       rw [hr₁] at hrg
       rw [← hr₂, ← List.singleton_append] at hwu
       obtain ⟨u₁, u₂, k₁, k₂, hu, hnu₁, hnu₂, hm⟩ := hwu.append_split
@@ -179,13 +175,12 @@ private lemma DerivesIn.yield_rec {n : g.NT} {u : List T} {m : ℕ}
       obtain ⟨p₂, hp₂⟩ := hnu₂.yield_rec
       use parseTree.tree_node p₁ p₂ hrg
       unfold parseTree.yield
-      rw [hp₁, hp₂]
-      exact hu.symm
+      rw [hp₁, hp₂, hu]
 
 lemma Derives.yield {n : g.NT} {u : List T}
     (hnu : g.Derives [Symbol.nonterminal n] (u.map Symbol.terminal)) :
     ∃ p : parseTree n, p.yield = u := by
   rw [derives_iff_derivesIn] at hnu
-  exact DerivesIn.yield_rec hnu.choose_spec
+  exact hnu.choose_spec.yield_rec
 
 end ChomskyNormalFormGrammar
