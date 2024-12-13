@@ -382,7 +382,7 @@ def ruleIsNullable (p : Finset N) (r : ContextFreeRule T N) : Bool :=
 def addIfNullable (r : ContextFreeRule T N) (p : Finset N) : Finset N :=
   if ruleIsNullable p r then insert r.input p else p
 
-lemma sub_addIfNullable (r : ContextFreeRule T N) (p : Finset N) :
+lemma subset_addIfNullable (r : ContextFreeRule T N) (p : Finset N) :
     p ⊆ (addIfNullable r p) := by
   unfold addIfNullable
   split <;> simp
@@ -409,7 +409,7 @@ lemma input_mem_generators {r : ContextFreeRule T g.NT} (hrg : r ∈ g.rules) :
     · right
       exact ih c2
 
-lemma addIfNullable_sub_generators {r : ContextFreeRule T g.NT} {p : Finset g.NT}
+lemma addIfNullable_subset_generators {r : ContextFreeRule T g.NT} {p : Finset g.NT}
     (hpg : p ⊆ g.generators) (hrg : r ∈ g.rules) :
     addIfNullable r p ⊆ g.generators := by
   unfold addIfNullable
@@ -422,29 +422,29 @@ lemma addIfNullable_sub_generators {r : ContextFreeRule T g.NT} {p : Finset g.NT
 noncomputable def addNullables (p : Finset g.NT) : Finset g.NT :=
   g.rules.toList.attach.foldr (fun ⟨r, _⟩ ↦ addIfNullable r) p
 
-lemma addNullables_sub_generators {p : Finset g.NT} (hpg : p ⊆ g.generators) :
+lemma addNullables_subset_generators {p : Finset g.NT} (hpg : p ⊆ g.generators) :
     addNullables p ⊆ g.generators := by
   unfold addNullables
   induction g.rules.toList.attach with
   | nil => simpa using hpg
-  | cons a _ ih => exact addIfNullable_sub_generators ih (Finset.mem_toList.1 a.2)
+  | cons a _ ih => exact addIfNullable_subset_generators ih (Finset.mem_toList.1 a.2)
 
-lemma sub_addNullables (p : Finset g.NT) : p ⊆ (addNullables p) := by
+lemma subset_addNullables (p : Finset g.NT) : p ⊆ (addNullables p) := by
   unfold addNullables
   induction g.rules.toList.attach with
   | nil => simp
   | cons a _ ih =>
     apply subset_trans ih
-    apply sub_addIfNullable a.1
+    apply subset_addIfNullable a.1
 
 lemma generators_limits_nullable {p : Finset g.NT}
     (hpg : p ⊆ g.generators) (hne : p ≠ addNullables p) :
     (g.generators).card - (addNullables p).card < (g.generators).card - p.card := by
-  have hp := HasSubset.Subset.ssubset_of_ne (sub_addNullables p) hne
+  have hp := HasSubset.Subset.ssubset_of_ne (subset_addNullables p) hne
   apply Nat.sub_lt_sub_left
   · apply Nat.lt_of_lt_of_le
     · exact Finset.card_lt_card hp
-    · exact Finset.card_le_card (addNullables_sub_generators hpg)
+    · exact Finset.card_le_card (addNullables_subset_generators hpg)
   · exact Finset.card_lt_card hp
 
 /-- Fixpoint iteration computing the set of nullable symbols of `g`. -/
@@ -452,7 +452,7 @@ noncomputable def addNullablesIter (p : Finset g.NT) (hpg : p ⊆ g.generators) 
   if p = addNullables p then
     p
   else
-    addNullablesIter (addNullables p) (addNullables_sub_generators hpg)
+    addNullablesIter (addNullables p) (addNullables_subset_generators hpg)
   termination_by
     g.generators.card - p.card
   decreasing_by
@@ -508,7 +508,7 @@ lemma addNullablesIter_only_nullableNonTerminal (p : Finset g.NT) (hpg : p ⊆ g
   split
   · tauto
   · exact addNullablesIter_only_nullableNonTerminal (addNullables p)
-      (addNullables_sub_generators hpg) (addNullables_mem_nullableNonTerminal p hp) _
+      (addNullables_subset_generators hpg) (addNullables_mem_nullableNonTerminal p hp) _
   termination_by ((g.generators).card - p.card)
   decreasing_by
     rename_i hp
@@ -554,13 +554,13 @@ lemma addIfNullable_monotone {r : ContextFreeRule T g.NT} {p₁ p₂ : Finset g.
     · exact Finset.mem_insert_of_mem (hpp hv)
     · exact hpp hv
 
-private lemma sub_addIfNullable_rec {l : List (ContextFreeRule T g.NT)} {p : Finset g.NT} :
+private lemma subset_addIfNullable_rec {l : List (ContextFreeRule T g.NT)} {p : Finset g.NT} :
     p ⊆ List.foldr addIfNullable p l := by
   induction l with
   | nil => rfl
   | cons _ _ ih =>
     apply Finset.Subset.trans ih
-    apply sub_addIfNullable
+    apply subset_addIfNullable
 
 lemma nullable_input_mem_addNullables {r : ContextFreeRule T g.NT} {p : Finset g.NT}
     (hpr : ruleIsNullable p r) (hrg : r ∈ g.rules) :
@@ -575,10 +575,10 @@ lemma nullable_input_mem_addNullables {r : ContextFreeRule T g.NT} {p : Finset g
     intro r' _ hr hr' hr''
     simp only [Finset.mem_toList, List.foldr_subtype, List.foldr_cons] at ih ⊢
     cases hr''
-    · apply Finset.mem_of_subset (addIfNullable_monotone sub_addIfNullable_rec)
+    · apply Finset.mem_of_subset (addIfNullable_monotone subset_addIfNullable_rec)
       simp [addIfNullable, hr]
     · rename_i hr''
-      exact Finset.mem_of_subset (sub_addIfNullable _ _) (ih hr hr' hr'')
+      exact Finset.mem_of_subset (subset_addIfNullable _ _) (ih hr hr' hr'')
 
 lemma addNullablesIter_fixpoint {p : Finset g.NT} (hpg : p ⊆ g.generators) :
     addNullablesIter p hpg = addNullables (addNullablesIter p hpg) := by
