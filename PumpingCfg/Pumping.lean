@@ -60,9 +60,8 @@ theorem pumping_lemma {L : Language T} (hL : L.IsContextFree) :
       ∀ i : ℕ, u ++ v^^i ++ x ++ y^^i ++ z ∈ L := by
   obtain ⟨g, rfl⟩ := hL
   classical
-  use 2 ^ g.generators.card
+  use 2 ^ g.toCNF.generators.card
   intro w hwL hwg
   have fixme : g.language = g.language \ {[]} := sorry
-  have todo : g.generators.card = g.toCNF.generators.card := sorry
   rw [fixme, ContextFreeGrammar.toCNF_correct] at hwL ⊢
-  exact todo ▸ ChomskyNormalFormGrammar.cnf_pumping hwL (todo ▸ hwg)
+  exact ChomskyNormalFormGrammar.cnf_pumping hwL hwg
