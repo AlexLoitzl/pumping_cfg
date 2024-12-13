@@ -115,6 +115,13 @@ lemma yield_length_le_two_pow_height : p.yield.length ≤ 2^(p.height - 1) := by
     nth_rewrite 3 [ht'']
     rw [Nat.two_pow_succ]
 
+lemma yield_length_pos : p.yield.length > 0 := by
+  induction p with
+  | tree_leaf => simp [yield]
+  | tree_node =>
+    simp only [yield, List.length_append]
+    omega
+
 lemma subtree_replacement {u v : List T} {n₁ n₂ : g.NT} {p : parseTree n₁} {p₁ : parseTree n₂}
     (p₂ : parseTree n₂) (hpp : IsSubtreeOf p₁ p) (huv : p.yield = u ++ p₁.yield ++ v) :
     ∃ p' : parseTree n₁, p'.yield = u ++ p₂.yield ++ v := by sorry
@@ -123,26 +130,46 @@ lemma subtree_decomposition {n₁ n₂ : g.NT} {p₁ : parseTree n₁} {p₂ : p
     (hpp : IsSubtreeOf p₂ p₁) :
     ∃ u v, p₁.yield = u ++ p₂.yield ++ v := by
   induction hpp with
-  | leaf_refl hrn => exact ⟨[], [], rfl⟩
-  | node_refl pl pr hrn =>
+  | leaf_refl => exact ⟨[], [], rfl⟩
+  | node_refl =>
     use [], []
     simp
-  | left_sub pl pr p hrn₁ hppl ih =>
+  | left_sub _ p₂ _ _ _ ih =>
     simp [yield]
     obtain ⟨u, v, huv⟩ := ih
     rw [huv]
-    use u, v ++ pr.yield
+    use u, v ++ p₂.yield
     simp
-  | right_sub pl pr p hrn₁ hppr ih =>
+  | right_sub p₁ _ _ _ _ ih =>
     simp [yield]
     obtain ⟨u, v, huv⟩ := ih
     rw [huv]
-    use pl.yield ++ u, v
+    use p₁.yield ++ u, v
     simp
 
 lemma strict_subtree_decomposition {n : g.NT} {p₁ : parseTree n} {p₂ : parseTree n}
-    (hpp : IsSubtreeOf p₂ p₁) (hne : p₁ ≠ p₂) :
-    ∃ u v, p₁.yield = u ++ p₂.yield ++ v ∧ (u ++ v).length > 0 := by sorry
+    (hpp₁ : IsSubtreeOf p₂ p₁) (hne : p₁ ≠ p₂) :
+    ∃ u v, p₁.yield = u ++ p₂.yield ++ v ∧ (u ++ v).length > 0 := by
+  cases hpp₁ with
+  | leaf_refl | node_refl => contradiction
+  | left_sub _ p₃ _ _ hp₂ =>
+    obtain ⟨u, v, huv⟩ := subtree_decomposition hp₂
+    simp_rw [yield, huv]
+    use u, v ++ p₃.yield
+    constructor
+    · simp
+    · have h := p₃.yield_length_pos
+      repeat rw [List.length_append]
+      omega
+  | right_sub p₃ _ _ _ hp₂ =>
+    obtain ⟨u, v, huv⟩ := subtree_decomposition hp₂
+    simp_rw [yield, huv]
+    use p₃.yield ++ u , v
+    constructor
+    · simp
+    · have h := p₃.yield_length_pos
+      repeat rw [List.length_append]
+      omega
 
 end parseTree
 
