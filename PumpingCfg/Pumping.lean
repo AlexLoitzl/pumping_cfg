@@ -62,6 +62,13 @@ theorem pumping_lemma {L : Language T} (hL : L.IsContextFree) :
   classical
   use 2 ^ g.toCNF.generators.card
   intro w hwL hwg
-  have fixme : g.language = g.language \ {[]} := sorry
-  rw [fixme, ContextFreeGrammar.toCNF_correct] at hwL ⊢
-  exact ChomskyNormalFormGrammar.cnf_pumping hwL hwg
+  by_cases hw : w = []
+  · simp [hw] at hwg
+  · have h : w ∈ g.language \ {[]} := ⟨hwL, hw⟩
+    rw [ContextFreeGrammar.toCNF_correct] at h
+    obtain ⟨u, v, x, y, z, hw, hvy, hvxy, hL⟩ := ChomskyNormalFormGrammar.cnf_pumping h hwg
+    refine ⟨u, v, x, y, z, hw, hvy, hvxy, ?_⟩
+    intro i
+    apply Set.diff_subset
+    rw [ContextFreeGrammar.toCNF_correct]
+    exact hL i
