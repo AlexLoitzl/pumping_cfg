@@ -68,19 +68,19 @@ def height {n : g.NT} (p : parseTree n) : ℕ :=
   | tree_leaf _ _ => 1
   | tree_node t₁ t₂ _ => max (height t₁) (height t₂) + 1
 
-/-- `SubTree p₁ p₂` encodes that `p₁` is a subtree of `p₂` -/
-inductive Subtree : {n₁ : g.NT} →  {n₂ : g.NT} → parseTree n₁ → parseTree n₂ → Prop where
+/-- `IsSubTreeOf p₁ p₂` encodes that `p₁` is a subtree of `p₂` -/
+inductive IsSubtreeOf : {n₁ : g.NT} →  {n₂ : g.NT} → parseTree n₁ → parseTree n₂ → Prop where
   | leaf_refl {t : T} {n : g.NT} (hrn : (ChomskyNormalFormRule.leaf n t) ∈ g.rules) :
-      Subtree (tree_leaf t hrn) (tree_leaf t hrn)
+      IsSubtreeOf (tree_leaf t hrn) (tree_leaf t hrn)
   | node_refl {nl nr n : g.NT} (pl : parseTree nl) (pr : parseTree nr)
       (hrn : (ChomskyNormalFormRule.node n nl nr) ∈ g.rules) :
-      Subtree (tree_node pl pr hrn) (tree_node pl pr hrn)
+      IsSubtreeOf (tree_node pl pr hrn) (tree_node pl pr hrn)
   | left_sub {nl nr n₁ n₂ : g.NT} (pl : parseTree nl) (pr : parseTree nr) (p : parseTree n₂)
-      (hrn₁ : (ChomskyNormalFormRule.node n₁ nl nr) ∈ g.rules) (hpp : Subtree p pl) :
-      Subtree (tree_node pl pr hrn₁) p
+      (hrn₁ : (ChomskyNormalFormRule.node n₁ nl nr) ∈ g.rules) (hppl : IsSubtreeOf p pl) :
+      IsSubtreeOf p (tree_node pl pr hrn₁)
   | right_sub {nl nr n₁ n₂ : g.NT} (pl : parseTree nl) (pr : parseTree nr) (p : parseTree n₂)
-      (hrn₁ : (ChomskyNormalFormRule.node n₁ nl nr) ∈ g.rules) (hpp : Subtree p pr) :
-      Subtree (tree_node pl pr hrn₁) p
+      (hrn₁ : (ChomskyNormalFormRule.node n₁ nl nr) ∈ g.rules) (hppr : IsSubtreeOf p pr) :
+      IsSubtreeOf p (tree_node pl pr hrn₁)
 
 variable {n : g.NT} {p : parseTree n}
 
@@ -116,15 +116,32 @@ lemma yield_length_le_two_pow_height : p.yield.length ≤ 2^(p.height - 1) := by
     rw [Nat.two_pow_succ]
 
 lemma subtree_replacement {u v : List T} {n₁ n₂ : g.NT} {p : parseTree n₁} {p₁ : parseTree n₂}
-    (p₂ : parseTree n₂) (hpp : Subtree p₁ p) (huv : p.yield = u ++ p₁.yield ++ v) :
+    (p₂ : parseTree n₂) (hpp : IsSubtreeOf p₁ p) (huv : p.yield = u ++ p₁.yield ++ v) :
     ∃ p' : parseTree n₁, p'.yield = u ++ p₂.yield ++ v := by sorry
 
 lemma subtree_decomposition {n₁ n₂ : g.NT} {p₁ : parseTree n₁} {p₂ : parseTree n₂}
-    (hpp : Subtree p₂ p₁) :
-    ∃ u v, p₁.yield = u ++ p₂.yield ++ v := by sorry
+    (hpp : IsSubtreeOf p₂ p₁) :
+    ∃ u v, p₁.yield = u ++ p₂.yield ++ v := by
+  induction hpp with
+  | leaf_refl hrn => exact ⟨[], [], rfl⟩
+  | node_refl pl pr hrn =>
+    use [], []
+    simp
+  | left_sub pl pr p hrn₁ hppl ih =>
+    simp [yield]
+    obtain ⟨u, v, huv⟩ := ih
+    rw [huv]
+    use u, v ++ pr.yield
+    simp
+  | right_sub pl pr p hrn₁ hppr ih =>
+    simp [yield]
+    obtain ⟨u, v, huv⟩ := ih
+    rw [huv]
+    use pl.yield ++ u, v
+    simp
 
 lemma strict_subtree_decomposition {n : g.NT} {p₁ : parseTree n} {p₂ : parseTree n}
-    (hpp : Subtree p₂ p₁) (hne : p₁ ≠ p₂) :
+    (hpp : IsSubtreeOf p₂ p₁) (hne : p₁ ≠ p₂) :
     ∃ u v, p₁.yield = u ++ p₂.yield ++ v ∧ (u ++ v).length > 0 := by sorry
 
 end parseTree

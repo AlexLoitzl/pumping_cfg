@@ -22,13 +22,13 @@ noncomputable def generators (g : ChomskyNormalFormGrammar.{uN, uT} T) [Decidabl
 variable {g : ChomskyNormalFormGrammar.{uN, uT} T} [DecidableEq g.NT]
 
 lemma pumping_subtree {u v : List T} {n : g.NT} {p₁ p₂ : parseTree n} (hne : p₁ ≠ p₂)
-    (hpp : p₂.Subtree p₁) (huv : p₁.yield = u ++ p₂.yield ++ v) :
+    (hpp : p₂.IsSubtreeOf p₁) (huv : p₁.yield = u ++ p₂.yield ++ v) :
     ∀ i : ℕ, ∃ p : parseTree n, p.yield = u^^i ++ p₂.yield ++ v^^i := by sorry
 
 lemma subtree_repeat_root_height {n : g.NT} {p : parseTree n}
     (hp : p.yield.length ≥ 2 ^ g.generators.card) :
     ∃ (n' : g.NT) (p₁ p₂ : parseTree n'),
-      p₁.Subtree p ∧ p₂.Subtree p₁ ∧ p₁.height ≤ g.generators.card ∧ p₁ ≠ p₂:= by sorry
+      p₁.IsSubtreeOf p ∧ p₂.IsSubtreeOf p₁ ∧ p₁.height ≤ g.generators.card ∧ p₁ ≠ p₂:= by sorry
 
 lemma cnf_pumping {w : List T} (hwg : w ∈ g.language) (hw : w.length ≥ 2 ^ g.generators.card) :
     ∃ u v x y z : List T,
