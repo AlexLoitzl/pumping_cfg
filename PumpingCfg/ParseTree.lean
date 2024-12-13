@@ -68,12 +68,19 @@ def height {n : g.NT} (p : parseTree n) : ℕ :=
   | tree_leaf _ _ => 1
   | tree_node t₁ t₂ _ => max (height t₁) (height t₂) + 1
 
--- TODO
 /-- `SubTree p₁ p₂` encodes that `p₁` is a subtree of `p₂` -/
-inductive Subtree {n₁ n₂ : g.NT} : parseTree n₁ → parseTree n₂ → Prop where
-  | refl_leaf {t : T} (hmk : n₁ = n₂) (hrn₁ : (ChomskyNormalFormRule.leaf n₁ t) ∈ g.rules)
-      (hrn₂ : (ChomskyNormalFormRule.leaf n₂ t) ∈ g.rules) :
-      Subtree (tree_leaf t hrn₁) (tree_leaf t hrn₂)
+inductive Subtree : {n₁ : g.NT} →  {n₂ : g.NT} → parseTree n₁ → parseTree n₂ → Prop where
+  | leaf_refl {t : T} {n : g.NT} (hrn : (ChomskyNormalFormRule.leaf n t) ∈ g.rules) :
+      Subtree (tree_leaf t hrn) (tree_leaf t hrn)
+  | node_refl {nl nr n : g.NT} (pl : parseTree nl) (pr : parseTree nr)
+      (hrn : (ChomskyNormalFormRule.node n nl nr) ∈ g.rules) :
+      Subtree (tree_node pl pr hrn) (tree_node pl pr hrn)
+  | left_sub {nl nr n₁ n₂ : g.NT} (pl : parseTree nl) (pr : parseTree nr) (p : parseTree n₂)
+      (hrn₁ : (ChomskyNormalFormRule.node n₁ nl nr) ∈ g.rules) (hpp : Subtree p pl) :
+      Subtree (tree_node pl pr hrn₁) p
+  | right_sub {nl nr n₁ n₂ : g.NT} (pl : parseTree nl) (pr : parseTree nr) (p : parseTree n₂)
+      (hrn₁ : (ChomskyNormalFormRule.node n₁ nl nr) ∈ g.rules) (hpp : Subtree p pr) :
+      Subtree (tree_node pl pr hrn₁) p
 
 variable {n : g.NT} {p : parseTree n}
 
