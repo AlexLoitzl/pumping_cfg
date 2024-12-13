@@ -22,7 +22,7 @@ noncomputable def generators (g : ChomskyNormalFormGrammar.{uN, uT} T) [Decidabl
 
 variable {g : ChomskyNormalFormGrammar.{uN, uT} T} [DecidableEq g.NT]
 
-lemma pumping_subtree {u v : List T} {n : g.NT} {p₁ p₂ : parseTree n} (hne: p₁ ≠ p₂)
+lemma pumping_subtree {u v : List T} {n : g.NT} {p₁ p₂ : parseTree n} (hne : p₁ ≠ p₂)
     (hpp : p₂.Subtree p₁) (huv : p₁.yield = u ++ p₂.yield ++ v) :
     ∀ i : ℕ, ∃ p : parseTree n, p.yield = u^^i ++ p₂.yield ++ v^^i := by sorry
 
@@ -35,7 +35,7 @@ lemma cnf_pumping {w : List T} (hwg : w ∈ g.language) (hw : w.length ≥ 2 ^ g
     ∃ u v x y z : List T,
       w = u ++ v ++ x ++ y ++ z ∧
       (v ++ y).length > 0       ∧
-      (v ++ x ++ y).length ≤ 2  ^g.generators.card  ∧
+      (v ++ x ++ y).length ≤ 2 ^ g.generators.card  ∧
       ∀ i : ℕ, u ++ v ^^ i ++ x ++ y ^^ i ++ z ∈ g.language := by
   obtain ⟨p, rfl⟩ := hwg.yield
   obtain ⟨n, p₁, p₂, hp₁, hp₂, hpg, hpp⟩ := subtree_repeat_root_height hw
@@ -55,9 +55,16 @@ end ChomskyNormalFormGrammar
 end PumpingCNF
 
 theorem pumping_lemma {L : Language T} (hL : L.IsContextFree) :
-  ∃ p : ℕ, ∀ w ∈ L, w.length ≥ p → ∃ u v x y z : List T,
-    w = u ++ v ++ x ++ y ++ z ∧
-    (v ++ y).length > 0       ∧
-    (v ++ x ++ y).length ≤ p  ∧
-    ∀ i : ℕ, u ++ v ^^ i ++ x ++ y ^^ i ++ z ∈ L := by
-  sorry
+    ∃ p : ℕ, ∀ w ∈ L, w.length ≥ p → ∃ u v x y z : List T,
+      w = u ++ v ++ x ++ y ++ z ∧
+      (v ++ y).length > 0       ∧
+      (v ++ x ++ y).length ≤ p  ∧
+      ∀ i : ℕ, u ++ v ^^ i ++ x ++ y ^^ i ++ z ∈ L := by
+  obtain ⟨g, hg⟩ := hL
+  classical
+  use 2 ^ g.generators.card
+  intro w hwL hwg
+  have fixme : g.language = g.language \ {[]} := sorry
+  have todo : g.generators.card = g.toCNF.generators.card := sorry
+  rw [←hg, fixme, ContextFreeGrammar.toCNF_correct] at hwL ⊢
+  exact todo ▸ ChomskyNormalFormGrammar.cnf_pumping hwL (todo ▸ hwg)
