@@ -72,15 +72,15 @@ def height {n : g.NT} (p : parseTree n) : ℕ :=
 inductive IsSubtreeOf : {n₁ : g.NT} →  {n₂ : g.NT} → parseTree n₁ → parseTree n₂ → Prop where
   | leaf_refl {t : T} {n : g.NT} (hrn : (ChomskyNormalFormRule.leaf n t) ∈ g.rules) :
       IsSubtreeOf (tree_leaf t hrn) (tree_leaf t hrn)
-  | node_refl {nl nr n : g.NT} (pl : parseTree nl) (pr : parseTree nr)
+  | node_refl {nl nr n : g.NT} (p₁ : parseTree nl) (p₂ : parseTree nr)
       (hrn : (ChomskyNormalFormRule.node n nl nr) ∈ g.rules) :
-      IsSubtreeOf (tree_node pl pr hrn) (tree_node pl pr hrn)
-  | left_sub {nl nr n₁ n₂ : g.NT} (pl : parseTree nl) (pr : parseTree nr) (p : parseTree n₂)
-      (hrn₁ : (ChomskyNormalFormRule.node n₁ nl nr) ∈ g.rules) (hppl : IsSubtreeOf p pl) :
-      IsSubtreeOf p (tree_node pl pr hrn₁)
-  | right_sub {nl nr n₁ n₂ : g.NT} (pl : parseTree nl) (pr : parseTree nr) (p : parseTree n₂)
-      (hrn₁ : (ChomskyNormalFormRule.node n₁ nl nr) ∈ g.rules) (hppr : IsSubtreeOf p pr) :
-      IsSubtreeOf p (tree_node pl pr hrn₁)
+      IsSubtreeOf (tree_node p₁ p₂ hrn) (tree_node p₁ p₂ hrn)
+  | left_sub {nl nr n₁ n₂ : g.NT} (p₁ : parseTree nl) (p₂ : parseTree nr) (p : parseTree n₂)
+      (hrn₁ : (ChomskyNormalFormRule.node n₁ nl nr) ∈ g.rules) (hpp₁ : IsSubtreeOf p p₁) :
+      IsSubtreeOf p (tree_node p₁ p₂ hrn₁)
+  | right_sub {nl nr n₁ n₂ : g.NT} (p₁ : parseTree nl) (p₂ : parseTree nr) (p : parseTree n₂)
+      (hrn₁ : (ChomskyNormalFormRule.node n₁ nl nr) ∈ g.rules) (hpp₂ : IsSubtreeOf p p₂) :
+      IsSubtreeOf p (tree_node p₁ p₂ hrn₁)
 
 variable {n : g.NT} {p : parseTree n}
 
@@ -121,10 +121,6 @@ lemma yield_length_pos : p.yield.length > 0 := by
   | tree_node =>
     simp only [yield, List.length_append]
     omega
-
-lemma subtree_replacement {u v : List T} {n₁ n₂ : g.NT} {p : parseTree n₁} {p₁ : parseTree n₂}
-    (p₂ : parseTree n₂) (hpp : IsSubtreeOf p₁ p) (huv : p.yield = u ++ p₁.yield ++ v) :
-    ∃ p' : parseTree n₁, p'.yield = u ++ p₂.yield ++ v := by sorry
 
 lemma subtree_decomposition {n₁ n₂ : g.NT} {p₁ : parseTree n₁} {p₂ : parseTree n₂}
     (hpp : IsSubtreeOf p₂ p₁) :
@@ -170,6 +166,29 @@ lemma strict_subtree_decomposition {n : g.NT} {p₁ : parseTree n} {p₂ : parse
     · have h := p₃.yield_length_pos
       repeat rw [List.length_append]
       omega
+
+-- TODO FIXME This Lemma is not true. We cannot replace an arbitrary string equaling the yield
+lemma subtree_replacement {u v : List T} {n₁ n₂ : g.NT} {p : parseTree n₁} {p₁ : parseTree n₂}
+    (p₂ : parseTree n₂) (hpp : IsSubtreeOf p₁ p) (huv : p.yield = u ++ p₁.yield ++ v) :
+    ∃ p' : parseTree n₁, p'.yield = u ++ p₂.yield ++ v := by
+  induction hpp generalizing u v with
+  | leaf_refl =>
+    match u, v with
+    | [], [] => simp
+    | _ :: _, _ => simp[yield] at huv
+    | [], _ :: _ => simp[yield] at huv
+  | node_refl q₁ q₂ hrn =>
+    match u, v with
+    | [], [] => simp
+    | _ :: _, _ =>
+      exfalso
+      apply (lt_self_iff_false (q₁.tree_node q₂ hrn).yield.length).1
+      nth_rewrite 2 [huv]
+      simp only [List.cons_append, List.append_assoc, List.length_cons, List.length_append]
+      omega
+    | [], _ :: _ => simp[yield] at huv
+  | left_sub q₁ q₂ p₁ hrn hpq₁ ih => sorry
+  | right_sub => sorry
 
 end parseTree
 
