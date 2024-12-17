@@ -5,8 +5,9 @@ Authors: Alexander Loitzl, Martin Dvorak
 -/
 
 import Mathlib.Computability.ContextFreeGrammar
+import Mathlib.Computability.ChomskyNormalForm.Basic
+import Mathlib.Computability.ChomskyNormalForm.Translation
 import PumpingCfg.Utils
-import PumpingCfg.ChomskyNormalForm
 import PumpingCfg.ParseTree
 
 universe uT uN

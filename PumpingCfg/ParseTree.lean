@@ -4,9 +4,7 @@ Released under Apache 2.0 license as described in the file LICENSE.
 Authors: Alexander Loitzl
 -/
 
-import PumpingCfg.ChomskyNormalForm
-import PumpingCfg.ChomskyNormalFormTranslation
-import PumpingCfg.ChomskyCountingSteps
+import Mathlib.Computability.ChomskyNormalForm.Basic
 
 universe uN uT
 
