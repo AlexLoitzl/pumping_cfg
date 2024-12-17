@@ -110,58 +110,13 @@ lemma yield_length_pos : p.yield.length > 0 := by
 
 lemma subtree_decomposition {n₁ n₂ : g.NT} {p₁ : parseTree n₁} {p₂ : parseTree n₂}
     (hpp : IsSubtreeOf p₂ p₁) :
-    ∃ u v, p₁.yield = u ++ p₂.yield ++ v := by
-  induction hpp with
-  | leaf_refl => exact ⟨[], [], rfl⟩
-  | node_refl =>
-    use [], []
-    simp
-  | left_sub _ p₂ _ _ _ ih =>
-    simp [yield]
-    obtain ⟨u, v, huv⟩ := ih
-    rw [huv]
-    use u, v ++ p₂.yield
-    simp
-  | right_sub p₁ _ _ _ _ ih =>
-    simp [yield]
-    obtain ⟨u, v, huv⟩ := ih
-    rw [huv]
-    use p₁.yield ++ u, v
-    simp
-
-lemma strict_subtree_decomposition {n : g.NT} {p₁ : parseTree n} {p₂ : parseTree n}
-    (hpp₁ : IsSubtreeOf p₂ p₁) (hne : p₁ ≠ p₂) :
-    ∃ u v, p₁.yield = u ++ p₂.yield ++ v ∧ (u ++ v).length > 0 := by
-  cases hpp₁ with
-  | leaf_refl | node_refl => contradiction
-  | left_sub _ p₃ _ _ hp₂ =>
-    obtain ⟨u, v, huv⟩ := subtree_decomposition hp₂
-    simp_rw [yield, huv]
-    use u, v ++ p₃.yield
-    constructor
-    · simp
-    · have h := p₃.yield_length_pos
-      repeat rw [List.length_append]
-      omega
-  | right_sub p₃ _ _ _ hp₂ =>
-    obtain ⟨u, v, huv⟩ := subtree_decomposition hp₂
-    simp_rw [yield, huv]
-    use p₃.yield ++ u , v
-    constructor
-    · simp
-    · have h := p₃.yield_length_pos
-      repeat rw [List.length_append]
-      omega
-
-lemma subtree_decomposition' {n₁ n₂ : g.NT} {p₁ : parseTree n₁} {p₂ : parseTree n₂}
-    (hpp : IsSubtreeOf p₂ p₁) :
     ∃ u v, p₁.yield = u ++ p₂.yield ++ v
       ∧ g.Derives [Symbol.nonterminal n₁]
         (u.map Symbol.terminal ++ [Symbol.nonterminal n₂] ++ v.map Symbol.terminal) := by
   induction hpp with
   | leaf_refl =>
     refine ⟨[], [], rfl, ?_⟩
-    simpa using Derives.refl _
+    simpa using Derives.refl [Symbol.nonterminal _]
   | node_refl =>
     use [], []
     simpa using Derives.refl _
@@ -180,28 +135,32 @@ lemma subtree_decomposition' {n₁ n₂ : g.NT} {p₁ : parseTree n₁} {p₂ : 
         exact Derives.trans (Derives.append_left q₂.yield_derives _) (Derives.append_right hguv _)
   | right_sub p₁ _ _ _ _ ih => sorry
 
--- TODO FIXME This Lemma is not true. We cannot replace an arbitrary string equaling the yield
-lemma subtree_replacement {u v : List T} {n₁ n₂ : g.NT} {p : parseTree n₁} {p₁ : parseTree n₂}
-    (p₂ : parseTree n₂) (hpp : IsSubtreeOf p₁ p) (huv : p.yield = u ++ p₁.yield ++ v) :
-    ∃ p' : parseTree n₁, p'.yield = u ++ p₂.yield ++ v := by
-  induction hpp generalizing u v with
-  | leaf_refl =>
-    match u, v with
-    | [], [] => simp
-    | _ :: _, _ => simp[yield] at huv
-    | [], _ :: _ => simp[yield] at huv
-  | node_refl q₁ q₂ hrn =>
-    match u, v with
-    | [], [] => simp
-    | _ :: _, _ =>
-      exfalso
-      apply (lt_self_iff_false (q₁.tree_node q₂ hrn).yield.length).1
-      nth_rewrite 2 [huv]
-      simp only [List.cons_append, List.append_assoc, List.length_cons, List.length_append]
-      omega
-    | [], _ :: _ => simp[yield] at huv
-  | left_sub q₁ q₂ p₁ hrn hpq₁ ih => sorry
-  | right_sub => sorry
+
+lemma strict_subtree_decomposition {n : g.NT} {p₁ : parseTree n} {p₂ : parseTree n}
+    (hpp₁ : IsSubtreeOf p₂ p₁) (hne : p₁ ≠ p₂) :
+    ∃ u v, p₁.yield = u ++ p₂.yield ++ v ∧ (u ++ v).length > 0
+      ∧ g.Derives [Symbol.nonterminal n]
+        (u.map Symbol.terminal ++ [Symbol.nonterminal n] ++ v.map Symbol.terminal) := by sorry
+  -- cases hpp₁ with
+  -- | leaf_refl | node_refl => contradiction
+  -- | left_sub _ p₃ _ _ hp₂ =>
+  --   obtain ⟨u, v, huv⟩ := subtree_decomposition hp₂
+  --   simp_rw [yield, huv]
+  --   use u, v ++ p₃.yield
+  --   constructor
+  --   · simp
+  --   · have h := p₃.yield_length_pos
+  --     repeat rw [List.length_append]
+  --     omega
+  -- | right_sub p₃ _ _ _ hp₂ =>
+  --   obtain ⟨u, v, huv⟩ := subtree_decomposition hp₂
+  --   simp_rw [yield, huv]
+  --   use p₃.yield ++ u , v
+  --   constructor
+  --   · simp
+  --   · have h := p₃.yield_length_pos
+  --     repeat rw [List.length_append]
+  --     omega
 
 end parseTree
 
