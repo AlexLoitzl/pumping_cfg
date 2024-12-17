@@ -9,8 +9,7 @@ package «pumping_cfg» where
   ]
   -- add any additional package configuration options here
 
-require mathlib from git
-  "https://github.com/leanprover-community/mathlib4.git"
+require "leanprover-community" / "mathlib" @ git "alex-loitzl-cnf"
 
 @[default_target]
 lean_lib PumpingCfg where
