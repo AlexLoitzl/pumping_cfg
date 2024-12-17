@@ -5,23 +5,11 @@ Authors: Alexander Loitzl
 -/
 
 import Mathlib.Computability.ChomskyNormalForm.Basic
+import PumpingCfg.toMathlib
 
 universe uN uT
 
 variable {T : Type uT}
-
-namespace ChomskyNormalFormRule
-
-lemma Rewrites.word {T N : Type*} {r : ChomskyNormalFormRule T N} {u : List T} {v : List (Symbol T N)}
-    (hruv : r.Rewrites (u.map Symbol.terminal) v) :
-    False := by
-  induction u generalizing v with
-  | nil => cases hruv
-  | cons u₁ u ih =>
-    cases hruv with
-    | cons _ _ hru => exact ih hru
-
-end ChomskyNormalFormRule
 
 namespace ChomskyNormalFormGrammar
 
@@ -164,6 +152,33 @@ lemma strict_subtree_decomposition {n : g.NT} {p₁ : parseTree n} {p₂ : parse
     · have h := p₃.yield_length_pos
       repeat rw [List.length_append]
       omega
+
+lemma subtree_decomposition' {n₁ n₂ : g.NT} {p₁ : parseTree n₁} {p₂ : parseTree n₂}
+    (hpp : IsSubtreeOf p₂ p₁) :
+    ∃ u v, p₁.yield = u ++ p₂.yield ++ v
+      ∧ g.Derives [Symbol.nonterminal n₁]
+        (u.map Symbol.terminal ++ [Symbol.nonterminal n₂] ++ v.map Symbol.terminal) := by
+  induction hpp with
+  | leaf_refl =>
+    refine ⟨[], [], rfl, ?_⟩
+    simpa using Derives.refl _
+  | node_refl =>
+    use [], []
+    simpa using Derives.refl _
+  | left_sub q₁ q₂ p₂ hrn hpq₁ ih =>
+    simp [yield]
+    obtain ⟨u, v, huv, hguv⟩ := ih
+    rw [huv]
+    use u, v ++ q₂.yield
+    constructor
+    · simp
+    · apply Produces.trans_derives
+      · apply Produces.input_output hrn
+      · simp only [ChomskyNormalFormRule.output]
+        nth_rewrite 3 [← List.singleton_append]
+        rw [← List.singleton_append, List.map_append, ← List.append_assoc, ← List.append_assoc]
+        exact Derives.trans (Derives.append_left q₂.yield_derives _) (Derives.append_right hguv _)
+  | right_sub p₁ _ _ _ _ ih => sorry
 
 -- TODO FIXME This Lemma is not true. We cannot replace an arbitrary string equaling the yield
 lemma subtree_replacement {u v : List T} {n₁ n₂ : g.NT} {p : parseTree n₁} {p₁ : parseTree n₂}
