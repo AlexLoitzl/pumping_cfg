@@ -122,15 +122,55 @@ lemma subtree_repeat_root_height_ind {n : g.NT} {p : parseTree n}
       specialize ih₂ (insert ⟨n₀, .tree_node t₁ t₂ hnc⟩ s)
       simp only [parseTree.height] at hp
       rw [add_assoc, ←hcard, max_add, le_max_iff] at hp
+      have hmem : ∀ e₁ ∈ insert ⟨n₀, t₁.tree_node t₂ hnc⟩ s,
+                    ∀ e₂ ∈ insert ⟨n₀, t₁.tree_node t₂ hnc⟩ s,
+                      e₁.fst = e₂.fst → e₁ = e₂ := by
+        intros e₁ he₁ e₂ he₂ hee
+        simp at he₁ he₂
+        cases he₁ with
+        | inl he₁ =>
+          cases he₂ with
+          | inl he₂ =>
+            rw [he₁, he₂]
+          | inr he₂ =>
+            exfalso
+            apply hh
+            rw [he₁] at hee
+            simp at hee
+            rw [hee]
+            use e₂.snd
+        | inr he₁ =>
+          cases he₂ with
+          | inl he₂ =>
+            exfalso
+            apply hh
+            rw [he₂] at hee
+            simp at hee
+            rw [←hee]
+            use e₁.snd
+          | inr he₂ =>
+            exact hs _ he₁ _ he₂ hee
       cases hp with
       | inl hcard₁ =>
-        cases ih₁ (by sorry) hcard₁ (by sorry) with
+        have h₂ : ∀ e ∈ insert ⟨n₀, t₁.tree_node t₂ hnc⟩ s, t₁.IsSubtreeOf e.snd := by
+          intros e he
+          simp at he
+          cases he with
+          | inl he =>
+            rw [he]
+            constructor
+            rfl
+          | inr he =>
+            apply IsSubtreeOf.trans;swap
+            exact hps _ he
+            constructor
+            rfl
+        cases ih₁ hmem hcard₁ h₂ with
         | inl h =>
           left
           obtain ⟨n', p', p'', hp', hp'', hp⟩ := h
           exact ⟨n', p', p'', parseTree.IsSubtreeOf.left_sub t₁ t₂ p' hnc hp', hp'', hp⟩
         | inr h =>
-          --right
           obtain ⟨n₀, t, t', ht, ht'⟩ := h
           simp at ht
           cases ht with
@@ -139,7 +179,6 @@ lemma subtree_repeat_root_height_ind {n : g.NT} {p : parseTree n}
             use n₀, t, t', h
             exact parseTree.IsSubtreeOf.left_sub t₁ t₂ t' hnc ht'
           | inl h =>
-            --aesop
             simp at h
             obtain ⟨hn₀, ht⟩ := h
             left
@@ -150,11 +189,52 @@ lemma subtree_repeat_root_height_ind {n : g.NT} {p : parseTree n}
             constructor
             · apply parseTree.IsSubtreeOf.left_sub
               exact ht'
-            · sorry -- should be OK
+            · intro ht
+              -- TODO This is actually awkward because of the encoded root
+              rw [← ht] at ht'
+              cases ht' with
+              | left_sub => sorry
+              | right_sub => sorry
       | inr hcard₂ =>
-        cases ih₂ (by sorry) hcard₂ (by sorry) with
-        | inl h => sorry
-        | inr h => sorry
+        -- This entire branch is the same as `inl hcard₁` :/
+        have h₂ : ∀ e ∈ insert ⟨n₀, t₁.tree_node t₂ hnc⟩ s, t₂.IsSubtreeOf e.snd := by
+          intros e he
+          simp at he
+          cases he with
+          | inl he =>
+            rw [he]
+            apply parseTree.IsSubtreeOf.right_sub
+            rfl
+          | inr he =>
+            apply IsSubtreeOf.trans;swap
+            exact hps _ he
+            apply parseTree.IsSubtreeOf.right_sub
+            rfl
+        cases ih₂ hmem hcard₂ h₂ with
+        | inl h =>
+          left
+          obtain ⟨n', p', p'', hp', hp'', hp⟩ := h
+          exact ⟨n', p', p'', parseTree.IsSubtreeOf.right_sub t₁ t₂ p' hnc hp', hp'', hp⟩
+        | inr h =>
+          obtain ⟨n₀, t, t', ht, ht'⟩ := h
+          simp at ht
+          cases ht with
+          | inr h =>
+            right
+            use n₀, t, t', h
+            exact parseTree.IsSubtreeOf.right_sub t₁ t₂ t' hnc ht'
+          | inl h =>
+            simp at h
+            obtain ⟨hn₀, ht⟩ := h
+            left
+            use n₀, t₁.tree_node t₂ (hn₀ ▸ hnc), t'
+            constructor
+            · subst hn₀
+              exact parseTree.IsSubtreeOf.node_refl t₁ t₂ (Eq.symm (Eq.refl n₀) ▸ hnc)
+            constructor
+            · apply parseTree.IsSubtreeOf.right_sub
+              exact ht'
+            · sorry -- should be OK
 
 lemma subtree_repeat_root_height_aux_aux_aux {n : g.NT} {p : parseTree n}
     (hp : g.generators.card.succ = p.height) :

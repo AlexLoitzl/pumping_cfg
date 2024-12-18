@@ -108,6 +108,7 @@ lemma yield_length_pos : p.yield.length > 0 := by
     simp only [yield, List.length_append]
     omega
 
+
 lemma subtree_decomposition {n₁ n₂ : g.NT} {p₁ : parseTree n₁} {p₂ : parseTree n₂}
     (hpp : IsSubtreeOf p₂ p₁) :
     ∃ u v, p₁.yield = u ++ p₂.yield ++ v
@@ -178,6 +179,20 @@ lemma strict_subtree_decomposition {n : g.NT} {p₁ : parseTree n} {p₂ : parse
         rw [← List.singleton_append, List.map_append, List.append_assoc, List.append_assoc]
         nth_rewrite 2 [← List.append_assoc]
         exact Derives.trans (Derives.append_left hguv _) (Derives.append_right q₁.yield_derives _)
+
+
+@[refl]
+lemma IsSubtreeOf.refl {n : g.NT} {p : parseTree n} : p.IsSubtreeOf p := by
+  cases p; repeat constructor
+
+lemma IsSubtreeOf.trans {n₁ n₂ n₃ : g.NT} {p₁ : parseTree n₁} {p₂ : parseTree n₂}
+    {p₃ : parseTree n₃} (h₁ : p₁.IsSubtreeOf p₂) (h₂ : p₂.IsSubtreeOf p₃) : p₁.IsSubtreeOf p₃ := by
+  induction h₂ with
+  | leaf_refl => exact h₁
+  | node_refl => exact h₁
+  | left_sub _ _ _ _ _ ih => exact left_sub _ _ _ _ (ih h₁)
+  | right_sub _ _ _ _ _ ih => exact right_sub _ _ _ _ (ih h₁)
+
 end parseTree
 
 lemma Produces.rule {n : g.NT} {u : List (Symbol T g.NT)}
