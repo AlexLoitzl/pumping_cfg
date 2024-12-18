@@ -18,11 +18,13 @@ lemma nTimes_succ_r : l^+^n.succ = l^+^n ++ l := by
 lemma nTimes_map {β : Type _} {f : α → β} : (l.map f)^+^n = (l^+^n).map f := by
   simp [nTimes]
 
+-- not used anywhere, just for fun
 lemma nTimes_add {m : ℕ} : l ^+^ (m + n) = l ^+^ m ++ l ^+^ n := by
   induction n with
   | zero => exact (l ^+^ m).append_nil.symm
   | succ _ ih => rw [Nat.add_succ, nTimes_succ_r, nTimes_succ_r, ih, List.append_assoc]
 
+-- not used anywhere, just for fun
 lemma nTimes_mul {m : ℕ} : l ^+^ m * n = l ^+^ m ^+^ n := by
   induction n with
   | zero => rfl
