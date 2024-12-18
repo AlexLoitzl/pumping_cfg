@@ -75,7 +75,7 @@ lemma cnf_pumping {w : List T} (hwg : w ∈ g.language) (hw : w.length ≥ 2 ^ g
       apply Derives.append_left
       apply p₂.yield_derives
       repeat rw [List.append_assoc]
-      sorry
+      simpa [nTimes] using Derives.refl _
 
 end ChomskyNormalFormGrammar
 

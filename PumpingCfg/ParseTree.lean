@@ -123,45 +123,61 @@ lemma subtree_decomposition {n₁ n₂ : g.NT} {p₁ : parseTree n₁} {p₂ : p
   | left_sub q₁ q₂ p₂ hrn hpq₁ ih =>
     simp [yield]
     obtain ⟨u, v, huv, hguv⟩ := ih
-    rw [huv]
-    use u, v ++ q₂.yield
-    constructor
-    · simp
-    · apply Produces.trans_derives
-      · apply Produces.input_output hrn
-      · simp only [ChomskyNormalFormRule.output]
-        nth_rewrite 3 [← List.singleton_append]
-        rw [← List.singleton_append, List.map_append, ← List.append_assoc, ← List.append_assoc]
-        exact Derives.trans (Derives.append_left q₂.yield_derives _) (Derives.append_right hguv _)
-  | right_sub p₁ _ _ _ _ ih => sorry
-
+    refine ⟨u, v++ q₂.yield, ?_, ?_⟩
+    · simp [huv]
+    · apply (Produces.input_output hrn).trans_derives
+      simp only [ChomskyNormalFormRule.output]
+      nth_rewrite 3 [← List.singleton_append]
+      rw [← List.singleton_append, List.map_append, ← List.append_assoc, ← List.append_assoc]
+      exact Derives.trans (Derives.append_left q₂.yield_derives _) (Derives.append_right hguv _)
+  | right_sub q₁ q₂ p₂ hrn hpq₁ ih =>
+    simp [yield]
+    obtain ⟨u, v, huv, hguv⟩ := ih
+    refine ⟨q₁.yield ++ u, v, ?_, ?_⟩
+    · simp [huv]
+    · apply (Produces.input_output hrn).trans_derives
+      simp only [ChomskyNormalFormRule.output]
+      nth_rewrite 3 [← List.singleton_append]
+      rw [← List.singleton_append, List.map_append, List.append_assoc]
+      nth_rewrite 2 [← List.append_assoc]
+      exact Derives.trans (Derives.append_left hguv _) (Derives.append_right q₁.yield_derives _)
 
 lemma strict_subtree_decomposition {n : g.NT} {p₁ : parseTree n} {p₂ : parseTree n}
     (hpp₁ : IsSubtreeOf p₂ p₁) (hne : p₁ ≠ p₂) :
     ∃ u v, p₁.yield = u ++ p₂.yield ++ v ∧ (u ++ v).length > 0
       ∧ g.Derives [Symbol.nonterminal n]
-        (u.map Symbol.terminal ++ [Symbol.nonterminal n] ++ v.map Symbol.terminal) := by sorry
-  -- cases hpp₁ with
-  -- | leaf_refl | node_refl => contradiction
-  -- | left_sub _ p₃ _ _ hp₂ =>
-  --   obtain ⟨u, v, huv⟩ := subtree_decomposition hp₂
-  --   simp_rw [yield, huv]
-  --   use u, v ++ p₃.yield
-  --   constructor
-  --   · simp
-  --   · have h := p₃.yield_length_pos
-  --     repeat rw [List.length_append]
-  --     omega
-  -- | right_sub p₃ _ _ _ hp₂ =>
-  --   obtain ⟨u, v, huv⟩ := subtree_decomposition hp₂
-  --   simp_rw [yield, huv]
-  --   use p₃.yield ++ u , v
-  --   constructor
-  --   · simp
-  --   · have h := p₃.yield_length_pos
-  --     repeat rw [List.length_append]
-  --     omega
-
+        (u.map Symbol.terminal ++ [Symbol.nonterminal n] ++ v.map Symbol.terminal) := by
+  cases hpp₁ with
+  | leaf_refl | node_refl => contradiction
+  | left_sub q₁ q₂ p₂ hrn hp₂ =>
+    obtain ⟨u, v, huv, hguv⟩ := subtree_decomposition hp₂
+    simp_rw [yield, huv]
+    use u, v ++ q₂.yield
+    constructor
+    · simp
+    · constructor
+      · have h := q₂.yield_length_pos
+        repeat rw [List.length_append]
+        omega
+      · apply (Produces.input_output hrn).trans_derives
+        simp only [ChomskyNormalFormRule.output]
+        rw [← List.singleton_append, List.map_append, ← List.append_assoc]
+        exact Derives.trans (Derives.append_left q₂.yield_derives _) (Derives.append_right hguv _)
+  | right_sub q₁ q₂ p₂ hrn hp₂ =>
+    obtain ⟨u, v, huv, hguv⟩ := subtree_decomposition hp₂
+    simp_rw [yield, huv]
+    use q₁.yield ++ u , v
+    constructor
+    · simp
+    · constructor
+      · have h := q₁.yield_length_pos
+        repeat rw [List.length_append]
+        omega
+      · apply (Produces.input_output hrn).trans_derives
+        simp only [ChomskyNormalFormRule.output]
+        rw [← List.singleton_append, List.map_append, List.append_assoc, List.append_assoc]
+        nth_rewrite 2 [← List.append_assoc]
+        exact Derives.trans (Derives.append_left hguv _) (Derives.append_right q₁.yield_derives _)
 end parseTree
 
 lemma Produces.rule {n : g.NT} {u : List (Symbol T g.NT)}
