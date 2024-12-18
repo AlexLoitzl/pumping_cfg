@@ -161,7 +161,7 @@ lemma subtree_repeat_root_height_ind {n : g.NT} {p : parseTree n}
             constructor
             rfl
           | inr he =>
-            apply IsSubtreeOf.trans;swap
+            apply parseTree.IsSubtreeOf.trans;swap
             exact hps _ he
             constructor
             rfl
@@ -190,11 +190,10 @@ lemma subtree_repeat_root_height_ind {n : g.NT} {p : parseTree n}
             · apply parseTree.IsSubtreeOf.left_sub
               exact ht'
             · intro ht
-              -- TODO This is actually awkward because of the encoded root
-              rw [← ht] at ht'
-              cases ht' with
-              | left_sub => sorry
-              | right_sub => sorry
+              obtain h := parseTree.subtree_height ht'
+              rw [← ht] at h
+              simp [parseTree.height] at h
+              omega
       | inr hcard₂ =>
         -- This entire branch is the same as `inl hcard₁` :/
         have h₂ : ∀ e ∈ insert ⟨n₀, t₁.tree_node t₂ hnc⟩ s, t₂.IsSubtreeOf e.snd := by
@@ -206,7 +205,7 @@ lemma subtree_repeat_root_height_ind {n : g.NT} {p : parseTree n}
             apply parseTree.IsSubtreeOf.right_sub
             rfl
           | inr he =>
-            apply IsSubtreeOf.trans;swap
+            apply parseTree.IsSubtreeOf.trans;swap
             exact hps _ he
             apply parseTree.IsSubtreeOf.right_sub
             rfl
@@ -234,7 +233,11 @@ lemma subtree_repeat_root_height_ind {n : g.NT} {p : parseTree n}
             constructor
             · apply parseTree.IsSubtreeOf.right_sub
               exact ht'
-            · sorry -- should be OK
+            · intro ht
+              obtain h := parseTree.subtree_height ht'
+              rw [← ht] at h
+              simp [parseTree.height] at h
+              omega
 
 lemma subtree_repeat_root_height_aux_aux_aux {n : g.NT} {p : parseTree n}
     (hp : g.generators.card.succ = p.height) :

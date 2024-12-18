@@ -193,6 +193,22 @@ lemma IsSubtreeOf.trans {n₁ n₂ n₃ : g.NT} {p₁ : parseTree n₁} {p₂ : 
   | left_sub _ _ _ _ _ ih => exact left_sub _ _ _ _ (ih h₁)
   | right_sub _ _ _ _ _ ih => exact right_sub _ _ _ _ (ih h₁)
 
+lemma subtree_height {n₁ n₂ : g.NT} {p₁ : parseTree n₁} {p₂ : parseTree n₂} (h : p₁.IsSubtreeOf p₂) :
+    p₁.height ≤ p₂.height := by
+    induction h with
+    | leaf_refl => omega
+    | node_refl => simp [height]
+    | left_sub =>
+      simp [height]
+      apply Nat.le_trans
+      assumption
+      omega
+    | right_sub =>
+      simp [height]
+      apply Nat.le_trans
+      assumption
+      omega
+
 end parseTree
 
 lemma Produces.rule {n : g.NT} {u : List (Symbol T g.NT)}
