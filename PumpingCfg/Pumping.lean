@@ -9,6 +9,7 @@ import Mathlib.Computability.ChomskyNormalForm.Basic
 import Mathlib.Computability.ChomskyNormalForm.Translation
 import PumpingCfg.Utils
 import PumpingCfg.ParseTree
+import Mathlib.Data.Set.Card
 
 universe uT uN
 
@@ -47,13 +48,121 @@ lemma subtree_height_le {n₁ n₂ : g.NT} {p₁ : parseTree n₁} {p₂ : parse
   | left_sub p₁ p₂ p hrn₁ hpp₁ ih => exact Nat.le_add_right_of_le (le_sup_of_le_left ih)
   | right_sub p₁ p₂ p hrn₁ hpp₂ ih => exact Nat.le_add_right_of_le (le_sup_of_le_right ih)
 
-variable [DecidableEq g.NT]
+variable [DecidableEq g.NT] [DecidableEq (Σ _n : g.NT, parseTree _n)]
+/-
+lemma subtree_repeat_root_height_ind {n : g.NT} {p : parseTree n}
+    (s : Set (Σ _n : g.generators, parseTree _n.val)) (hs : ∀ e₁ ∈ s, ∀ e₂ ∈ s, e₁.fst = e₂.fst → e₁ = e₂)
+    (hp : g.generators.card.succ ≤ p.height + s.ncard) (hps : ∀ pₛ ∈ s, p.IsSubtreeOf pₛ.snd) :
+    (∃ n' : g.NT, ∃ p' p'' : parseTree n',
+      p'.IsSubtreeOf p ∧ p''.IsSubtreeOf p' ∧ p' ≠ p'') ∨
+    (∃ t : parseTree n, ⟨⟨n, by sorry⟩, t⟩ ∈ s ∧ p.IsSubtreeOf t) := by
+  induction p generalizing s with
+  | @tree_leaf n t hnt =>
+    simp [parseTree.height] at hp
+    rw [add_comm] at hp
+    rw [Nat.add_le_add_iff_left] at hp
+    -- TODO pidgeonhole applied to `hp` with `p` somehow gives that `hs` implies that `⟨n, _⟩ ∈ s`
+    sorry
+  | @tree_node n₀ c₁ c₂ t₁ t₂ hnc ih₁ ih₂ =>
+    if hh : ∃ t₀ : parseTree n₀, ⟨⟨n₀, by sorry⟩, t₀⟩ ∈ s then
+      right
+      obtain ⟨t₀, ht₀⟩ := hh
+      exact ⟨t₀, ht₀, hps _ ht₀⟩
+    else
+      left
+      have hcard : (s ∪ {⟨⟨n₀, by sorry⟩, .tree_node t₁ t₂ hnc⟩}).ncard = 1 + s.ncard := sorry
+      specialize ih₁ (s ∪ {⟨⟨n₀, by sorry⟩, .tree_node t₁ t₂ hnc⟩})
+      specialize ih₂ (s ∪ {⟨⟨n₀, by sorry⟩, .tree_node t₁ t₂ hnc⟩})
+      simp only [parseTree.height] at hp
+      rw [add_assoc, ←hcard, max_add, le_max_iff] at hp
+      cases hp with
+      | inl hcard₁ =>
+        specialize ih₁ (by sorry) hcard₁
+        sorry
+      | inr hcard₂ =>
+        specialize ih₂ (by sorry) hcard₂
+        sorry
 
 lemma subtree_repeat_root_height_aux_aux_aux {n : g.NT} {p : parseTree n}
     (hp : g.generators.card.succ = p.height) :
     ∃ n' : g.NT, ∃ p' p'' : parseTree n',
       p'.IsSubtreeOf p ∧ p''.IsSubtreeOf p' ∧ p' ≠ p'' := by
-  sorry
+  cases subtree_repeat_root_height_ind ∅ (by simp) (le_of_eq (by simpa using hp)) (by simp) with
+  | inl h => exact h
+  | inr h => simp at h
+-/
+
+lemma subtree_repeat_root_height_ind {n : g.NT} {p : parseTree n}
+    (s : Finset (Σ _n : g.NT, parseTree _n)) (hs : ∀ e₁ ∈ s, ∀ e₂ ∈ s, e₁.fst = e₂.fst → e₁ = e₂)
+    (hp : g.generators.card.succ ≤ p.height + s.card) (hps : ∀ pₛ ∈ s, p.IsSubtreeOf pₛ.snd) :
+    (∃ n' : g.NT, ∃ p' p'' : parseTree n',
+      p'.IsSubtreeOf p ∧ p''.IsSubtreeOf p' ∧ p' ≠ p'') ∨
+    (∃ n₀, ∃ t t' : parseTree n₀, ⟨n₀, t⟩ ∈ s ∧ t'.IsSubtreeOf p) := by
+  induction p generalizing s with
+  | @tree_leaf n t hnt =>
+    simp [parseTree.height] at hp
+    rw [add_comm] at hp
+    rw [Nat.add_le_add_iff_left] at hp
+    -- TODO pidgeonhole applied to `hp` with `p` somehow gives that `hs` implies that `⟨n, _⟩ ∈ s`
+    sorry
+  | @tree_node n₀ c₁ c₂ t₁ t₂ hnc ih₁ ih₂ =>
+    if hh : ∃ t₀ : parseTree n₀, ⟨n₀, t₀⟩ ∈ s then
+      right
+      obtain ⟨t₀, ht₀⟩ := hh
+      refine ⟨_, t₀, .tree_node t₁ t₂ hnc, ht₀, parseTree.IsSubtreeOf.node_refl t₁ t₂ hnc⟩
+    else
+      have hcard : (insert ⟨n₀, .tree_node t₁ t₂ hnc⟩ s).card = 1 + s.card := by
+        have : ⟨n₀, .tree_node t₁ t₂ hnc⟩ ∉ s := by
+          intro cont
+          apply hh
+          exact ⟨_, cont⟩
+        rw [add_comm]
+        exact Finset.card_insert_of_not_mem this
+      specialize ih₁ (insert ⟨n₀, .tree_node t₁ t₂ hnc⟩ s)
+      specialize ih₂ (insert ⟨n₀, .tree_node t₁ t₂ hnc⟩ s)
+      simp only [parseTree.height] at hp
+      rw [add_assoc, ←hcard, max_add, le_max_iff] at hp
+      cases hp with
+      | inl hcard₁ =>
+        cases ih₁ (by sorry) hcard₁ (by sorry) with
+        | inl h =>
+          left
+          obtain ⟨n', p', p'', hp', hp'', hp⟩ := h
+          exact ⟨n', p', p'', parseTree.IsSubtreeOf.left_sub t₁ t₂ p' hnc hp', hp'', hp⟩
+        | inr h =>
+          --right
+          obtain ⟨n₀, t, t', ht, ht'⟩ := h
+          simp at ht
+          cases ht with
+          | inr h =>
+            right
+            use n₀, t, t', h
+            exact parseTree.IsSubtreeOf.left_sub t₁ t₂ t' hnc ht'
+          | inl h =>
+            --aesop
+            simp at h
+            obtain ⟨hn₀, ht⟩ := h
+            left
+            use n₀, t₁.tree_node t₂ (hn₀ ▸ hnc), t'
+            constructor
+            · subst hn₀
+              exact parseTree.IsSubtreeOf.node_refl t₁ t₂ (Eq.symm (Eq.refl n₀) ▸ hnc)
+            constructor
+            · apply parseTree.IsSubtreeOf.left_sub
+              exact ht'
+            · sorry -- should be OK
+      | inr hcard₂ =>
+        cases ih₂ (by sorry) hcard₂ (by sorry) with
+        | inl h => sorry
+        | inr h => sorry
+
+lemma subtree_repeat_root_height_aux_aux_aux {n : g.NT} {p : parseTree n}
+    (hp : g.generators.card.succ = p.height) :
+    ∃ n' : g.NT, ∃ p' p'' : parseTree n',
+      p'.IsSubtreeOf p ∧ p''.IsSubtreeOf p' ∧ p' ≠ p'' := by
+  cases subtree_repeat_root_height_ind ∅ (by simp) (le_of_eq (by simpa using hp)) (by simp) with
+  | inl h => exact h
+  | inr h => simp at h
 
 lemma subtree_repeat_root_height_aux_aux {n : g.NT} {p : parseTree n}
     (hgp : g.generators.card.succ = p.height) :
