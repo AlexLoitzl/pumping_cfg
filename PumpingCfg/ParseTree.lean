@@ -55,7 +55,7 @@ def height {n : g.NT} (p : parseTree n) : ℕ :=
   | tree_node t₁ t₂ _ => max (height t₁) (height t₂) + 1
 
 /-- `IsSubTreeOf p₁ p₂` encodes that `p₁` is a subtree of `p₂` -/
-inductive IsSubtreeOf : {n₁ : g.NT} →  {n₂ : g.NT} → parseTree n₁ → parseTree n₂ → Prop where
+inductive IsSubtreeOf : {n₁ : g.NT} → {n₂ : g.NT} → parseTree n₁ → parseTree n₂ → Prop where
   | leaf_refl {t : T} {n : g.NT} (hrn : (ChomskyNormalFormRule.leaf n t) ∈ g.rules) :
       IsSubtreeOf (tree_leaf t hrn) (tree_leaf t hrn)
   | node_refl {nl nr n : g.NT} (p₁ : parseTree nl) (p₂ : parseTree nr)
@@ -82,7 +82,7 @@ lemma yield_derives : g.Derives [Symbol.nonterminal n] (p.yield.map Symbol.termi
 
 lemma height_pos : p.height > 0 := by cases p <;> simp [height]
 
-lemma yield_length_le_two_pow_height : p.yield.length ≤ 2^(p.height - 1) := by
+lemma yield_length_le_two_pow_height : p.yield.length ≤ 2 ^ (p.height - 1) := by
   induction p with
   | tree_leaf => simp [yield, height]
   | tree_node t₁ t₂ hpg ih₁ ih₂=>
