@@ -4,13 +4,10 @@ Released under Apache 2.0 license as described in the file LICENSE.
 Authors: Alexander Loitzl, Martin Dvorak
 -/
 
-import Mathlib.Computability.ContextFreeGrammar
-import Mathlib.Computability.ChomskyNormalForm.Basic
 import Mathlib.Computability.ChomskyNormalForm.Translation
 import PumpingCfg.Utils
 import PumpingCfg.ParseTree
 import Mathlib.Data.Set.Card
-import Mathlib.Combinatorics.Pigeonhole
 
 theorem pidgeonhole {α β : Type*} {A : Finset α} {B : Finset β} {f : A → B} (hf : f.Injective) : A.card ≤ B.card := by
   if emptiness : A = ∅ then
@@ -42,29 +39,23 @@ noncomputable def generators (g : ChomskyNormalFormGrammar.{uN, uT} T) [Decidabl
 variable {g : ChomskyNormalFormGrammar.{uN, uT} T}
 
 lemma pumping_string {u v : List (Symbol T g.NT)} {n : g.NT}
-    (h : g.Derives [Symbol.nonterminal n] (u ++ [Symbol.nonterminal n] ++ v)) (i : ℕ):
+    (hg : g.Derives [Symbol.nonterminal n] (u ++ [Symbol.nonterminal n] ++ v)) (i : ℕ):
     g.Derives [Symbol.nonterminal n] (u^+^i ++ [Symbol.nonterminal n] ++ v^+^i) := by
   induction i with
   | zero =>
     simpa using Derives.refl [Symbol.nonterminal n]
   | succ n ih =>
-    apply Derives.trans ih
-    apply Derives.trans
-    apply Derives.append_right
-    apply Derives.append_left
-    exact h
-    repeat rw [List.append_assoc]
-    rw [← nTimes_succ_l]
-    repeat rw [← List.append_assoc]
-    rw [← nTimes_succ_r]
+    apply ih.trans
+    apply ((hg.append_left _).append_right _).trans
+    rw [List.append_assoc, List.append_assoc, ← nTimes_succ_l, ← List.append_assoc, ← List.append_assoc, ← nTimes_succ_r]
 
 lemma subtree_height_le {n₁ n₂ : g.NT} {p₁ : parseTree n₁} {p₂ : parseTree n₂} (hpp : p₂.IsSubtreeOf p₁) :
     p₂.height ≤ p₁.height := by
   induction hpp with
   | leaf_refl hrn => rfl
   | node_refl p₁ p₂ hrn => rfl
-  | left_sub p₁ p₂ p hrn₁ hpp₁ ih => exact Nat.le_add_right_of_le (le_sup_of_le_left ih)
-  | right_sub p₁ p₂ p hrn₁ hpp₂ ih => exact Nat.le_add_right_of_le (le_sup_of_le_right ih)
+  | left_sub _ _ _ _ _ ih => exact Nat.le_add_right_of_le (le_sup_of_le_left ih)
+  | right_sub _ _ _ _ _ ih => exact Nat.le_add_right_of_le (le_sup_of_le_right ih)
 
 variable [DecidableEq g.NT]
 
@@ -75,14 +66,7 @@ lemma input_mem_generators {r : ChomskyNormalFormRule T g.NT} (hrg : r ∈ g.rul
   revert hrg
   induction g.rules.toList with
   | nil => simp
-  | cons _ _ ih =>
-    simp only [List.mem_toFinset, List.mem_map, List.mem_cons, List.map_cons, List.toFinset_cons,
-      Finset.mem_insert] at ih ⊢
-    rintro (c1 | c2)
-    · left
-      rw [c1]
-    · right
-      exact ih c2
+  | cons _ _ ih => aesop
 
 variable [DecidableEq (Σ _n : g.NT, parseTree _n)]
 
@@ -93,28 +77,23 @@ lemma subtree_repeat_root_height_ind {n : g.NT} {p : parseTree n}
       p'.IsSubtreeOf p ∧ p''.IsSubtreeOf p' ∧ p' ≠ p'') ∨
     (∃ n₀, ∃ t t' : parseTree n₀, ⟨n₀, t⟩ ∈ s ∧ t'.IsSubtreeOf p) := by
   induction p generalizing s with
-  | @tree_leaf n t hnt =>
-    simp [parseTree.height] at hp
-    rw [add_comm] at hp
-    rw [Nat.add_le_add_iff_left] at hp
+  | @leaf n t hnt =>
+    rw [Nat.succ_eq_add_one, parseTree.height, add_comm, Nat.add_le_add_iff_left] at hp
     by_contra! was_goal
-    have hcard : g.generators.card < (insert ⟨n, .tree_leaf t hnt⟩ s).card := by
-      have : (insert ⟨n, .tree_leaf t hnt⟩ s).card = s.card + 1 := by
-        apply Finset.card_insert_of_not_mem
-        intro contr
-        exact was_goal.right n (.tree_leaf t hnt) (.tree_leaf t hnt) contr (parseTree.IsSubtreeOf.leaf_refl hnt)
-      omega
-    have pidgeon' : ¬(∃ f : { q // q ∈ (insert ⟨n, .tree_leaf t hnt⟩ s) } → g.generators, f.Injective) := by
+    have pidgeon : ¬(∃ f : { q // q ∈ (insert ⟨n, parseTree.leaf t hnt⟩ s) } → g.generators, f.Injective) := by
       push_neg
       intro f hf
-      exact (hcard.trans_le (pidgeonhole hf)).false
-    apply pidgeon'
+      have := pidgeonhole hf
+      have : (insert ⟨n, parseTree.leaf t hnt⟩ s).card = s.card + 1 :=
+        Finset.card_insert_of_not_mem (was_goal.right n (.leaf t hnt) (.leaf t hnt) · (parseTree.IsSubtreeOf.leaf_refl hnt))
+      omega
+    apply pidgeon
     use fun z =>
       ⟨z.val.fst, by
         cases z.val.snd with
-        | tree_leaf _ hnt =>
+        | leaf _ hnt =>
           exact input_mem_generators hnt
-        | tree_node t₁ t₂ hnc =>
+        | node t₁ t₂ hnc =>
           exact input_mem_generators hnc
       ⟩
     intro x y hxy
@@ -123,46 +102,43 @@ lemma subtree_repeat_root_height_ind {n : g.NT} {p : parseTree n}
     rw [Finset.mem_insert] at hx hy
     cases hx with
     | inl hxt =>
-      simp [hxt] at hxy
+      simp only [hxt, Subtype.mk.injEq] at hxy
       cases hy with
       | inl hyt =>
         apply Subtype.eq
         rw [hxt, hyt]
       | inr hys =>
         exfalso
-        exact was_goal.right n (hxy ▸ y.val.snd) (parseTree.tree_leaf t hnt) (by convert hys <;> aesop)
+        exact was_goal.right n (hxy ▸ y.val.snd) (parseTree.leaf t hnt) (by convert hys; aesop)
           (parseTree.IsSubtreeOf.leaf_refl hnt)
     | inr hxs =>
       cases hy with
       | inl hyt =>
-        simp [hyt] at hxy
+        simp only [hyt, Subtype.mk.injEq] at hxy
         exfalso
-        exact was_goal.right n (hxy ▸ x.val.snd) (parseTree.tree_leaf t hnt) (by convert hxs <;> aesop)
+        exact was_goal.right n (hxy ▸ x.val.snd) (parseTree.leaf t hnt) (by convert hxs <;> aesop)
           (parseTree.IsSubtreeOf.leaf_refl hnt)
       | inr hys =>
         exact Subtype.eq (hs x hxs y hys (by simp_all))
-  | @tree_node n₀ c₁ c₂ t₁ t₂ hnc ih₁ ih₂ =>
-    if hh : ∃ t₀ : parseTree n₀, ⟨n₀, t₀⟩ ∈ s then
+  | @node n₀ _ _ t₁ t₂ hnc ih₁ ih₂ =>
+    if hn₀ : ∃ t₀ : parseTree n₀, ⟨n₀, t₀⟩ ∈ s then
       right
-      obtain ⟨t₀, ht₀⟩ := hh
-      refine ⟨_, t₀, .tree_node t₁ t₂ hnc, ht₀, parseTree.IsSubtreeOf.node_refl t₁ t₂ hnc⟩
+      obtain ⟨t₀, ht₀⟩ := hn₀
+      refine ⟨_, t₀, parseTree.node t₁ t₂ hnc, ht₀, parseTree.IsSubtreeOf.node_refl t₁ t₂ hnc⟩
     else
-      have hcard : (insert ⟨n₀, .tree_node t₁ t₂ hnc⟩ s).card = 1 + s.card := by
-        have : ⟨n₀, .tree_node t₁ t₂ hnc⟩ ∉ s := by
-          intro cont
-          apply hh
-          exact ⟨_, cont⟩
+      have hcard : (insert ⟨n₀, parseTree.node t₁ t₂ hnc⟩ s).card = 1 + s.card := by
         rw [add_comm]
-        exact Finset.card_insert_of_not_mem this
-      specialize ih₁ (insert ⟨n₀, .tree_node t₁ t₂ hnc⟩ s)
-      specialize ih₂ (insert ⟨n₀, .tree_node t₁ t₂ hnc⟩ s)
+        exact Finset.card_insert_of_not_mem (hn₀ ⟨_, ·⟩)
+      specialize ih₁ (insert ⟨n₀, parseTree.node t₁ t₂ hnc⟩ s)
+      specialize ih₂ (insert ⟨n₀, parseTree.node t₁ t₂ hnc⟩ s)
       simp only [parseTree.height] at hp
       rw [add_assoc, ←hcard, max_add, le_max_iff] at hp
-      have hmem : ∀ e₁ ∈ insert ⟨n₀, t₁.tree_node t₂ hnc⟩ s,
-                    ∀ e₂ ∈ insert ⟨n₀, t₁.tree_node t₂ hnc⟩ s,
-                      e₁.fst = e₂.fst → e₁ = e₂ := by
-        intros e₁ he₁ e₂ he₂ hee
-        simp at he₁ he₂
+      have hes :
+        ∀ e₁ ∈ insert ⟨n₀, t₁.node t₂ hnc⟩ s,
+        ∀ e₂ ∈ insert ⟨n₀, t₁.node t₂ hnc⟩ s,
+          e₁.fst = e₂.fst → e₁ = e₂ := by
+        intro e₁ he₁ e₂ he₂ hee
+        rw [Finset.mem_insert] at he₁ he₂
         cases he₁ with
         | inl he₁ =>
           cases he₂ with
@@ -170,118 +146,90 @@ lemma subtree_repeat_root_height_ind {n : g.NT} {p : parseTree n}
             rw [he₁, he₂]
           | inr he₂ =>
             exfalso
-            apply hh
+            apply hn₀
             rw [he₁] at hee
-            simp at hee
+            dsimp only at hee
             rw [hee]
             use e₂.snd
         | inr he₁ =>
           cases he₂ with
           | inl he₂ =>
             exfalso
-            apply hh
+            apply hn₀
             rw [he₂] at hee
-            simp at hee
+            dsimp only at hee
             rw [←hee]
             use e₁.snd
           | inr he₂ =>
             exact hs _ he₁ _ he₂ hee
       cases hp with
       | inl hcard₁ =>
-        have h₂ : ∀ e ∈ insert ⟨n₀, t₁.tree_node t₂ hnc⟩ s, t₁.IsSubtreeOf e.snd := by
-          intros e he
-          simp at he
+        have hst₁ : ∀ e ∈ insert ⟨n₀, t₁.node t₂ hnc⟩ s, t₁.IsSubtreeOf e.snd := by
+          intro e he
+          rw [Finset.mem_insert] at he
           cases he with
-          | inl he =>
-            rw [he]
-            constructor
-            rfl
-          | inr he =>
-            apply parseTree.IsSubtreeOf.trans;swap
-            exact hps _ he
-            constructor
-            rfl
-        cases ih₁ hmem hcard₁ h₂ with
-        | inl h =>
+          | inl he => exact he ▸ parseTree.IsSubtreeOf.left_sub t₁ t₂ t₁ hnc parseTree.IsSubtreeOf.refl
+          | inr he => exact (parseTree.IsSubtreeOf.left_sub t₁ t₂ t₁ hnc parseTree.IsSubtreeOf.refl).trans (hps _ he)
+        cases ih₁ hes hcard₁ hst₁ with
+        | inl hp =>
           left
-          obtain ⟨n', p', p'', hp', hp'', hp⟩ := h
+          obtain ⟨n', p', p'', hp', hp'', hp⟩ := hp
           exact ⟨n', p', p'', parseTree.IsSubtreeOf.left_sub t₁ t₂ p' hnc hp', hp'', hp⟩
-        | inr h =>
-          obtain ⟨n₀, t, t', ht, ht'⟩ := h
-          simp at ht
+        | inr ht =>
+          obtain ⟨n₀, t, t', ht, ht'⟩ := ht
+          rw [Finset.mem_insert] at ht
           cases ht with
-          | inr h =>
+          | inr hts =>
             right
-            use n₀, t, t', h
-            exact parseTree.IsSubtreeOf.left_sub t₁ t₂ t' hnc ht'
-          | inl h =>
-            simp at h
-            obtain ⟨hn₀, ht⟩ := h
+            exact ⟨n₀, t, t', hts, parseTree.IsSubtreeOf.left_sub t₁ t₂ t' hnc ht'⟩
+          | inl httt =>
+            rw [Sigma.mk.inj_iff] at httt
+            obtain ⟨hn₀, ht⟩ := httt
             left
-            use n₀, t₁.tree_node t₂ (hn₀ ▸ hnc), t'
-            constructor
-            · subst hn₀
-              exact parseTree.IsSubtreeOf.node_refl t₁ t₂ (Eq.symm (Eq.refl n₀) ▸ hnc)
-            constructor
-            · apply parseTree.IsSubtreeOf.left_sub
-              exact ht'
-            · intro ht
-              obtain h := parseTree.subtree_height ht'
-              rw [← ht] at h
-              simp [parseTree.height] at h
-              omega
+            use n₀, t₁.node t₂ (hn₀ ▸ hnc), t', hn₀ ▸ parseTree.IsSubtreeOf.node_refl t₁ t₂ hnc, parseTree.IsSubtreeOf.left_sub _ _ _ _ ht'
+            intro ht
+            obtain htt' := parseTree.subtree_height ht'
+            rw [← ht] at htt'
+            simp only [parseTree.height] at htt'
+            omega
       | inr hcard₂ =>
-        -- This entire branch is the same as `inl hcard₁` :/
-        have h₂ : ∀ e ∈ insert ⟨n₀, t₁.tree_node t₂ hnc⟩ s, t₂.IsSubtreeOf e.snd := by
-          intros e he
-          simp at he
+        -- This entire branch is the same as `inl hcard₁` except for `left_sub`/`right_sub` and `t₁`/`t₂` :/
+        have hst₂ : ∀ e ∈ insert ⟨n₀, t₁.node t₂ hnc⟩ s, t₂.IsSubtreeOf e.snd := by
+          intro e he
+          rw [Finset.mem_insert] at he
           cases he with
-          | inl he =>
-            rw [he]
-            apply parseTree.IsSubtreeOf.right_sub
-            rfl
-          | inr he =>
-            apply parseTree.IsSubtreeOf.trans;swap
-            exact hps _ he
-            apply parseTree.IsSubtreeOf.right_sub
-            rfl
-        cases ih₂ hmem hcard₂ h₂ with
-        | inl h =>
+          | inl he => exact he ▸ parseTree.IsSubtreeOf.right_sub t₁ t₂ t₂ hnc parseTree.IsSubtreeOf.refl
+          | inr he => exact (parseTree.IsSubtreeOf.right_sub t₁ t₂ t₂ hnc parseTree.IsSubtreeOf.refl).trans (hps _ he)
+        cases ih₂ hes hcard₂ hst₂ with
+        | inl hp =>
           left
-          obtain ⟨n', p', p'', hp', hp'', hp⟩ := h
+          obtain ⟨n', p', p'', hp', hp'', hp⟩ := hp
           exact ⟨n', p', p'', parseTree.IsSubtreeOf.right_sub t₁ t₂ p' hnc hp', hp'', hp⟩
-        | inr h =>
-          obtain ⟨n₀, t, t', ht, ht'⟩ := h
-          simp at ht
+        | inr ht =>
+          obtain ⟨n₀, t, t', ht, ht'⟩ := ht
+          rw [Finset.mem_insert] at ht
           cases ht with
-          | inr h =>
+          | inr hts =>
             right
-            use n₀, t, t', h
-            exact parseTree.IsSubtreeOf.right_sub t₁ t₂ t' hnc ht'
-          | inl h =>
-            simp at h
-            obtain ⟨hn₀, ht⟩ := h
+            exact ⟨n₀, t, t', hts, parseTree.IsSubtreeOf.right_sub t₁ t₂ t' hnc ht'⟩
+          | inl httt =>
+            rw [Sigma.mk.inj_iff] at httt
+            obtain ⟨hn₀, ht⟩ := httt
             left
-            use n₀, t₁.tree_node t₂ (hn₀ ▸ hnc), t'
-            constructor
-            · subst hn₀
-              exact parseTree.IsSubtreeOf.node_refl t₁ t₂ (Eq.symm (Eq.refl n₀) ▸ hnc)
-            constructor
-            · apply parseTree.IsSubtreeOf.right_sub
-              exact ht'
-            · intro ht
-              obtain h := parseTree.subtree_height ht'
-              rw [← ht] at h
-              simp [parseTree.height] at h
-              omega
+            use n₀, t₁.node t₂ (hn₀ ▸ hnc), t', hn₀ ▸ parseTree.IsSubtreeOf.node_refl t₁ t₂ hnc, parseTree.IsSubtreeOf.right_sub _ _ _ _ ht'
+            intro ht
+            obtain htt' := parseTree.subtree_height ht'
+            rw [← ht] at htt'
+            simp only [parseTree.height] at htt'
+            omega
 
 lemma subtree_repeat_root_height_aux_aux_aux {n : g.NT} {p : parseTree n}
     (hp : g.generators.card.succ = p.height) :
     ∃ n' : g.NT, ∃ p' p'' : parseTree n',
       p'.IsSubtreeOf p ∧ p''.IsSubtreeOf p' ∧ p' ≠ p'' := by
   cases subtree_repeat_root_height_ind ∅ (by simp) (le_of_eq (by simpa using hp)) (by simp) with
-  | inl h => exact h
-  | inr h => simp at h
+  | inl hp' => exact hp'
+  | inr hp' => simp at hp'
 
 lemma subtree_repeat_root_height_aux_aux {n : g.NT} {p : parseTree n}
     (hgp : g.generators.card.succ = p.height) :
@@ -295,7 +243,7 @@ lemma subtree_repeat_root_height_aux {n : g.NT} {p : parseTree n}
     ∃ n' : g.NT, ∃ p' p'' : parseTree n',
       p'.IsSubtreeOf p ∧ p''.IsSubtreeOf p' ∧ p'.height ≤ g.generators.card.succ ∧ p' ≠ p'' := by
   induction p with
-  | @tree_leaf n t =>
+  | @leaf n t =>
     exfalso
     have hn : n ∈ g.generators := by
       simp [generators]
@@ -303,7 +251,7 @@ lemma subtree_repeat_root_height_aux {n : g.NT} {p : parseTree n}
     simp [parseTree.height] at hgp
     rw [hgp] at hn
     simp at hn
-  | tree_node t₁ t₂ hnc ih₁ ih₂ =>
+  | node t₁ t₂ hnc ih₁ ih₂ =>
     rw [Nat.le_iff_lt_or_eq] at hgp
     cases hgp with
     | inr hp => exact subtree_repeat_root_height_aux_aux hp
@@ -326,7 +274,7 @@ lemma subtree_repeat_root_height {n : g.NT} {p : parseTree n}
   have hp2 := hp.trans p.yield_length_le_two_pow_height
   rw [Nat.pow_le_pow_iff_right] at hp2 <;> omega
 
-lemma cnf_pumping {w : List T} (hwg : w ∈ g.language) (hw : w.length ≥ 2 ^ g.generators.card) :
+lemma pumping {w : List T} (hwg : w ∈ g.language) (hw : w.length ≥ 2 ^ g.generators.card) :
     ∃ u v x y z : List T,
       w = u ++ v ++ x ++ y ++ z ∧
       (v ++ y).length > 0       ∧
@@ -335,27 +283,21 @@ lemma cnf_pumping {w : List T} (hwg : w ∈ g.language) (hw : w.length ≥ 2 ^ g
   obtain ⟨p, rfl⟩ := hwg.yield
   obtain ⟨n, p₁, p₂, hp₁, hp₂, hpg, hpp⟩ := subtree_repeat_root_height hw
   obtain ⟨v, y, hpvy, hvy, hgpvy⟩ := parseTree.strict_subtree_decomposition hp₂ hpp
-  obtain ⟨u, z, hpuz, hgpuz⟩ := parseTree.subtree_decomposition hp₁
+  obtain ⟨u, z, hpuz, hguz⟩ := parseTree.subtree_decomposition hp₁
   refine ⟨u, v, p₂.yield, y, z, ?_, hvy, ?_, ?_⟩
   · simp_rw [hpuz, hpvy, List.append_assoc]
   · rw [← hpvy]
     apply le_trans p₁.yield_length_le_two_pow_height
     apply Nat.pow_le_pow_of_le_right <;> omega
   · intro k
-    apply Derives.trans hgpuz
-    · repeat rw [List.map_append]
-      apply Derives.append_right
-      repeat rw [List.append_assoc]
-      apply Derives.append_left
-      have hpump := pumping_string hgpvy k
-      apply Derives.trans
-      exact hpump
-      apply Derives.trans
-      apply Derives.append_right
-      apply Derives.append_left
-      apply p₂.yield_derives
-      repeat rw [List.append_assoc]
-      simpa [nTimes] using Derives.refl _
+    apply hguz.trans
+    repeat rw [List.map_append]
+    apply Derives.append_right
+    repeat rw [List.append_assoc]
+    apply Derives.append_left
+    apply (pumping_string hgpvy k).trans
+    apply ((Derives.append_left p₂.yield_derives _).append_right _).trans
+    simpa [nTimes] using Derives.refl _
 
 end ChomskyNormalFormGrammar
 
@@ -368,16 +310,10 @@ theorem Language.IsContextFree.pumping {L : Language T} (hL : L.IsContextFree) :
   obtain ⟨g, rfl⟩ := hL
   classical
   use 2 ^ g.toCNF.generators.card
-  intro w hwL hwg
+  intro w hwg hw2
   by_cases hw : w = []
-  · simp [hw] at hwg
-  · have h : w ∈ g.language \ {[]} := ⟨hwL, hw⟩
-    rw [ContextFreeGrammar.toCNF_correct] at h
-    obtain ⟨u, v, x, y, z, hw, hvy, hvxy, hL⟩ := ChomskyNormalFormGrammar.cnf_pumping h hwg
-    refine ⟨u, v, x, y, z, hw, hvy, hvxy, ?_⟩
-    intro i
-    apply Set.diff_subset
-    rw [ContextFreeGrammar.toCNF_correct]
-    exact hL i
+  · simp [hw] at hw2
+  · obtain ⟨u, v, x, y, z, hw, hvy, hvxy, hL⟩ := g.toCNF.pumping (g.toCNF_correct ▸ ⟨hwg, hw⟩) hw2
+    exact ⟨u, v, x, y, z, hw, hvy, hvxy, fun i => Set.diff_subset (g.toCNF_correct ▸ hL i)⟩
 
 #print axioms Language.IsContextFree.pumping
