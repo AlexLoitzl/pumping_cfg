@@ -10,6 +10,24 @@ import Mathlib.Computability.ChomskyNormalForm.Translation
 import PumpingCfg.Utils
 import PumpingCfg.ParseTree
 import Mathlib.Data.Set.Card
+import Mathlib.Combinatorics.Pigeonhole
+
+theorem pidgeonhole {α β : Type*} {A : Finset α} {B : Finset β} {f : A → B} (hf : f.Injective) : A.card ≤ B.card := by
+  if emptiness : A = ∅ then
+    simp_all
+  else
+    obtain ⟨a₀, ha₀⟩ := Finset.nonempty_iff_ne_empty.mpr emptiness
+    clear emptiness
+    classical
+    let f' : α → β := fun a => f (if ha : a ∈ A then ⟨a, ha⟩ else ⟨a₀, ha₀⟩)
+    apply Finset.card_le_card_of_injOn f'
+    · aesop
+    · intro a₁ ha₁ a₂ ha₂ haa
+      have haa' : f ⟨a₁, ha₁⟩ = f ⟨a₂, ha₂⟩ := by
+        rw [Finset.mem_coe] at ha₁ ha₂
+        simp only [f', ha₁, ha₂] at haa
+        exact Subtype.eq haa
+      simpa using hf haa'
 
 universe uT uN
 
@@ -48,49 +66,25 @@ lemma subtree_height_le {n₁ n₂ : g.NT} {p₁ : parseTree n₁} {p₂ : parse
   | left_sub p₁ p₂ p hrn₁ hpp₁ ih => exact Nat.le_add_right_of_le (le_sup_of_le_left ih)
   | right_sub p₁ p₂ p hrn₁ hpp₂ ih => exact Nat.le_add_right_of_le (le_sup_of_le_right ih)
 
-variable [DecidableEq g.NT] [DecidableEq (Σ _n : g.NT, parseTree _n)]
-/-
-lemma subtree_repeat_root_height_ind {n : g.NT} {p : parseTree n}
-    (s : Set (Σ _n : g.generators, parseTree _n.val)) (hs : ∀ e₁ ∈ s, ∀ e₂ ∈ s, e₁.fst = e₂.fst → e₁ = e₂)
-    (hp : g.generators.card.succ ≤ p.height + s.ncard) (hps : ∀ pₛ ∈ s, p.IsSubtreeOf pₛ.snd) :
-    (∃ n' : g.NT, ∃ p' p'' : parseTree n',
-      p'.IsSubtreeOf p ∧ p''.IsSubtreeOf p' ∧ p' ≠ p'') ∨
-    (∃ t : parseTree n, ⟨⟨n, by sorry⟩, t⟩ ∈ s ∧ p.IsSubtreeOf t) := by
-  induction p generalizing s with
-  | @tree_leaf n t hnt =>
-    simp [parseTree.height] at hp
-    rw [add_comm] at hp
-    rw [Nat.add_le_add_iff_left] at hp
-    -- TODO pidgeonhole applied to `hp` with `p` somehow gives that `hs` implies that `⟨n, _⟩ ∈ s`
-    sorry
-  | @tree_node n₀ c₁ c₂ t₁ t₂ hnc ih₁ ih₂ =>
-    if hh : ∃ t₀ : parseTree n₀, ⟨⟨n₀, by sorry⟩, t₀⟩ ∈ s then
-      right
-      obtain ⟨t₀, ht₀⟩ := hh
-      exact ⟨t₀, ht₀, hps _ ht₀⟩
-    else
-      left
-      have hcard : (s ∪ {⟨⟨n₀, by sorry⟩, .tree_node t₁ t₂ hnc⟩}).ncard = 1 + s.ncard := sorry
-      specialize ih₁ (s ∪ {⟨⟨n₀, by sorry⟩, .tree_node t₁ t₂ hnc⟩})
-      specialize ih₂ (s ∪ {⟨⟨n₀, by sorry⟩, .tree_node t₁ t₂ hnc⟩})
-      simp only [parseTree.height] at hp
-      rw [add_assoc, ←hcard, max_add, le_max_iff] at hp
-      cases hp with
-      | inl hcard₁ =>
-        specialize ih₁ (by sorry) hcard₁
-        sorry
-      | inr hcard₂ =>
-        specialize ih₂ (by sorry) hcard₂
-        sorry
+variable [DecidableEq g.NT]
 
-lemma subtree_repeat_root_height_aux_aux_aux {n : g.NT} {p : parseTree n}
-    (hp : g.generators.card.succ = p.height) :
-    ∃ n' : g.NT, ∃ p' p'' : parseTree n',
-      p'.IsSubtreeOf p ∧ p''.IsSubtreeOf p' ∧ p' ≠ p'' := by
-  cases subtree_repeat_root_height_ind ∅ (by simp) (le_of_eq (by simpa using hp)) (by simp) with
-  | inl h => exact h
-  | inr h => simp at h
--/
+lemma input_mem_generators {r : ChomskyNormalFormRule T g.NT} (hrg : r ∈ g.rules) :
+    r.input ∈ g.generators := by
+  unfold generators
+  rw [← Finset.mem_toList] at hrg
+  revert hrg
+  induction g.rules.toList with
+  | nil => simp
+  | cons _ _ ih =>
+    simp only [List.mem_toFinset, List.mem_map, List.mem_cons, List.map_cons, List.toFinset_cons,
+      Finset.mem_insert] at ih ⊢
+    rintro (c1 | c2)
+    · left
+      rw [c1]
+    · right
+      exact ih c2
+
+variable [DecidableEq (Σ _n : g.NT, parseTree _n)]
 
 lemma subtree_repeat_root_height_ind {n : g.NT} {p : parseTree n}
     (s : Finset (Σ _n : g.NT, parseTree _n)) (hs : ∀ e₁ ∈ s, ∀ e₂ ∈ s, e₁.fst = e₂.fst → e₁ = e₂)
@@ -103,8 +97,50 @@ lemma subtree_repeat_root_height_ind {n : g.NT} {p : parseTree n}
     simp [parseTree.height] at hp
     rw [add_comm] at hp
     rw [Nat.add_le_add_iff_left] at hp
-    -- TODO pidgeonhole applied to `hp` with `p` somehow gives that `hs` implies that `⟨n, _⟩ ∈ s`
-    sorry
+    by_contra! was_goal
+    have hcard : g.generators.card < (insert ⟨n, .tree_leaf t hnt⟩ s).card := by
+      have : (insert ⟨n, .tree_leaf t hnt⟩ s).card = s.card + 1 := by
+        apply Finset.card_insert_of_not_mem
+        intro contr
+        exact was_goal.right n (.tree_leaf t hnt) (.tree_leaf t hnt) contr (parseTree.IsSubtreeOf.leaf_refl hnt)
+      omega
+    have pidgeon' : ¬(∃ f : { q // q ∈ (insert ⟨n, .tree_leaf t hnt⟩ s) } → g.generators, f.Injective) := by
+      push_neg
+      intro f hf
+      exact (hcard.trans_le (pidgeonhole hf)).false
+    apply pidgeon'
+    use fun z =>
+      ⟨z.val.fst, by
+        cases z.val.snd with
+        | tree_leaf _ hnt =>
+          exact input_mem_generators hnt
+        | tree_node t₁ t₂ hnc =>
+          exact input_mem_generators hnc
+      ⟩
+    intro x y hxy
+    have hx := x.property
+    have hy := y.property
+    rw [Finset.mem_insert] at hx hy
+    cases hx with
+    | inl hxt =>
+      simp [hxt] at hxy
+      cases hy with
+      | inl hyt =>
+        apply Subtype.eq
+        rw [hxt, hyt]
+      | inr hys =>
+        exfalso
+        exact was_goal.right n (hxy ▸ y.val.snd) (parseTree.tree_leaf t hnt) (by convert hys <;> aesop)
+          (parseTree.IsSubtreeOf.leaf_refl hnt)
+    | inr hxs =>
+      cases hy with
+      | inl hyt =>
+        simp [hyt] at hxy
+        exfalso
+        exact was_goal.right n (hxy ▸ x.val.snd) (parseTree.tree_leaf t hnt) (by convert hxs <;> aesop)
+          (parseTree.IsSubtreeOf.leaf_refl hnt)
+      | inr hys =>
+        exact Subtype.eq (hs x hxs y hys (by simp_all))
   | @tree_node n₀ c₁ c₂ t₁ t₂ hnc ih₁ ih₂ =>
     if hh : ∃ t₀ : parseTree n₀, ⟨n₀, t₀⟩ ∈ s then
       right
@@ -323,7 +359,7 @@ lemma cnf_pumping {w : List T} (hwg : w ∈ g.language) (hw : w.length ≥ 2 ^ g
 
 end ChomskyNormalFormGrammar
 
-theorem pumping_lemma {L : Language T} (hL : L.IsContextFree) :
+theorem Language.IsContextFree.pumping {L : Language T} (hL : L.IsContextFree) :
     ∃ p : ℕ, ∀ w ∈ L, w.length ≥ p → ∃ u v x y z : List T,
       w = u ++ v ++ x ++ y ++ z ∧
       (v ++ y).length > 0       ∧
@@ -343,3 +379,5 @@ theorem pumping_lemma {L : Language T} (hL : L.IsContextFree) :
     apply Set.diff_subset
     rw [ContextFreeGrammar.toCNF_correct]
     exact hL i
+
+#print axioms Language.IsContextFree.pumping
