@@ -15,23 +15,29 @@ namespace ChomskyNormalFormGrammar
 
 variable {g : ChomskyNormalFormGrammar.{uN,uT} T}
 
--------------------------------------------
------------------- STUFF ------------------
--------------------------------------------
+-- TODO to be included in file: ChomskyNormalformgrammar
 
+section parseTree
+
+/-- A `parseTree n` encodes a `ChomskyNormalFormGrammar` derivation of a word from a nonterminal
+`n` -/
 inductive parseTree : g.NT → Type _ where
+  /-- Single rule application transforming a nonterminal into a terminal. -/
   | leaf {n : g.NT} (t : T)
       (hnt : (ChomskyNormalFormRule.leaf n t) ∈ g.rules) : parseTree n
+  /-- Application of rule of the second kind. -/
   | node {n c₁ c₂ : g.NT} (t₁ : parseTree c₁) (t₂ : parseTree c₂)
       (hnc : (ChomskyNormalFormRule.node n c₁ c₂) ∈ g.rules) : parseTree n
 
 namespace parseTree
 
+/-- The `yield` of a tree is the word the tree derives -/
 def yield {n : g.NT} (p : parseTree n) : List T :=
   match p with
   | leaf t _ => [t]
   | node t₁ t₂ _ => yield t₁ ++ yield t₂
 
+/-- The `height` of a tree -/
 def height {n : g.NT} (p : parseTree n) : ℕ :=
   match p with
   | leaf _ _ => 1
@@ -246,5 +252,7 @@ lemma Derives.yield {n : g.NT} {u : List T}
     ∃ p : parseTree n, p.yield = u := by
   rw [derives_iff_derivesIn] at hnu
   exact hnu.choose_spec.yield_rec
+
+end parseTree
 
 end ChomskyNormalFormGrammar
