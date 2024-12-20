@@ -45,14 +45,13 @@ def height {n : g.NT} (p : parseTree n) : ℕ :=
 
 /-- `IsSubTreeOf p₁ p₂` encodes that `p₁` is a subtree of `p₂` -/
 inductive IsSubtreeOf : {n₁ : g.NT} → {n₂ : g.NT} → parseTree n₁ → parseTree n₂ → Prop where
-  | leaf_refl {t : T} {n : g.NT} (hrn : (ChomskyNormalFormRule.leaf n t) ∈ g.rules) :
-      IsSubtreeOf (leaf t hrn) (leaf t hrn)
-  | node_refl {l r n : g.NT} (p₁ : parseTree l) (p₂ : parseTree r)
-      (hrn : (ChomskyNormalFormRule.node n l r) ∈ g.rules) :
-      IsSubtreeOf (node p₁ p₂ hrn) (node p₁ p₂ hrn)
+  /-- A parse tree is a subtree of itself -/
+  | eq {n : g.NT} (p : parseTree n) : IsSubtreeOf p p
+  /-- If `p₁` is a subtree of `p₂`, it is also a subtree of `node p₂ p₃` -/
   | left_sub {l r n₁ n₂ : g.NT} (p₁ : parseTree l) (p₂ : parseTree r) (p : parseTree n₂)
       (hrn₁ : (ChomskyNormalFormRule.node n₁ l r) ∈ g.rules) (hpp₁ : IsSubtreeOf p p₁) :
       IsSubtreeOf p (node p₁ p₂ hrn₁)
+  /-- If `p₁` is a subtree of `p₃`, it is also a subtree of `node p₂ p₃` -/
   | right_sub {l r n₁ n₂ : g.NT} (p₁ : parseTree l) (p₂ : parseTree r) (p : parseTree n₂)
       (hrn₁ : (ChomskyNormalFormRule.node n₁ l r) ∈ g.rules) (hpp₂ : IsSubtreeOf p p₂) :
       IsSubtreeOf p (node p₁ p₂ hrn₁)
@@ -104,12 +103,9 @@ lemma subtree_decomposition {n₁ n₂ : g.NT} {p₁ : parseTree n₁} {p₂ : p
       g.Derives [Symbol.nonterminal n₁]
         (u.map Symbol.terminal ++ [Symbol.nonterminal n₂] ++ v.map Symbol.terminal) := by
   induction hpp with
-  | leaf_refl =>
-    refine ⟨[], [], rfl, ?_⟩
-    simpa using Derives.refl [Symbol.nonterminal _]
-  | node_refl =>
+  | eq =>
     use [], []
-    simpa using Derives.refl _
+    simpa using Derives.refl [Symbol.nonterminal _]
   | left_sub q₁ q₂ p₂ hrn hpq₁ ih =>
     simp only [yield, List.append_assoc]
     obtain ⟨u, v, huv, hguv⟩ := ih
@@ -136,7 +132,7 @@ lemma strict_subtree_decomposition {n : g.NT} {p₁ : parseTree n} {p₂ : parse
       ∧ g.Derives [Symbol.nonterminal n]
         (u.map Symbol.terminal ++ [Symbol.nonterminal n] ++ v.map Symbol.terminal) := by
   cases hpp with
-  | leaf_refl | node_refl => contradiction
+  | eq => contradiction
   | left_sub q₁ q₂ p₂ hrn hp₂ =>
     obtain ⟨u, v, huv, hguv⟩ := subtree_decomposition hp₂
     simp_rw [yield, huv]
@@ -167,24 +163,20 @@ lemma strict_subtree_decomposition {n : g.NT} {p₁ : parseTree n} {p₂ : parse
         nth_rewrite 2 [← List.append_assoc]
         exact (hguv.append_left _).trans (Derives.append_right q₁.yield_derives _)
 
-
 @[refl]
-lemma IsSubtreeOf.refl {n : g.NT} {p : parseTree n} : p.IsSubtreeOf p := by
-  cases p <;> constructor
+lemma IsSubtreeOf.refl {n : g.NT} {p : parseTree n} : p.IsSubtreeOf p := IsSubtreeOf.eq p
 
 lemma IsSubtreeOf.trans {n₁ n₂ n₃ : g.NT} {p₁ : parseTree n₁} {p₂ : parseTree n₂}
     {p₃ : parseTree n₃} (hp₁ : p₁.IsSubtreeOf p₂) (hp₂ : p₂.IsSubtreeOf p₃) : p₁.IsSubtreeOf p₃ := by
   induction hp₂ with
-  | leaf_refl => exact hp₁
-  | node_refl => exact hp₁
+  | eq => exact hp₁
   | left_sub _ _ _ _ _ ih => exact left_sub _ _ _ _ (ih hp₁)
   | right_sub _ _ _ _ _ ih => exact right_sub _ _ _ _ (ih hp₁)
 
 lemma subtree_height {n₁ n₂ : g.NT} {p₁ : parseTree n₁} {p₂ : parseTree n₂} (hpp : p₁.IsSubtreeOf p₂) :
     p₁.height ≤ p₂.height := by
     induction hpp with
-    | leaf_refl => omega
-    | node_refl => simp [height]
+    | eq => simp [height]
     | left_sub _ _ _ _ _ ht | right_sub _ _ _ _ _ ht =>
       apply ht.trans
       simp only [height]

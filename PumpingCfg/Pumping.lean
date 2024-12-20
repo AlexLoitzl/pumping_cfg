@@ -67,8 +67,7 @@ lemma pumping_string {u v : List (Symbol T g.NT)} {n : g.NT}
 lemma subtree_height_le {n₁ n₂ : g.NT} {p₁ : parseTree n₁} {p₂ : parseTree n₂} (hpp : p₂.IsSubtreeOf p₁) :
     p₂.height ≤ p₁.height := by
   induction hpp with
-  | leaf_refl hrn => rfl
-  | node_refl p₁ p₂ hrn => rfl
+  | eq => rfl
   | left_sub _ _ _ _ _ ih => exact Nat.le_add_right_of_le (le_sup_of_le_left ih)
   | right_sub _ _ _ _ _ ih => exact Nat.le_add_right_of_le (le_sup_of_le_right ih)
 
@@ -100,7 +99,8 @@ lemma subtree_repeat_root_height_ind {n : g.NT} {p : parseTree n}
       intro f hf
       have := pidgeonhole hf
       have : (insert ⟨n, parseTree.leaf t hnt⟩ s).card = s.card + 1 :=
-        Finset.card_insert_of_not_mem (was_goal.right n (.leaf t hnt) (.leaf t hnt) · (parseTree.IsSubtreeOf.leaf_refl hnt))
+        Finset.card_insert_of_not_mem (was_goal.right n (.leaf t hnt) (.leaf t hnt) ·
+          (parseTree.IsSubtreeOf.refl))
       omega
     apply pidgeon
     use fun z =>
@@ -125,21 +125,21 @@ lemma subtree_repeat_root_height_ind {n : g.NT} {p : parseTree n}
       | inr hys =>
         exfalso
         exact was_goal.right n (hxy ▸ y.val.snd) (parseTree.leaf t hnt) (by convert hys; aesop)
-          (parseTree.IsSubtreeOf.leaf_refl hnt)
+          (parseTree.IsSubtreeOf.refl)
     | inr hxs =>
       cases hy with
       | inl hyt =>
         simp only [hyt, Subtype.mk.injEq] at hxy
         exfalso
         exact was_goal.right n (hxy ▸ x.val.snd) (parseTree.leaf t hnt) (by convert hxs <;> aesop)
-          (parseTree.IsSubtreeOf.leaf_refl hnt)
+          (parseTree.IsSubtreeOf.refl)
       | inr hys =>
         exact Subtype.eq (hs x hxs y hys (by simp_all))
   | @node n₀ _ _ t₁ t₂ hnc ih₁ ih₂ =>
     if hn₀ : ∃ t₀ : parseTree n₀, ⟨n₀, t₀⟩ ∈ s then
       right
       obtain ⟨t₀, ht₀⟩ := hn₀
-      refine ⟨_, t₀, parseTree.node t₁ t₂ hnc, ht₀, parseTree.IsSubtreeOf.node_refl t₁ t₂ hnc⟩
+      refine ⟨_, t₀, parseTree.node t₁ t₂ hnc, ht₀, parseTree.IsSubtreeOf.refl⟩
     else
       have hcard : (insert ⟨n₀, parseTree.node t₁ t₂ hnc⟩ s).card = 1 + s.card := by
         rw [add_comm]
@@ -201,7 +201,7 @@ lemma subtree_repeat_root_height_ind {n : g.NT} {p : parseTree n}
             rw [Sigma.mk.inj_iff] at httt
             obtain ⟨hn₀, ht⟩ := httt
             left
-            use n₀, t₁.node t₂ (hn₀ ▸ hnc), t', hn₀ ▸ parseTree.IsSubtreeOf.node_refl t₁ t₂ hnc, parseTree.IsSubtreeOf.left_sub _ _ _ _ ht'
+            use n₀, t₁.node t₂ (hn₀ ▸ hnc), t', hn₀ ▸ @parseTree.IsSubtreeOf.eq _ _ _ (t₁.node t₂ hnc) , parseTree.IsSubtreeOf.left_sub _ _ _ _ ht'
             intro ht
             obtain htt' := parseTree.subtree_height ht'
             rw [← ht] at htt'
@@ -231,7 +231,7 @@ lemma subtree_repeat_root_height_ind {n : g.NT} {p : parseTree n}
             rw [Sigma.mk.inj_iff] at httt
             obtain ⟨hn₀, ht⟩ := httt
             left
-            use n₀, t₁.node t₂ (hn₀ ▸ hnc), t', hn₀ ▸ parseTree.IsSubtreeOf.node_refl t₁ t₂ hnc, parseTree.IsSubtreeOf.right_sub _ _ _ _ ht'
+            use n₀, t₁.node t₂ (hn₀ ▸ hnc), t', hn₀ ▸ @parseTree.IsSubtreeOf.eq _ _ _ (t₁.node t₂ hnc) , parseTree.IsSubtreeOf.right_sub _ _ _ _ ht'
             intro ht
             obtain htt' := parseTree.subtree_height ht'
             rw [← ht] at htt'
